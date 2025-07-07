@@ -2,7 +2,8 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { Camera, MapPin, CheckCircle, XCircle, AlertTriangle, Loader2 } from "lucide-react";
+import { Camera, MapPin, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { LottieLoader } from "../ui/lottie-loader";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +21,7 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" className="w-full" disabled={disabled || pending}>
-      {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+      {pending && <LottieLoader size={24} />}
       Kirim Absensi
     </Button>
   );

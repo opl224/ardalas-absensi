@@ -6,10 +6,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from '@/components/ui/badge';
-import { BarChart2, CalendarDays, Clock, MapPin, CheckCircle, Loader2, LogOut } from 'lucide-react';
+import { BarChart2, CalendarDays, Clock, MapPin, CheckCircle, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFormStatus } from 'react-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { CenteredLottieLoader, LottieLoader } from '../ui/lottie-loader';
 
 interface TeacherHomeProps {
   setActiveView: (view: 'home' | 'history' | 'profile' | 'checkin') => void;
@@ -21,7 +22,7 @@ function CheckoutButton() {
     const { pending } = useFormStatus();
     return (
       <Button type="submit" className="w-full" disabled={pending}>
-        {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+        {pending && <LottieLoader size={24} />}
         Check Out
       </Button>
     );
@@ -33,7 +34,7 @@ function QuickCheckoutButton() {
         <button type="submit" disabled={pending} className="w-full text-left p-0 rounded-lg hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50">
             <Card className="w-full h-full p-4 flex flex-col items-center justify-center text-center">
                 {pending ? (
-                    <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                    <LottieLoader size={32} />
                 ) : (
                     <LogOut className="h-8 w-8 text-primary" />
                 )}
@@ -90,7 +91,7 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
     }
 
     if (!userProfile) {
-        return <div>Memuat...</div>;
+        return <CenteredLottieLoader />;
     }
 
     return (

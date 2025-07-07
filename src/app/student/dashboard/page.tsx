@@ -9,12 +9,13 @@ import { MobileStudentDashboard } from "@/components/student/MobileStudentDashbo
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList } from "@/components/ui/breadcrumb";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
+import { CenteredLottieLoader } from "@/components/ui/lottie-loader";
 
 export default function StudentDashboard() {
   const { userProfile } = useAuth();
 
   if (!userProfile) {
-    return <div>Memuat...</div>;
+    return <CenteredLottieLoader />;
   }
   
   const user = {

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { User, Mail, Book, LogOut } from "lucide-react";
 import { LogoutDialog } from "@/components/admin/LogoutDialog";
 import { useAuth } from "@/hooks/useAuth";
+import { CenteredLottieLoader } from "../ui/lottie-loader";
 
 const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
     <div className="flex items-center gap-4 py-3">
@@ -22,7 +23,7 @@ export function TeacherProfile() {
     const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
     if (!userProfile) {
-        return <div>Memuat profil...</div>
+        return <CenteredLottieLoader />;
     }
 
     return (

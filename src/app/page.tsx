@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
+import { LottieLoader } from '@/components/ui/lottie-loader';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -124,7 +125,7 @@ export default function LoginPage() {
                 </div>
               </div>
               <Button type="submit" className="w-full !mt-6" size="lg" disabled={loading}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {loading && <LottieLoader size={24} />}
                 Masuk
               </Button>
             </form>

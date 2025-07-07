@@ -6,7 +6,7 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
-import { Skeleton } from '@/components/ui/skeleton';
+import { CenteredLottieLoader } from '@/components/ui/lottie-loader';
 
 export interface UserProfile {
     uid: string;
@@ -62,11 +62,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <Skeleton className="w-full h-screen" />
-            </div>
-        )
+        return <CenteredLottieLoader />;
     }
 
     return (

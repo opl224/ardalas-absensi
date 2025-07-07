@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Search, Download, Filter, FilePen, Trash2 } from 'lucide-react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Skeleton } from '../ui/skeleton';
+import { LottieLoader } from '../ui/lottie-loader';
 
 interface User {
   id: string;
@@ -98,43 +98,40 @@ export function UserManagement() {
         ))}
       </div>
 
-      <div className="space-y-3">
-        {loading && Array.from({length: 5}).map((_, i) => (
-            <Card key={i} className="p-3 flex items-center gap-4">
-                <Skeleton className="h-12 w-12 rounded-full" />
-                <div className="flex-grow space-y-2">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-3 w-1/2" />
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+            <LottieLoader size={80} />
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredUsers.map((user) => (
+            <Card key={user.id} className="p-3 flex items-center gap-4">
+              <Avatar className="h-12 w-12">
+                <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="person portrait" />
+                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <div className="flex-grow">
+                <p className="font-semibold text-foreground">{user.name}</p>
+                <p className="text-sm text-muted-foreground -mt-1">{user.email}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge variant={user.status === 'Absen' ? 'destructive' : 'warning'}>
+                    {user.status}
+                  </Badge>
+                  <span className="text-sm text-muted-foreground capitalize">{user.role}</span>
                 </div>
-            </Card>
-        ))}
-        {!loading && filteredUsers.map((user) => (
-          <Card key={user.id} className="p-3 flex items-center gap-4">
-            <Avatar className="h-12 w-12">
-              <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="person portrait" />
-              <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-            </Avatar>
-            <div className="flex-grow">
-              <p className="font-semibold text-foreground">{user.name}</p>
-              <p className="text-sm text-muted-foreground -mt-1">{user.email}</p>
-              <div className="flex items-center gap-2 mt-1">
-                <Badge variant={user.status === 'Absen' ? 'destructive' : 'warning'}>
-                  {user.status}
-                </Badge>
-                <span className="text-sm text-muted-foreground capitalize">{user.role}</span>
               </div>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="ghost" size="icon" className="h-9 w-9 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200">
-                <FilePen className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-9 w-9 bg-red-100 text-destructive hover:bg-red-200">
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </Card>
-        ))}
-      </div>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="icon" className="h-9 w-9 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200">
+                  <FilePen className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-9 w-9 bg-red-100 text-destructive hover:bg-red-200">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

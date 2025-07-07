@@ -34,6 +34,7 @@ import { MobileAdminDashboard } from "@/components/admin/MobileAdminDashboard"
 import { useAuth } from "@/hooks/useAuth";
 import { collection, getDocs, query, orderBy, limit, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { CenteredLottieLoader, LottieLoader } from "@/components/ui/lottie-loader";
 
 interface AttendanceRecord {
     id: string;
@@ -70,7 +71,7 @@ export default function AdminDashboard() {
     fetchAttendance();
   }, []);
   
-  if (!userProfile) return null;
+  if (!userProfile) return <CenteredLottieLoader />;
 
   return (
     <>
@@ -198,7 +199,7 @@ export default function AdminDashboard() {
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
-                                    <TableRow><TableCell colSpan={5}>Memuat...</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={5} className="py-8"><div className="flex justify-center"><LottieLoader size={40}/></div></TableCell></TableRow>
                                 ) : (
                                     attendanceData.map((item) => (
                                     <TableRow key={item.id}>
