@@ -67,19 +67,41 @@ export function CheckinCard({ user }: CheckinCardProps) {
     }
   };
   
-  const startCamera = async () => {
+  const startCamera = () => {
     setCameraError(null);
     setPhotoDataUri(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setIsCameraOn(true);
+    setIsCameraOn(true);
+  };
+
+  useEffect(() => {
+    if (isCameraOn) {
+      let stream: MediaStream;
+      const enableCamera = async () => {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        } catch (err) {
+          setCameraError("Could not access camera. Please grant permission.");
+          setIsCameraOn(false);
+        }
+      };
+      enableCamera();
+
+      return () => {
+        if (stream) {
+          stream.getTracks().forEach((track) => track.stop());
+        }
+        if(videoRef.current) {
+            videoRef.current.srcObject = null;
+        }
       }
-    } catch (err) {
-      setCameraError("Could not access camera. Please grant permission.");
-      setIsCameraOn(false);
     }
+  }, [isCameraOn]);
+
+  const stopCamera = () => {
+    setIsCameraOn(false);
   };
 
   const takePhoto = () => {
@@ -95,15 +117,6 @@ export function CheckinCard({ user }: CheckinCardProps) {
         setPhotoDataUri(dataUri);
         stopCamera();
       }
-    }
-  };
-
-  const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach((track) => track.stop());
-      videoRef.current.srcObject = null;
-      setIsCameraOn(false);
     }
   };
 
@@ -159,23 +172,26 @@ export function CheckinCard({ user }: CheckinCardProps) {
                   <h3 className="font-semibold">Take a Selfie</h3>
                   <p className="text-sm text-muted-foreground">Your photo is used to validate your presence.</p>
                   
-                  {location && !isCameraOn && !photoDataUri && (
-                     <Button type="button" onClick={startCamera} className="mt-2" disabled={!location}>Start Camera</Button>
-                  )}
                   {cameraError && <p className="text-sm text-destructive mt-2">{cameraError}</p>}
 
-                  {isCameraOn && (
-                    <div className="mt-2 space-y-2">
-                      <video ref={videoRef} autoPlay playsInline className="w-full rounded-md border" />
-                      <Button type="button" onClick={takePhoto} className="w-full">Take Selfie</Button>
-                    </div>
-                  )}
+                  <div className="mt-2 space-y-2">
+                    {isCameraOn && (
+                      <>
+                        <video ref={videoRef} autoPlay playsInline muted className="w-full rounded-md border" />
+                        <Button type="button" onClick={takePhoto} className="w-full">Take Selfie</Button>
+                      </>
+                    )}
 
-                  {photoDataUri && (
-                    <div className="mt-2 space-y-2">
+                    {!isCameraOn && photoDataUri && (
+                      <>
                         <img src={photoDataUri} alt="User selfie" className="rounded-md border" />
                         <Button type="button" variant="outline" onClick={startCamera} className="w-full">Retake Photo</Button>
-                    </div>
+                      </>
+                    )}
+                  </div>
+
+                  {location && !isCameraOn && !photoDataUri && (
+                     <Button type="button" onClick={startCamera} className="mt-2" disabled={!location}>Start Camera</Button>
                   )}
                 </div>
               </div>
