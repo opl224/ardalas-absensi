@@ -32,7 +32,7 @@ const variants = {
 };
 
 const transition = {
-  x: { type: "spring", stiffness: 300, damping: 30 },
+  x: { type: "tween", ease: "easeInOut", duration: 0.3 },
   opacity: { duration: 0.2 }
 };
 
