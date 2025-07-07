@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Home, User as UserIcon, Users2, LineChart, CheckSquare } from "lucide-react";
 import { UserManagement } from "./UserManagement";
 import { Reports } from "./Reports";
@@ -69,6 +69,9 @@ export function MobileAdminDashboard() {
   const [direction, setDirection] = useState(0);
 
   const currentIndex = mainViews.indexOf(activeView);
+  const currentIndexRef = useRef(currentIndex);
+  currentIndexRef.current = currentIndex;
+
   const isSubView = currentIndex === -1;
 
   const changeView = (newView: ActiveView) => {
@@ -85,7 +88,7 @@ export function MobileAdminDashboard() {
   
   const handleSwipe = (newDirection: number) => {
     if (isSubView) return;
-    const newIndex = currentIndex + newDirection;
+    const newIndex = currentIndexRef.current + newDirection;
     if (newIndex >= 0 && newIndex < mainViews.length) {
         changeView(mainViews[newIndex]);
     }

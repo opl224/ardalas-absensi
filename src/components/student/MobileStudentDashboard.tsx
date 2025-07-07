@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Home, History, User as UserIcon, ArrowLeft } from 'lucide-react';
 import { StudentHome } from './StudentHome';
 import { AttendanceHistory } from './AttendanceHistory';
@@ -70,6 +70,9 @@ export function MobileStudentDashboard() {
   const { userProfile, loading } = useAuth();
 
   const currentIndex = mainViews.indexOf(activeView);
+  const currentIndexRef = useRef(currentIndex);
+  currentIndexRef.current = currentIndex;
+
   const isSubView = currentIndex === -1;
 
   if (loading) {
@@ -93,7 +96,7 @@ export function MobileStudentDashboard() {
   
   const handleSwipe = (newDirection: number) => {
     if (isSubView) return;
-    const newIndex = currentIndex + newDirection;
+    const newIndex = currentIndexRef.current + newDirection;
     if (newIndex >= 0 && newIndex < mainViews.length) {
         changeView(mainViews[newIndex]);
     }
