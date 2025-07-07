@@ -6,11 +6,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, Download, FilePen, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Download, Eye, ChevronLeft, ChevronRight, Briefcase, BookCopy } from 'lucide-react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { LottieLoader } from '../ui/lottie-loader';
 import { cn } from '@/lib/utils';
+import { Separator } from '../ui/separator';
 
 interface User {
   id: string;
@@ -19,6 +20,8 @@ interface User {
   role: 'Guru' | 'Siswa' | 'Admin';
   status: 'Hadir' | 'Terlambat' | 'Absen' | 'Penipuan';
   avatar: string;
+  subject?: string;
+  class?: string;
 }
 
 const USERS_PER_PAGE = 10;
@@ -28,6 +31,7 @@ export function UserManagement() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUsersAndStatus = async () => {
@@ -53,8 +57,8 @@ export function UserManagement() {
             }
         });
 
-        // 2. Fetch only teacher users
-        const usersQuery = query(collection(db, 'users'), where('role', '==', 'guru'));
+        // 2. Fetch teacher and admin users
+        const usersQuery = query(collection(db, 'users'), where('role', 'in', ['guru', 'admin']));
         const querySnapshot = await getDocs(usersQuery);
 
         // 3. Combine user data with today's status
@@ -134,6 +138,18 @@ export function UserManagement() {
       return [firstPageIndex, '...', ...middleRange, '...', lastPageIndex];
     }
   }, [totalPages, currentPage]);
+  
+  const getBadgeVariant = (status: User['status']) => {
+    switch (status) {
+        case 'Hadir': return 'success';
+        case 'Terlambat': return 'warning';
+        case 'Absen':
+        case 'Penipuan':
+            return 'destructive';
+        default: return 'outline';
+    }
+  }
+
 
   return (
     <div className="bg-gray-50 dark:bg-zinc-900">
@@ -169,34 +185,47 @@ export function UserManagement() {
             <div className="space-y-3">
                 {paginatedUsers.length > 0 ? (
                     paginatedUsers.map((user) => (
-                    <Card key={user.id} className="p-3 flex items-center gap-4">
-                    <Avatar className="h-12 w-12">
-                        <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="person portrait" />
-                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-grow">
-                        <p className="font-semibold text-foreground">{user.name}</p>
-                        <p className="text-sm text-muted-foreground -mt-1">{user.email}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                        <Badge variant={
-                            user.status === 'Hadir' ? 'default' :
-                            user.status === 'Terlambat' ? 'secondary' :
-                            user.status === 'Penipuan' ? 'destructive' :
-                            'outline'
-                        }>
-                            {user.status}
-                        </Badge>
-                        <span className="text-sm text-muted-foreground capitalize">{user.role}</span>
+                    <Card key={user.id} className="p-3 flex flex-col gap-2">
+                        <div className="flex items-center gap-4">
+                            <Avatar className="h-12 w-12">
+                                <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="person portrait" />
+                                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-grow min-w-0">
+                                <p className="font-semibold text-foreground truncate">{user.name}</p>
+                                <p className="text-sm text-muted-foreground -mt-1 truncate">{user.email}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                <Badge variant={getBadgeVariant(user.status)}>
+                                    {user.status}
+                                </Badge>
+                                <span className="text-sm text-muted-foreground capitalize">{user.role}</span>
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                <Button variant="ghost" size="icon" className="h-9 w-9 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200" onClick={() => setExpandedUserId(expandedUserId === user.id ? null : user.id)}>
+                                <Eye className="h-4 w-4" />
+                                </Button>
+                            </div>
                         </div>
-                    </div>
-                    <div className="flex gap-2">
-                        <Button variant="ghost" size="icon" className="h-9 w-9 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200">
-                        <FilePen className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-9 w-9 bg-red-100 text-destructive hover:bg-red-200">
-                        <Trash2 className="h-4 w-4" />
-                        </Button>
-                    </div>
+                        {expandedUserId === user.id && user.role === 'Guru' && (
+                            <div className="pl-16 space-y-2 text-sm pt-2">
+                                <Separator />
+                                <div className="pt-2">
+                                    {user.subject && (
+                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                            <BookCopy className="h-4 w-4" />
+                                            <span>Mata Pelajaran: <strong className='text-foreground'>{user.subject}</strong></span>
+                                        </div>
+                                    )}
+                                    {user.class && (
+                                        <div className="flex items-center gap-2 text-muted-foreground mt-1">
+                                            <Briefcase className="h-4 w-4" />
+                                            <span>Kelas: <strong className='text-foreground'>{user.class}</strong></span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </Card>
                 ))
                 ) : (
