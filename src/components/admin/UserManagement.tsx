@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useState, useEffect, useMemo } from 'react';
@@ -233,21 +234,19 @@ export function UserManagement() {
 
         <div className="p-4">
           <div className="flex items-center gap-2 mb-4">
-              <Button variant="outline">
-                  <Download className="mr-2 h-4 w-4" />
-                  Unduh
-              </Button>
-              <Button className="ml-auto">Tambah Pengguna</Button>
-          </div>
-
-          <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input 
-              placeholder="Cari pengguna..." 
-              className="pl-10 bg-white" 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              />
+            <div className="relative flex-grow">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input 
+                  placeholder="Cari pengguna..." 
+                  className="pl-10 bg-white w-full" 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
+            <Button variant="outline">
+                <Download className="mr-2 h-4 w-4" />
+                Unduh
+            </Button>
           </div>
 
           {loading ? (
