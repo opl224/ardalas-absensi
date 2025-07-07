@@ -53,42 +53,44 @@ export function AttendanceHistory() {
   }
 
     return (
-        <div className="bg-gray-50 dark:bg-zinc-900 p-4 min-h-screen">
-            <header className="mb-6">
+        <div className="bg-gray-50 dark:bg-zinc-900">
+            <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <h1 className="text-xl font-bold text-foreground">Riwayat Kehadiran</h1>
             </header>
 
-            {loading ? (
-                <div className="flex justify-center items-center h-64">
-                    <LottieLoader size={80} />
-                </div>
-            ) : (
-                <div className="space-y-3">
-                    {history.length === 0 ? (
-                        <p className="text-muted-foreground text-center py-8">Belum ada riwayat kehadiran.</p>
-                    ) : (
-                        history.map((item) => (
-                            <Card key={item.id} className="p-3 flex items-center gap-4">
-                                <Avatar className="h-12 w-12">
-                                    <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait" />
-                                    <AvatarFallback>{userProfile.name.slice(0,2).toUpperCase()}</AvatarFallback>
-                                </Avatar>
-                                <div className="flex-grow">
-                                     <p className="font-semibold text-foreground">{item.checkInTime.toDate().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-                                    <p className="text-sm text-muted-foreground">
-                                        Masuk: {item.checkInTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                                        {item.checkOutTime ? ` | Keluar: ${item.checkOutTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : ''}
-                                    </p>
-                                </div>
-                                <Badge variant={
-                                    item.status === 'Hadir' ? 'default' :
-                                    item.status === 'Terlambat' ? 'secondary' : 'destructive'
-                                } className="w-20 justify-center">{item.status}</Badge>
-                            </Card>
-                        ))
-                    )}
-                </div>
-            )}
+            <div className="p-4">
+                {loading ? (
+                    <div className="flex justify-center items-center h-64">
+                        <LottieLoader size={80} />
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {history.length === 0 ? (
+                            <p className="text-muted-foreground text-center py-8">Belum ada riwayat kehadiran.</p>
+                        ) : (
+                            history.map((item) => (
+                                <Card key={item.id} className="p-3 flex items-center gap-4">
+                                    <Avatar className="h-12 w-12">
+                                        <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait" />
+                                        <AvatarFallback>{userProfile.name.slice(0,2).toUpperCase()}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-grow">
+                                        <p className="font-semibold text-foreground">{item.checkInTime.toDate().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            Masuk: {item.checkInTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                                            {item.checkOutTime ? ` | Keluar: ${item.checkOutTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : ''}
+                                        </p>
+                                    </div>
+                                    <Badge variant={
+                                        item.status === 'Hadir' ? 'default' :
+                                        item.status === 'Terlambat' ? 'secondary' : 'destructive'
+                                    } className="w-20 justify-center">{item.status}</Badge>
+                                </Card>
+                            ))
+                        )}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

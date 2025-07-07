@@ -46,35 +46,37 @@ export function Attendance() {
     }, []);
 
     return (
-        <div className="bg-gray-50 dark:bg-zinc-900 p-4">
-             <header className="flex items-center justify-between mb-4">
+        <div className="bg-gray-50 dark:bg-zinc-900">
+             <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <h1 className="text-xl font-bold text-foreground">Catatan Kehadiran</h1>
             </header>
-            {loading ? (
-                 <div className="flex justify-center items-center h-64">
-                    <LottieLoader size={80} />
-                </div>
-            ) : (
-                <div className="space-y-3">
-                    {attendanceData.map((item) => (
-                        <Card key={item.id} className="p-3 flex items-center gap-4">
-                            <Avatar className="h-12 w-12">
-                                <AvatarImage src={item.avatar} alt={item.name} data-ai-hint="person portrait" />
-                                <AvatarFallback>{item.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-grow">
-                                <p className="font-semibold text-foreground">{item.name}</p>
-                                <p className="text-sm text-muted-foreground">{item.role}</p>
-                                <p className="text-sm text-muted-foreground">{item.checkInTime.toDate().toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'})} - {item.location}</p>
-                            </div>
-                            <Badge variant={
-                                item.status === 'Hadir' ? 'default' :
-                                item.status === 'Terlambat' ? 'secondary' : 'destructive'
-                            } className="w-24 justify-center">{item.status}</Badge>
-                        </Card>
-                    ))}
-                </div>
-            )}
+            <div className="p-4">
+                {loading ? (
+                    <div className="flex justify-center items-center h-64">
+                        <LottieLoader size={80} />
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {attendanceData.map((item) => (
+                            <Card key={item.id} className="p-3 flex items-center gap-4">
+                                <Avatar className="h-12 w-12">
+                                    <AvatarImage src={item.avatar} alt={item.name} data-ai-hint="person portrait" />
+                                    <AvatarFallback>{item.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex-grow">
+                                    <p className="font-semibold text-foreground">{item.name}</p>
+                                    <p className="text-sm text-muted-foreground">{item.role}</p>
+                                    <p className="text-sm text-muted-foreground">{item.checkInTime.toDate().toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'})} - {item.location}</p>
+                                </div>
+                                <Badge variant={
+                                    item.status === 'Hadir' ? 'default' :
+                                    item.status === 'Terlambat' ? 'secondary' : 'destructive'
+                                } className="w-24 justify-center">{item.status}</Badge>
+                            </Card>
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
     )
 }

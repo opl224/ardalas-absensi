@@ -58,17 +58,17 @@ export function MobileStudentDashboard() {
         return <StudentProfile />;
       case 'checkin':
         return (
-          <div className="p-4 h-full flex flex-col">
-            <header className="flex items-center gap-4 mb-6">
+          <>
+            <header className="sticky top-0 z-10 flex items-center gap-4 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <button onClick={() => setActiveView('home')} className="p-1">
                     <ArrowLeft className="h-6 w-6" />
                 </button>
                 <h1 className="text-xl font-bold text-foreground">Kehadiran</h1>
             </header>
-            <div className="flex-grow flex items-center justify-center">
+            <div className="flex-grow flex items-center justify-center p-4">
               <CheckinCard onSuccess={() => setActiveView('home')} />
             </div>
-          </div>
+          </>
         );
       default:
         return <StudentHome setActiveView={setActiveView} />;
@@ -85,7 +85,7 @@ export function MobileStudentDashboard() {
 
   return (
     <div className="bg-gray-50 dark:bg-zinc-900 min-h-screen flex flex-col">
-      <main className="flex-grow pb-20">{renderContent()}</main>
+      <main className="flex-grow pb-20 overflow-y-auto">{renderContent()}</main>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t p-1 flex justify-around">
         <NavLink activeView={activeView} view="home" setView={setActiveView} label="Beranda">

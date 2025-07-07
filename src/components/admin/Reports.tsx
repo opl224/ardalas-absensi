@@ -6,11 +6,11 @@ import { Download } from "lucide-react";
 
 export function Reports() {
     return (
-        <div className="bg-gray-50 dark:bg-zinc-900 p-4">
-            <header className="flex items-center justify-between mb-4">
+        <div className="bg-gray-50 dark:bg-zinc-900">
+            <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <h1 className="text-xl font-bold text-foreground">Lihat Laporan</h1>
             </header>
-            <div className="space-y-4">
+            <div className="p-4 space-y-4">
                 <Card>
                     <CardHeader>
                         <CardTitle>Laporan Kehadiran Harian</CardTitle>

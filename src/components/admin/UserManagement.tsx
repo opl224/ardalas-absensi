@@ -106,113 +106,116 @@ export function UserManagement() {
   }, [totalPages, currentPage]);
 
   return (
-    <div className="bg-gray-50 dark:bg-zinc-900 p-4">
-      <header className="mb-4">
+    <div className="bg-gray-50 dark:bg-zinc-900">
+      <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <h1 className="text-xl font-bold text-foreground">Manajemen Pengguna</h1>
-        <div className="flex items-center gap-2 mt-2">
+      </header>
+
+      <div className="p-4">
+        <div className="flex items-center gap-2 mb-4">
             <Button variant="outline">
                 <Download className="mr-2 h-4 w-4" />
                 Unduh
             </Button>
             <Button className="ml-auto">Tambah Pengguna</Button>
         </div>
-      </header>
 
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-        <Input 
-          placeholder="Cari pengguna..." 
-          className="pl-10 bg-white" 
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-            <LottieLoader size={80} />
+        <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input 
+            placeholder="Cari pengguna..." 
+            className="pl-10 bg-white" 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            />
         </div>
-      ) : (
-        <>
-          <div className="space-y-3">
-            {paginatedUsers.length > 0 ? (
-                paginatedUsers.map((user) => (
-                <Card key={user.id} className="p-3 flex items-center gap-4">
-                <Avatar className="h-12 w-12">
-                    <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="person portrait" />
-                    <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div className="flex-grow">
-                    <p className="font-semibold text-foreground">{user.name}</p>
-                    <p className="text-sm text-muted-foreground -mt-1">{user.email}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                    <Badge variant={user.status === 'Absen' ? 'destructive' : 'warning'}>
-                        {user.status}
-                    </Badge>
-                    <span className="text-sm text-muted-foreground capitalize">{user.role}</span>
-                    </div>
-                </div>
-                <div className="flex gap-2">
-                    <Button variant="ghost" size="icon" className="h-9 w-9 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200">
-                    <FilePen className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 bg-red-100 text-destructive hover:bg-red-200">
-                    <Trash2 className="h-4 w-4" />
-                    </Button>
-                </div>
-                </Card>
-            ))
-            ) : (
-                <p className="text-center text-muted-foreground py-8">Tidak ada pengguna yang ditemukan.</p>
-            )}
-          </div>
 
-          {totalPages > 1 && (
-             <div className="flex items-center justify-center space-x-1 mt-6">
-                <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="text-primary"
-                >
-                <ChevronLeft className="h-5 w-5" />
-                </Button>
-                {paginationRange?.map((page, index) =>
-                page === '...' ? (
-                    <span key={`ellipsis-${index}`} className="px-2 py-1 text-muted-foreground">
-                    ...
-                    </span>
+        {loading ? (
+            <div className="flex justify-center items-center h-64">
+                <LottieLoader size={80} />
+            </div>
+        ) : (
+            <>
+            <div className="space-y-3">
+                {paginatedUsers.length > 0 ? (
+                    paginatedUsers.map((user) => (
+                    <Card key={user.id} className="p-3 flex items-center gap-4">
+                    <Avatar className="h-12 w-12">
+                        <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="person portrait" />
+                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-grow">
+                        <p className="font-semibold text-foreground">{user.name}</p>
+                        <p className="text-sm text-muted-foreground -mt-1">{user.email}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                        <Badge variant={user.status === 'Absen' ? 'destructive' : 'warning'}>
+                            {user.status}
+                        </Badge>
+                        <span className="text-sm text-muted-foreground capitalize">{user.role}</span>
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button variant="ghost" size="icon" className="h-9 w-9 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200">
+                        <FilePen className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-9 w-9 bg-red-100 text-destructive hover:bg-red-200">
+                        <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </div>
+                    </Card>
+                ))
                 ) : (
+                    <p className="text-center text-muted-foreground py-8">Tidak ada pengguna yang ditemukan.</p>
+                )}
+            </div>
+
+            {totalPages > 1 && (
+                <div className="flex items-center justify-center space-x-1 mt-6">
                     <Button
-                    key={page}
                     variant="ghost"
                     size="icon"
-                    onClick={() => setCurrentPage(page as number)}
-                    className={cn(
-                        'h-9 w-9',
-                        currentPage === page
-                        ? 'font-bold text-primary underline decoration-2 underline-offset-4'
-                        : 'text-muted-foreground'
-                    )}
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="text-primary"
                     >
-                    {page}
+                    <ChevronLeft className="h-5 w-5" />
                     </Button>
-                )
-                )}
-                <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="text-primary"
-                >
-                <ChevronRight className="h-5 w-5" />
-                </Button>
-            </div>
-          )}
-        </>
-      )}
+                    {paginationRange?.map((page, index) =>
+                    page === '...' ? (
+                        <span key={`ellipsis-${index}`} className="px-2 py-1 text-muted-foreground">
+                        ...
+                        </span>
+                    ) : (
+                        <Button
+                        key={page}
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setCurrentPage(page as number)}
+                        className={cn(
+                            'h-9 w-9',
+                            currentPage === page
+                            ? 'font-bold text-primary underline decoration-2 underline-offset-4'
+                            : 'text-muted-foreground'
+                        )}
+                        >
+                        {page}
+                        </Button>
+                    )
+                    )}
+                    <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="text-primary"
+                    >
+                    <ChevronRight className="h-5 w-5" />
+                    </Button>
+                </div>
+            )}
+            </>
+        )}
+      </div>
     </div>
   );
 }
