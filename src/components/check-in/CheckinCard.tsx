@@ -36,6 +36,7 @@ export function CheckinCard({ user }: CheckinCardProps) {
   const [photoDataUri, setPhotoDataUri] = useState<string | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   
   const [resultDialogOpen, setResultDialogOpen] = useState(false);
 
@@ -43,8 +44,59 @@ export function CheckinCard({ user }: CheckinCardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    if (state.error || state.success) {
+    setIsClient(true);
+  }, []);
+
+  // Load from local storage on mount
+  useEffect(() => {
+    if (isClient) {
+      try {
+        const savedLocation = localStorage.getItem('checkin_location');
+        if (savedLocation) {
+          setLocation(JSON.parse(savedLocation));
+        }
+        const savedPhoto = localStorage.getItem('checkin_photo');
+        if (savedPhoto) {
+          setPhotoDataUri(savedPhoto);
+        }
+      } catch (error) {
+        console.error("Failed to read from localStorage", error);
+        localStorage.clear();
+      }
+    }
+  }, [isClient]);
+
+  // Save location to local storage
+  useEffect(() => {
+    if (isClient) {
+      if (location) {
+        localStorage.setItem('checkin_location', JSON.stringify(location));
+      } else {
+        localStorage.removeItem('checkin_location');
+      }
+    }
+  }, [location, isClient]);
+
+  // Save photo to local storage
+  useEffect(() => {
+    if (isClient) {
+      if (photoDataUri) {
+        localStorage.setItem('checkin_photo', photoDataUri);
+      } else {
+        localStorage.removeItem('checkin_photo');
+      }
+    }
+  }, [photoDataUri, isClient]);
+
+
+  useEffect(() => {
+    if (state.error || state.success || state.isFraudulent) {
       setResultDialogOpen(true);
+      if (state.success) {
+        // On success, reset state which will trigger other effects to clear storage
+        setPhotoDataUri(null);
+        setLocation(null);
+      }
     }
   }, [state]);
 
@@ -69,13 +121,13 @@ export function CheckinCard({ user }: CheckinCardProps) {
   
   const startCamera = () => {
     setCameraError(null);
-    setPhotoDataUri(null);
+    setPhotoDataUri(null); // This will trigger the useEffect to remove from localStorage
     setIsCameraOn(true);
   };
 
   useEffect(() => {
+    let stream: MediaStream;
     if (isCameraOn) {
-      let stream: MediaStream;
       const enableCamera = async () => {
         try {
           stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
@@ -114,13 +166,14 @@ export function CheckinCard({ user }: CheckinCardProps) {
       if (context) {
         context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
         const dataUri = canvas.toDataURL("image/jpeg");
-        setPhotoDataUri(dataUri);
+        setPhotoDataUri(dataUri); // This will trigger the useEffect to save to localStorage
         stopCamera();
       }
     }
   };
 
   const resetCheckin = () => {
+    // Just setting state to null will trigger useEffects to clear storage
     setPhotoDataUri(null);
     setLocation(null);
     setResultDialogOpen(false);
@@ -132,7 +185,7 @@ export function CheckinCard({ user }: CheckinCardProps) {
     return 3;
   }
   
-  const progressValue = (getStep() / 3) * 100;
+  const progressValue = (getStep() - 1) * 50;
 
   return (
     <>
@@ -154,7 +207,7 @@ export function CheckinCard({ user }: CheckinCardProps) {
                   {location ? <CheckCircle /> : <MapPin />}
                 </div>
                 <div>
-                  <h3 className="font-semibold">Location Access</h3>
+                  <h3 className="font-semibold">Step 1: Location Access</h3>
                   {!location && <p className="text-sm text-muted-foreground">We need your location for verification.</p>}
                   {location && <p className="text-sm text-primary">Location captured successfully.</p>}
                   {locationError && <p className="text-sm text-destructive">{locationError}</p>}
@@ -169,7 +222,7 @@ export function CheckinCard({ user }: CheckinCardProps) {
                   {photoDataUri ? <CheckCircle /> : <Camera />}
                 </div>
                 <div className="flex-grow">
-                  <h3 className="font-semibold">Take a Selfie</h3>
+                  <h3 className="font-semibold">Step 2: Take a Selfie</h3>
                   <p className="text-sm text-muted-foreground">Your photo is used to validate your presence.</p>
                   
                   {cameraError && <p className="text-sm text-destructive mt-2">{cameraError}</p>}
