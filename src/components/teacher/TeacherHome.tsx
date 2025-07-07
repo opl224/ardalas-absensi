@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useFormState } from 'react-dom';
+import { useActionState, useState, useEffect } from 'react';
+import { useFormStatus } from 'react-dom';
 import { handleCheckout, type CheckoutState } from '@/app/actions';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,7 @@ interface TeacherHomeProps {
 type CheckinStatus = 'not_checked_in' | 'checked_in' | 'checked_out';
 
 function CheckoutButton() {
-    const { pending } = useFormState(handleCheckout, { success: false });
+    const { pending } = useFormStatus();
     return (
       <Button type="submit" className="w-full" disabled={pending}>
         {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -44,7 +44,7 @@ export function TeacherHome({ user, setActiveView }: TeacherHomeProps) {
 
     // Checkout form action
     const initialState: CheckoutState = {};
-    const [checkoutState, formAction] = useFormState(handleCheckout, initialState);
+    const [checkoutState, formAction] = useActionState(handleCheckout, initialState);
 
     useEffect(() => {
         setIsClient(true);

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { Camera, MapPin, CheckCircle, XCircle, AlertTriangle, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,7 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
 
 export function CheckinCard({ user, onSuccess }: CheckinCardProps) {
   const initialState: CheckinState = {};
-  const [state, formAction] = useFormState(handleCheckin, initialState);
+  const [state, formAction] = useActionState(handleCheckin, initialState);
 
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
