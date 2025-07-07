@@ -41,13 +41,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (user) {
                 setUser(user);
-                const docRef = doc(db, 'users', user.uid);
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    setUserProfile({ uid: user.uid, ...docSnap.data() } as UserProfile);
+                
+                // Fetch base user data from 'users' collection to determine the role
+                const userDocRef = doc(db, 'users', user.uid);
+                const userDocSnap = await getDoc(userDocRef);
+
+                if (userDocSnap.exists()) {
+                    const userData = userDocSnap.data();
+                    
+                    if (userData.role === 'guru') {
+                        // If the user is a teacher, fetch their detailed profile from the 'teachers' collection
+                        const teacherDocRef = doc(db, 'teachers', user.uid);
+                        const teacherDocSnap = await getDoc(teacherDocRef);
+                        
+                        if (teacherDocSnap.exists()) {
+                            // Use teacher-specific data, but ensure the role is set correctly from the 'users' doc.
+                            setUserProfile({ uid: user.uid, ...teacherDocSnap.data(), role: 'guru' } as UserProfile);
+                        } else {
+                            console.error(`Teacher profile for user ${user.uid} not found in 'teachers' collection.`);
+                            setUserProfile(null);
+                            router.push('/');
+                        }
+                    } else {
+                        // For admins and students, use the data from the 'users' collection
+                        setUserProfile({ uid: user.uid, ...userData } as UserProfile);
+                    }
                 } else {
+                    console.error(`User document for user ${user.uid} not found in 'users' collection.`);
                     setUserProfile(null);
-                    // Redirect to login if user data not found in Firestore
                     router.push('/');
                 }
             } else {

@@ -60,7 +60,7 @@ export function UserManagement() {
     const fetchUsersAndStatus = async () => {
       setLoading(true);
       try {
-        // 1. Fetch today's attendance records to determine status
+        // 1. Fetch today's attendance records to determine status for all users
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
         const todayEnd = new Date();
@@ -80,20 +80,33 @@ export function UserManagement() {
             }
         });
 
-        // 2. Fetch teacher and admin users
-        const usersQuery = query(collection(db, 'users'), where('role', 'in', ['guru', 'admin']));
-        const querySnapshot = await getDocs(usersQuery);
+        // 2. Fetch users from their respective collections
+        // Fetch all teachers from the 'teachers' collection
+        const teachersQuery = collection(db, 'teachers');
+        const teachersSnapshot = await getDocs(teachersQuery);
+        const teacherUsers = teachersSnapshot.docs.map(doc => ({
+          id: doc.id,
+          role: 'Guru', // Manually assign role
+          ...doc.data(),
+        })) as User[];
+
+        // Fetch all admins from the 'users' collection
+        const adminsQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
+        const adminsSnapshot = await getDocs(adminsQuery);
+        const adminUsers = adminsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as User[];
+        
+        const allUsers = [...teacherUsers, ...adminUsers];
 
         // 3. Combine user data with today's status
-        const fetchedUsers = querySnapshot.docs.map(doc => {
-          const userData = doc.data();
-          const userId = doc.id;
-          // Default to 'Absen' if no attendance record is found for today
+        const fetchedUsers = allUsers.map(user => {
+          const userId = user.id;
           const status = attendanceStatusMap.get(userId) || 'Absen';
 
           return {
-            id: userId,
-            ...userData,
+            ...user,
             status: status,
           } as User;
         });
