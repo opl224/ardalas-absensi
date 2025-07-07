@@ -11,13 +11,19 @@ import { collection, query, orderBy, Timestamp, getDocs, doc, deleteDoc, where }
 import { db } from '@/lib/firebase';
 import { LottieLoader } from '../ui/lottie-loader';
 import { Button, buttonVariants } from '../ui/button';
-import { ChevronLeft, ChevronRight, Trash2, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash2, Calendar as CalendarIcon, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 
 interface AttendanceRecord {
@@ -77,6 +83,59 @@ export function Attendance() {
 
         fetchAttendance();
     }, [date]);
+
+    const handleDownload = async (format: 'pdf' | 'csv') => {
+        if (loading || attendanceData.length === 0) {
+            toast({
+                variant: 'destructive',
+                title: 'Gagal Mengunduh',
+                description: 'Tidak ada data untuk diunduh pada tanggal yang dipilih.',
+            });
+            return;
+        }
+    
+        const { default: jsPDF } = await import('jspdf');
+        const { default: autoTable } = await import('jspdf-autotable');
+    
+        const headers = ['Nama', 'Peran', 'Waktu Masuk', 'Waktu Keluar', 'Status'];
+        const data = attendanceData.map(d => [
+            d.name,
+            d.role,
+            d.checkInTime.toDate().toLocaleString('id-ID'),
+            d.checkOutTime ? d.checkOutTime.toDate().toLocaleString('id-ID') : '-',
+            d.status
+        ]);
+        const formattedDate = date ? format(date, "yyyy-MM-dd") : 'tanggal_tidak_dipilih';
+        const filename = `Laporan_Kehadiran_${formattedDate}`;
+    
+        if (format === 'csv') {
+            const csvContent = [
+                headers.join(','),
+                ...data.map(row => row.join(','))
+            ].join('\n');
+    
+            const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `${filename}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    
+        if (format === 'pdf') {
+            const doc = new jsPDF();
+            doc.text(`Laporan Kehadiran - ${date ? format(date, "PPP", { locale: localeId }) : 'Semua'}`, 14, 16);
+            autoTable(doc, {
+                head: [headers],
+                body: data,
+                startY: 20,
+            });
+            doc.save(`${filename}.pdf`);
+        }
+    };
 
     const handleDelete = async (id: string) => {
         try {
@@ -161,7 +220,7 @@ export function Attendance() {
                 <h1 className="text-xl font-bold text-foreground">Catatan Kehadiran</h1>
             </header>
             <div className="p-4">
-                 <div className="flex justify-end mb-4">
+                 <div className="flex flex-col sm:flex-row justify-end items-center gap-2 mb-4">
                     <Popover>
                         <PopoverTrigger asChild>
                             <Button
@@ -185,6 +244,22 @@ export function Attendance() {
                             />
                         </PopoverContent>
                     </Popover>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="w-full sm:w-auto">
+                                <Download className="mr-2 h-4 w-4" />
+                                Unduh
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={() => handleDownload('pdf')}>
+                                Unduh sebagai PDF
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleDownload('csv')}>
+                                Unduh sebagai CSV
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                  </div>
                 {loading ? (
                     <div className="flex justify-center items-center h-64">
