@@ -1,34 +1,39 @@
+
 'use client'
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { collection, query, orderBy, limit, Timestamp, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, Timestamp, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { LottieLoader } from '../ui/lottie-loader';
+import { Button } from '../ui/button';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface AttendanceRecord {
     id: string;
     name: string;
     role: string;
     checkInTime: Timestamp;
+    checkOutTime?: Timestamp;
     status: 'Hadir' | 'Terlambat' | 'Penipuan' | 'Absen';
-    location: string;
-    avatar?: string;
+    checkInPhotoUrl?: string;
 }
+
+const RECORDS_PER_PAGE = 10;
 
 export function Attendance() {
     const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
     const [loading, setLoading] = useState(true);
+    const [currentPage, setCurrentPage] = useState(1);
 
     useEffect(() => {
-        // TODO: Implement real-time data fetching from Firestore
         const fetchAttendance = async () => {
             setLoading(true);
             try {
-                // This is a placeholder fetch, replace with your actual Firestore query
-                const q = query(collection(db, "photo_attendances"), orderBy("checkInTime", "desc"), limit(20));
+                const q = query(collection(db, "photo_attendances"), orderBy("checkInTime", "desc"));
                 const querySnapshot = await getDocs(q);
                 const data: AttendanceRecord[] = querySnapshot.docs.map(doc => ({
                     id: doc.id,
@@ -45,6 +50,51 @@ export function Attendance() {
         fetchAttendance();
     }, []);
 
+    const totalPages = Math.ceil(attendanceData.length / RECORDS_PER_PAGE);
+    const paginatedRecords = useMemo(() => {
+        const startIndex = (currentPage - 1) * RECORDS_PER_PAGE;
+        return attendanceData.slice(startIndex, startIndex + RECORDS_PER_PAGE);
+    }, [attendanceData, currentPage]);
+
+    const paginationRange = useMemo(() => {
+        const siblingCount = 1;
+        const totalPageNumbers = siblingCount + 5; 
+
+        if (totalPageNumbers >= totalPages) {
+            return Array.from({ length: totalPages }, (_, i) => i + 1);
+        }
+
+        const leftSiblingIndex = Math.max(currentPage - siblingCount, 1);
+        const rightSiblingIndex = Math.min(currentPage + siblingCount, totalPages);
+
+        const shouldShowLeftDots = leftSiblingIndex > 2;
+        const shouldShowRightDots = rightSiblingIndex < totalPages - 2;
+
+        const firstPageIndex = 1;
+        const lastPageIndex = totalPages;
+
+        if (!shouldShowLeftDots && shouldShowRightDots) {
+            let leftItemCount = 3 + 2 * siblingCount;
+            let leftRange = Array.from({ length: leftItemCount }, (_, i) => i + 1);
+            return [...leftRange, '...', totalPages];
+        }
+
+        if (shouldShowLeftDots && !shouldShowRightDots) {
+            let rightItemCount = 3 + 2 * siblingCount;
+            let rightRange = Array.from({ length: rightItemCount }, (_, i) => totalPages - rightItemCount + i + 1);
+            return [firstPageIndex, '...', ...rightRange];
+        }
+
+        if (shouldShowLeftDots && shouldShowRightDots) {
+            let middleRange = [];
+            for (let i = leftSiblingIndex; i <= rightSiblingIndex; i++) {
+                middleRange.push(i);
+            }
+            return [firstPageIndex, '...', ...middleRange, '...', lastPageIndex];
+        }
+    }, [totalPages, currentPage]);
+
+
     return (
         <div className="bg-gray-50 dark:bg-zinc-900">
              <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -56,25 +106,78 @@ export function Attendance() {
                         <LottieLoader size={80} />
                     </div>
                 ) : (
+                    <>
                     <div className="space-y-3">
-                        {attendanceData.map((item) => (
-                            <Card key={item.id} className="p-3 flex items-center gap-4">
-                                <Avatar className="h-12 w-12">
-                                    <AvatarImage src={item.avatar} alt={item.name} data-ai-hint="person portrait" />
-                                    <AvatarFallback>{item.name.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <div className="flex-grow">
-                                    <p className="font-semibold text-foreground">{item.name}</p>
-                                    <p className="text-sm text-muted-foreground">{item.role}</p>
-                                    <p className="text-sm text-muted-foreground">{item.checkInTime.toDate().toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'})} - {item.location}</p>
-                                </div>
-                                <Badge variant={
-                                    item.status === 'Hadir' ? 'default' :
-                                    item.status === 'Terlambat' ? 'secondary' : 'destructive'
-                                } className="w-24 justify-center">{item.status}</Badge>
-                            </Card>
-                        ))}
+                        {paginatedRecords.length > 0 ? (
+                            paginatedRecords.map((item) => (
+                                <Card key={item.id} className="p-3 flex items-center gap-4">
+                                    <Avatar className="h-12 w-12">
+                                        <AvatarImage src={item.checkInPhotoUrl} alt={item.name} data-ai-hint="person portrait" />
+                                        <AvatarFallback>{item.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-grow min-w-0">
+                                        <p className="font-semibold text-foreground truncate">{item.name}</p>
+                                        <p className="text-sm text-muted-foreground">{item.role}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {`Masuk: ${item.checkInTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`}
+                                            {item.checkOutTime && ` | Keluar: ${item.checkOutTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`}
+                                        </p>
+                                    </div>
+                                    <Badge variant={
+                                        item.status === 'Hadir' ? 'default' :
+                                        item.status === 'Terlambat' ? 'secondary' : 'destructive'
+                                    } className="w-24 justify-center shrink-0">{item.status}</Badge>
+                                </Card>
+                            ))
+                        ) : (
+                            <p className="text-center text-muted-foreground py-8">Tidak ada catatan kehadiran.</p>
+                        )}
                     </div>
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-center space-x-1 mt-6">
+                            <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                            disabled={currentPage === 1}
+                            className="text-primary"
+                            >
+                            <ChevronLeft className="h-5 w-5" />
+                            </Button>
+                            {paginationRange?.map((page, index) =>
+                            page === '...' ? (
+                                <span key={`ellipsis-${index}`} className="px-2 py-1 text-muted-foreground">
+                                ...
+                                </span>
+                            ) : (
+                                <Button
+                                key={page}
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setCurrentPage(page as number)}
+                                className={cn(
+                                    'h-9 w-9',
+                                    currentPage === page
+                                    ? 'font-bold text-primary underline decoration-2 underline-offset-4'
+                                    : 'text-muted-foreground'
+                                )}
+                                >
+                                {page}
+                                </Button>
+                            )
+                            )}
+                            <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                            disabled={currentPage === totalPages}
+                            className="text-primary"
+                            >
+                            <ChevronRight className="h-5 w-5" />
+                            </Button>
+                        </div>
+                    )}
+                    </>
                 )}
             </div>
         </div>
