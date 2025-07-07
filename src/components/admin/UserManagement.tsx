@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { collection, getDocs, query, where, doc } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { LottieLoader } from '../ui/lottie-loader';
 import { cn } from '@/lib/utils';
@@ -61,9 +61,9 @@ export function UserManagement() {
       setLoading(true);
       try {
         // Fetch settings
-        const settingsDoc = await getDocs(doc(db, "settings", "attendance"));
+        const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
         const settings = settingsDoc.exists() ? settingsDoc.data() : {
-            checkInEndTime: '09:00',
+            checkInEnd: '09:00',
             offDays: ['Saturday', 'Sunday']
         };
 
@@ -71,7 +71,7 @@ export function UserManagement() {
         const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
         const isOffDay = settings.offDays.includes(todayStr);
 
-        const [endHours, endMinutes] = settings.checkInEndTime.split(':').map(Number);
+        const [endHours, endMinutes] = settings.checkInEnd.split(':').map(Number);
         const checkInDeadline = new Date();
         checkInDeadline.setHours(endHours, endMinutes, 0, 0);
         const isPastDeadline = now > checkInDeadline;

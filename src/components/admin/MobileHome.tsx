@@ -7,7 +7,7 @@ import { CalendarDays, Clock, Users, FileText, Settings } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LottieLoader } from "@/components/ui/lottie-loader";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, onSnapshot, Timestamp, doc } from "firebase/firestore";
+import { collection, query, where, getDocs, onSnapshot, Timestamp, doc, getDoc } from "firebase/firestore";
 import { AttendanceSettingsDialog } from "./AttendanceSettingsDialog";
 import { Button } from "../ui/button";
 
@@ -48,7 +48,7 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
                 // Fetch settings first
                 const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
                 const settings = settingsDoc.exists() ? settingsDoc.data() : {
-                    checkInEndTime: '09:00',
+                    checkInEnd: '09:00',
                     offDays: ['Saturday', 'Sunday']
                 };
 
@@ -88,7 +88,7 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
                     const presentCount = attendances.length;
                     const lateCount = attendances.filter(a => a.status === 'Terlambat').length;
                     
-                    const [endHours, endMinutes] = settings.checkInEndTime.split(':').map(Number);
+                    const [endHours, endMinutes] = settings.checkInEnd.split(':').map(Number);
                     const checkInDeadline = new Date();
                     checkInDeadline.setHours(endHours, endMinutes, 0, 0);
 
