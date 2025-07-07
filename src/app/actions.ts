@@ -33,6 +33,15 @@ function dataURItoBlob(dataURI: string) {
     return new Blob([buffer], { type: mimeString });
 }
 
+// Helper function to get today's date with a specific time
+function getTodayAtTime(timeString: string): Date {
+    const today = new Date();
+    const [hours, minutes] = timeString.split(':').map(Number);
+    today.setHours(hours, minutes, 0, 0);
+    return today;
+}
+
+
 export async function handleCheckin(
   prevState: CheckinState,
   formData: FormData
@@ -57,6 +66,23 @@ export async function handleCheckin(
     if (!photoDataUri.startsWith('data:image/')) {
         return { error: 'Data gambar tidak valid. Silakan ambil ulang foto selfie Anda.' };
     }
+
+    // Fetch attendance settings
+    const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
+    if (!settingsDoc.exists()) {
+        return { error: "Pengaturan absensi belum dikonfigurasi. Silakan hubungi admin." };
+    }
+    const settings = settingsDoc.data();
+    
+    const now = new Date();
+    const checkInEnd = getTodayAtTime(settings.checkInEnd);
+    const checkInGraceEnd = new Date(checkInEnd.getTime() + 60 * 60 * 1000); // 1 hour grace period
+
+    if (now > checkInGraceEnd) {
+        return { error: "Waktu check-in telah berakhir. Anda ditandai sebagai absen." };
+    }
+    
+    const status = now > checkInEnd ? "Terlambat" : "Hadir";
 
     // 1. Upload selfie to Supabase
     const photoBlob = dataURItoBlob(photoDataUri);
@@ -84,7 +110,9 @@ export async function handleCheckin(
     // 2. AI Validator is disabled.
     const result = { isFraudulent: false, reason: 'Validasi AI dilewati.' };
     
-    // 3. Save attendance record to Firestore
+    // 3. Determine final status and save attendance record to Firestore
+    const finalStatus = result.isFraudulent ? "Penipuan" : status;
+
     const attendanceRecord = {
       userId,
       name: userName,
@@ -94,7 +122,7 @@ export async function handleCheckin(
       checkInPhotoUrl: publicUrl,
       isFraudulent: result.isFraudulent,
       fraudReason: result.reason,
-      status: result.isFraudulent ? "Penipuan" : "Hadir",
+      status: finalStatus,
     };
 
     const attendanceRef = doc(collection(db, "photo_attendances"));
@@ -104,7 +132,7 @@ export async function handleCheckin(
       return { isFraudulent: true, reason: result.reason };
     }
 
-    return { success: true, reason: "Absensi berhasil ditandai!" };
+    return { success: true, reason: `Absensi berhasil ditandai sebagai ${finalStatus}!` };
 
   } catch (e) {
     console.error('An error occurred during check-in:', e);
@@ -127,11 +155,33 @@ export async function handleCheckout(prevState: CheckoutState, formData: FormDat
         if (!userId || !attendanceId) {
             return { error: "Informasi pengguna atau absensi tidak ditemukan." };
         }
+        
+        // Fetch attendance settings
+        const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
+        if (!settingsDoc.exists()) {
+            return { error: "Pengaturan absensi belum dikonfigurasi. Silakan hubungi admin." };
+        }
+        const settings = settingsDoc.data();
+        
+        const now = new Date();
+        const checkOutEnd = getTodayAtTime(settings.checkOutEnd);
 
         const attendanceRef = doc(db, "photo_attendances", attendanceId);
+        const attendanceSnap = await getDoc(attendanceRef);
+        
+        if (!attendanceSnap.exists()) {
+            return { error: "Catatan kehadiran tidak ditemukan." };
+        }
+        const currentData = attendanceSnap.data();
+        const currentStatus = currentData.status;
+
+        // If checkout is late and status was 'Hadir', update to 'Terlambat'.
+        // Otherwise, keep the current status (e.g., if they were already 'Terlambat' on check-in).
+        const newStatus = now > checkOutEnd && currentStatus === 'Hadir' ? 'Terlambat' : currentStatus;
+
         await updateDoc(attendanceRef, {
             checkOutTime: serverTimestamp(),
-            status: 'Hadir', // Assuming they are not "late" anymore when checking out
+            status: newStatus,
         });
         
         return { success: true };

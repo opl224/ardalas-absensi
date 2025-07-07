@@ -37,6 +37,14 @@ interface User {
 
 const USERS_PER_PAGE = 10;
 
+// Helper function to get today's date with a specific time
+function getTodayAtTime(timeString: string): Date {
+    const today = new Date();
+    const [hours, minutes] = timeString.split(':').map(Number);
+    today.setHours(hours, minutes, 0, 0);
+    return today;
+}
+
 const DetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value?: string }) => {
     if (!value) return null;
     return (
@@ -62,19 +70,21 @@ export function UserManagement() {
       try {
         // Fetch settings
         const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
-        const settings = settingsDoc.exists() ? settingsDoc.data() : {
-            checkInEnd: '09:00',
-            offDays: ['Saturday', 'Sunday']
-        };
+        if (!settingsDoc.exists()) {
+            console.error("Attendance settings not found!");
+            setUsers([]);
+            setLoading(false);
+            return;
+        }
+        const settings = settingsDoc.data();
 
         const now = new Date();
         const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
         const isOffDay = settings.offDays.includes(todayStr);
 
-        const [endHours, endMinutes] = settings.checkInEnd.split(':').map(Number);
-        const checkInDeadline = new Date();
-        checkInDeadline.setHours(endHours, endMinutes, 0, 0);
-        const isPastDeadline = now > checkInDeadline;
+        const checkInEnd = getTodayAtTime(settings.checkInEnd);
+        const checkInGraceEnd = new Date(checkInEnd.getTime() + 60 * 60 * 1000); // 1 hour grace period
+        const isPastAbsentDeadline = now > checkInGraceEnd;
 
         // 1. Fetch today's attendance records to determine status for all users
         const todayStart = new Date();
@@ -122,7 +132,7 @@ export function UserManagement() {
           if (!status) { // If no attendance record found
             if(isOffDay) {
                 status = 'Libur';
-            } else if (isPastDeadline) {
+            } else if (isPastAbsentDeadline) {
                 status = 'Absen';
             } else {
                 status = 'Belum Absen';
