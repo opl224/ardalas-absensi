@@ -49,7 +49,7 @@ export function MobileTeacherDashboard({ user }: MobileTeacherDashboardProps) {
       case 'home':
         return <TeacherHome user={user} setActiveView={setActiveView} />;
       case 'history':
-        return <AttendanceHistory />;
+        return <AttendanceHistory user={user} />;
       case 'profile':
         return <TeacherProfile user={user} />;
       case 'checkin':

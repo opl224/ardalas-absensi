@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, Mail, Book, LogOut, ChevronRight } from "lucide-react";
+import { User, Mail, Book, LogOut } from "lucide-react";
 import { LogoutDialog } from "@/components/admin/LogoutDialog"; // Reusing admin logout dialog
 
 interface TeacherProfileProps {
@@ -57,10 +57,13 @@ export function TeacherProfile({ user }: TeacherProfileProps) {
                 </Card>
 
                 <Card>
-                     <CardContent className="divide-y divide-border p-0">
+                    <CardHeader>
+                        <CardTitle className="text-lg">Settings</CardTitle>
+                    </CardHeader>
+                     <CardContent className="divide-y divide-border pt-0">
                         <button
                             onClick={() => setShowLogoutDialog(true)}
-                            className="flex items-center justify-between py-3 px-4 w-full text-left"
+                            className="flex items-center justify-between py-3 w-full text-left"
                         >
                             <div className="flex items-center gap-4 text-destructive">
                                 <LogOut className="h-6 w-6" />
