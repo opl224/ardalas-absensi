@@ -220,33 +220,35 @@ export function Attendance() {
                 <h1 className="text-xl font-bold text-foreground">Catatan Kehadiran</h1>
             </header>
             <div className="p-4">
-                 <div className="flex flex-col sm:flex-row justify-end items-center gap-2 mb-4">
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button
-                                variant={"outline"}
-                                className={cn(
-                                    "w-full sm:w-[240px] justify-start text-left font-normal",
-                                    !date && "text-muted-foreground"
-                                )}
-                            >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {date ? format(date, "PPP", { locale: localeId }) : <span>Pilih tanggal</span>}
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="end">
-                            <Calendar
-                                mode="single"
-                                selected={date}
-                                onSelect={setDate}
-                                initialFocus
-                                disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-                            />
-                        </PopoverContent>
-                    </Popover>
+                 <div className="flex items-center gap-2 mb-4">
+                    <div className="flex-grow">
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                        "w-full justify-start text-left font-normal",
+                                        !date && "text-muted-foreground"
+                                    )}
+                                >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {date ? format(date, "PPP", { locale: localeId }) : <span>Pilih tanggal</span>}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                    mode="single"
+                                    selected={date}
+                                    onSelect={setDate}
+                                    initialFocus
+                                    disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                                />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="w-full sm:w-auto">
+                            <Button variant="outline" className="shrink-0">
                                 <Download className="mr-2 h-4 w-4" />
                                 Unduh
                             </Button>
