@@ -78,7 +78,7 @@ export default function LoginPage() {
         <Card className="shadow-lg">
           <CardHeader className="items-center text-center space-y-4 pt-8">
             <Avatar className="h-20 w-20">
-              <AvatarImage src="https://placehold.co/100x100.png" alt="School Logo" data-ai-hint="logo abstract" />
+              <AvatarImage src="/logo.png" alt="School Logo" />
               <AvatarFallback>SA</AvatarFallback>
             </Avatar>
             <div className="space-y-1">
