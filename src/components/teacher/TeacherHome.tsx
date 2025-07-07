@@ -11,12 +11,14 @@ import { useToast } from '@/hooks/use-toast';
 import { useFormStatus } from 'react-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { CenteredLottieLoader, LottieLoader } from '../ui/lottie-loader';
+import { collection, query, where, onSnapshot, Timestamp, orderBy, limit } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface TeacherHomeProps {
   setActiveView: (view: 'home' | 'history' | 'profile' | 'checkin') => void;
 }
 
-type CheckinStatus = 'not_checked_in' | 'checked_in' | 'checked_out';
+type CheckinStatus = 'not_checked_in' | 'checked_in' | 'checked_out' | 'loading';
 
 function CheckoutButton() {
     const { pending } = useFormStatus();
@@ -47,14 +49,13 @@ function QuickCheckoutButton() {
 
 export function TeacherHome({ setActiveView }: TeacherHomeProps) {
     const [dateTime, setDateTime] = useState({ date: '', time: '' });
-    const [status, setStatus] = useState<CheckinStatus>('not_checked_in');
-    const [checkinData, setCheckinData] = useState({ time: '', photo: '', attendanceId: '' });
-    const [checkoutTime, setCheckoutTime] = useState('');
+    const [status, setStatus] = useState<CheckinStatus>('loading');
+    const [checkinData, setCheckinData] = useState<{ time: string; photo: string; attendanceId: string } | null>(null);
+    const [checkoutTime, setCheckoutTime] = useState<string | null>(null);
 
     const { userProfile } = useAuth();
     const { toast } = useToast();
 
-    // Checkout form action
     const initialState: CheckoutState = {};
     const [checkoutState, formAction] = useActionState(handleCheckout, initialState);
 
@@ -67,28 +68,74 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
             });
         };
         updateDateTime();
-        const interval = setInterval(updateDateTime, 60000); // Update time every minute
+        const interval = setInterval(updateDateTime, 60000);
         return () => clearInterval(interval);
     }, []);
 
     useEffect(() => {
-      // TODO: Fetch latest attendance status from Firestore
-    }, [userProfile]);
+        if (!userProfile?.uid) return;
 
+        setStatus('loading');
+        const today = new Date();
+        const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+        const q = query(
+            collection(db, "photo_attendances"),
+            where("userId", "==", userProfile.uid),
+            where("checkInTime", ">=", startOfToday),
+            where("checkInTime", "<", endOfToday),
+            orderBy("checkInTime", "desc"),
+            limit(1)
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            if (snapshot.empty) {
+                setStatus('not_checked_in');
+                setCheckinData(null);
+                setCheckoutTime(null);
+            } else {
+                const doc = snapshot.docs[0];
+                const data = doc.data();
+                
+                const checkInTimestamp = data.checkInTime as Timestamp;
+                
+                setCheckinData({
+                    time: checkInTimestamp.toDate().toLocaleTimeString('id-ID'),
+                    photo: data.checkInPhotoUrl,
+                    attendanceId: doc.id
+                });
+
+                if (data.checkOutTime) {
+                    const checkOutTimestamp = data.checkOutTime as Timestamp;
+                    setStatus('checked_out');
+                    setCheckoutTime(checkOutTimestamp.toDate().toLocaleTimeString('id-ID'));
+                } else {
+                    setStatus('checked_in');
+                    setCheckoutTime(null);
+                }
+            }
+        }, (error) => {
+            console.error("Error fetching attendance status: ", error);
+            toast({
+                variant: 'destructive',
+                title: 'Gagal memuat status',
+                description: 'Tidak dapat mengambil status kehadiran terbaru.',
+            });
+            setStatus('not_checked_in');
+        });
+
+        return () => unsubscribe();
+    }, [userProfile, toast]);
 
     useEffect(() => {
         if (checkoutState.success) {
-            setStatus('checked_out');
             toast({ title: 'Berhasil', description: 'Anda telah berhasil check out.' });
         }
         if (checkoutState.error) {
             toast({ variant: 'destructive', title: 'Kesalahan', description: checkoutState.error });
         }
     }, [checkoutState, toast]);
-
-    const handleReset = () => {
-      setStatus('not_checked_in');
-    }
 
     if (!userProfile) {
         return <CenteredLottieLoader />;
@@ -130,13 +177,18 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                     <CardTitle className="text-lg">Kehadiran Hari Ini</CardTitle>
                 </CardHeader>
                 <CardContent className="text-center space-y-4">
+                    {status === 'loading' && (
+                        <div className="flex justify-center items-center h-48">
+                            <LottieLoader />
+                        </div>
+                    )}
                     {status === 'not_checked_in' && (
                         <div className='space-y-4'>
                             <p className="text-muted-foreground">Anda belum check-in hari ini.</p>
                              <Button className="w-full" onClick={() => setActiveView('checkin')}>Check In</Button>
                         </div>
                     )}
-                    {(status === 'checked_in' || status === 'checked_out') && (
+                    {(status === 'checked_in' || status === 'checked_out') && checkinData && (
                         <>
                             <Badge className="bg-green-500 hover:bg-green-600 text-white py-1 px-4 text-base">Hadir</Badge>
                             <p className="text-sm text-muted-foreground">Check in pada {checkinData.time}</p>
@@ -153,7 +205,7 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                                 <div className="flex items-center gap-2">
                                     <CheckCircle className="h-4 w-4 text-muted-foreground" />
                                     <span className='text-muted-foreground'>Check out pada:</span>
-                                    <span className='font-medium text-foreground'>{status === 'checked_out' ? checkoutTime : ' - '}</span>
+                                    <span className='font-medium text-foreground'>{status === 'checked_out' && checkoutTime ? checkoutTime : ' - '}</span>
                                 </div>
                             </div>
                             {status === 'checked_in' && (
@@ -164,9 +216,6 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                                 </form>
                             )}
                         </>
-                    )}
-                     {status === 'checked_out' && (
-                        <Button variant="secondary" className="w-full" onClick={handleReset}>Reset untuk Demo</Button>
                     )}
                 </CardContent>
             </Card>
@@ -185,7 +234,7 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                             </p>
                         </Card>
                     </button>
-                    {status === 'checked_in' ? (
+                    {status === 'checked_in' && checkinData ? (
                         <form action={formAction}>
                             <input type="hidden" name="userId" value={userProfile.uid} />
                             <input type="hidden" name="attendanceId" value={checkinData.attendanceId} />
@@ -193,7 +242,7 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                         </form>
                     ) : (
                         <button
-                            disabled
+                            disabled={status !== 'checked_in'}
                             className="rounded-lg p-0 text-left disabled:cursor-not-allowed disabled:opacity-70"
                         >
                             <Card className="flex h-full w-full flex-col items-center justify-center p-4 text-center">
