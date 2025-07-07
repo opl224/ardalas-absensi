@@ -6,10 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, Download, FilePen, Trash2 } from 'lucide-react';
+import { Search, Download, FilePen, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { collection, getDocs, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { LottieLoader } from '../ui/lottie-loader';
+import { cn } from '@/lib/utils';
 
 interface User {
   id: string;
@@ -65,6 +66,44 @@ export function UserManagement() {
       const startIndex = (currentPage - 1) * USERS_PER_PAGE;
       return filteredUsers.slice(startIndex, startIndex + USERS_PER_PAGE);
   }, [filteredUsers, currentPage]);
+
+  const paginationRange = useMemo(() => {
+    const siblingCount = 1;
+    const totalPageNumbers = siblingCount + 5; // siblingCount + first/last + current + 2*ellipsis
+
+    if (totalPageNumbers >= totalPages) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+
+    const leftSiblingIndex = Math.max(currentPage - siblingCount, 1);
+    const rightSiblingIndex = Math.min(currentPage + siblingCount, totalPages);
+
+    const shouldShowLeftDots = leftSiblingIndex > 2;
+    const shouldShowRightDots = rightSiblingIndex < totalPages - 2;
+
+    const firstPageIndex = 1;
+    const lastPageIndex = totalPages;
+
+    if (!shouldShowLeftDots && shouldShowRightDots) {
+      let leftItemCount = 3 + 2 * siblingCount;
+      let leftRange = Array.from({ length: leftItemCount }, (_, i) => i + 1);
+      return [...leftRange, '...', totalPages];
+    }
+
+    if (shouldShowLeftDots && !shouldShowRightDots) {
+      let rightItemCount = 3 + 2 * siblingCount;
+      let rightRange = Array.from({ length: rightItemCount }, (_, i) => totalPages - rightItemCount + i + 1);
+      return [firstPageIndex, '...', ...rightRange];
+    }
+
+    if (shouldShowLeftDots && shouldShowRightDots) {
+      let middleRange = [];
+        for (let i = leftSiblingIndex; i <= rightSiblingIndex; i++) {
+            middleRange.push(i);
+        }
+      return [firstPageIndex, '...', ...middleRange, '...', lastPageIndex];
+    }
+  }, [totalPages, currentPage]);
 
   return (
     <div className="bg-gray-50 dark:bg-zinc-900 p-4">
@@ -129,24 +168,47 @@ export function UserManagement() {
           </div>
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <Button
-                variant="outline"
+             <div className="flex items-center justify-center space-x-1 mt-6">
+                <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
-              >
-                Sebelumnya
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                Halaman {currentPage} dari {totalPages}
-              </span>
-              <Button
-                variant="outline"
+                className="text-primary"
+                >
+                <ChevronLeft className="h-5 w-5" />
+                </Button>
+                {paginationRange?.map((page, index) =>
+                page === '...' ? (
+                    <span key={`ellipsis-${index}`} className="px-2 py-1 text-muted-foreground">
+                    ...
+                    </span>
+                ) : (
+                    <Button
+                    key={page}
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setCurrentPage(page as number)}
+                    className={cn(
+                        'h-9 w-9',
+                        currentPage === page
+                        ? 'font-bold text-primary underline decoration-2 underline-offset-4'
+                        : 'text-muted-foreground'
+                    )}
+                    >
+                    {page}
+                    </Button>
+                )
+                )}
+                <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}
-              >
-                Berikutnya
-              </Button>
+                className="text-primary"
+                >
+                <ChevronRight className="h-5 w-5" />
+                </Button>
             </div>
           )}
         </>
