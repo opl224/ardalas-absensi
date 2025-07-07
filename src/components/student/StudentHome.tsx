@@ -31,8 +31,8 @@ function CheckoutButton() {
 function QuickCheckoutButton() {
     const { pending } = useFormStatus();
     return (
-        <button type="submit" disabled={pending} className="w-full text-left p-0 rounded-lg hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50">
-            <Card className="w-full h-full p-4 flex flex-col items-center justify-center text-center">
+        <button type="submit" disabled={pending} className="w-full text-left p-0 rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50">
+            <Card className="w-full h-full p-4 flex flex-col items-center justify-center text-center hover:bg-secondary">
                 {pending ? (
                     <LottieLoader size={32} />
                 ) : (
@@ -181,7 +181,7 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
                         disabled={status !== 'not_checked_in'}
                         className="rounded-lg p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
                     >
-                        <Card className="flex h-full w-full flex-col items-center justify-center p-4 text-center hover:bg-accent">
+                        <Card className="flex h-full w-full flex-col items-center justify-center p-4 text-center hover:bg-secondary">
                             <CheckCircle className={`h-8 w-8 ${status === 'not_checked_in' ? 'text-primary' : 'text-muted-foreground'}`} />
                             <p className="mt-2 text-sm font-medium text-foreground">
                                 {status === 'not_checked_in' ? 'Check In' : 'Sudah Check In'}
@@ -213,7 +213,7 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
                 
                 {/* History Button */}
                 <button onClick={() => setActiveView('history')} className="w-full rounded-lg p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-                    <Card className="flex h-full w-full flex-col items-center justify-center p-4 text-center hover:bg-accent">
+                    <Card className="flex h-full w-full flex-col items-center justify-center p-4 text-center hover:bg-secondary">
                         <BarChart2 className="h-8 w-8 text-primary" />
                         <p className="mt-2 text-sm font-medium text-foreground">Riwayat</p>
                     </Card>
