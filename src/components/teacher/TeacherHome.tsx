@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, Clock, MapPin, CheckCircle, Loader2 } from 'lucide-react';
+import { BarChart2, CalendarDays, Clock, MapPin, CheckCircle, Loader2, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFormStatus } from 'react-dom';
 
@@ -30,6 +30,22 @@ function CheckoutButton() {
         Check Out
       </Button>
     );
+}
+
+function QuickCheckoutButton() {
+    const { pending } = useFormStatus();
+    return (
+        <button type="submit" disabled={pending} className="w-full text-left p-0 rounded-lg hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50">
+            <Card className="w-full h-full p-4 flex flex-col items-center justify-center text-center cursor-pointer pointer-events-none">
+                {pending ? (
+                    <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                ) : (
+                    <LogOut className="h-8 w-8 text-primary" />
+                )}
+                <p className="mt-2 font-medium text-sm text-foreground">Check Out</p>
+            </Card>
+        </button>
+    )
 }
 
 
@@ -76,7 +92,7 @@ export function TeacherHome({ user, setActiveView }: TeacherHomeProps) {
                 }
             }
         }
-    }, [isClient]); // Rerun when returning to home view
+    }, [isClient]);
 
     useEffect(() => {
         if (checkoutState.success) {
@@ -182,27 +198,35 @@ export function TeacherHome({ user, setActiveView }: TeacherHomeProps) {
                 </CardContent>
             </Card>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-lg">Attendance Statistics</CardTitle>
-                </CardHeader>
-                 <CardContent className="p-4 pt-0">
-                    <div className="flex justify-around text-center">
-                        <div>
-                            <div className="w-16 h-16 bg-green-500 text-white rounded-full flex items-center justify-center text-2xl font-bold">3</div>
-                            <p className="mt-2 text-sm font-medium text-muted-foreground">Present</p>
-                        </div>
-                        <div>
-                            <div className="w-16 h-16 bg-red-500 text-white rounded-full flex items-center justify-center text-2xl font-bold">1</div>
-                            <p className="mt-2 text-sm font-medium text-muted-foreground">Absent</p>
-                        </div>
-                        <div>
-                            <div className="w-16 h-16 bg-yellow-400 text-black rounded-full flex items-center justify-center text-2xl font-bold">1</div>
-                            <p className="mt-2 text-sm font-medium text-muted-foreground">Late</p>
-                        </div>
+            <div className="grid grid-cols-3 gap-4">
+                {status === 'not_checked_in' && (
+                    <button onClick={() => setActiveView('checkin')} className="text-left col-span-1 p-0 rounded-lg border border-transparent hover:border-border focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none">
+                        <Card className="w-full h-full p-4 flex flex-col items-center justify-center text-center cursor-pointer pointer-events-none">
+                            <CheckCircle className="h-8 w-8 text-primary" />
+                            <p className="mt-2 font-medium text-sm text-foreground">Check In</p>
+                        </Card>
+                    </button>
+                )}
+                {status === 'checked_in' && (
+                    <form action={formAction} className="col-span-1">
+                        <QuickCheckoutButton />
+                    </form>
+                )}
+                {status === 'checked_out' && (
+                    <div className="col-span-1">
+                        <Card className="p-4 flex flex-col items-center justify-center text-center h-full bg-card opacity-60">
+                            <CheckCircle className="h-8 w-8 text-muted-foreground" />
+                            <p className="mt-2 font-medium text-sm text-muted-foreground">Checked Out</p>
+                        </Card>
                     </div>
-                </CardContent>
-            </Card>
+                )}
+                <button onClick={() => setActiveView('history')} className="text-left col-span-2 p-0 rounded-lg border border-transparent hover:border-border focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none">
+                    <Card className="w-full h-full p-4 flex flex-col items-center justify-center text-center cursor-pointer pointer-events-none">
+                        <BarChart2 className="h-8 w-8 text-primary" />
+                        <p className="mt-2 font-medium text-sm text-foreground">History</p>
+                    </Card>
+                </button>
+            </div>
         </div>
     );
 }
