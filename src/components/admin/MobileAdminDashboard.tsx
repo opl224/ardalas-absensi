@@ -72,9 +72,6 @@ export function MobileAdminDashboard() {
         <NavLink activeView={activeView} view="home" setView={setActiveView} label="Beranda">
           <Home className="h-6 w-6" />
         </NavLink>
-        <NavLink activeView={activeView} view="profile" setView={setActiveView} label="Profil">
-          <UserIcon className="h-6 w-6" />
-        </NavLink>
         <NavLink activeView={activeView} view="users" setView={setActiveView} label="Pengguna">
           <Users2 className="h-6 w-6" />
         </NavLink>
@@ -83,6 +80,9 @@ export function MobileAdminDashboard() {
         </NavLink>
         <NavLink activeView={activeView} view="attendance" setView={setActiveView} label="Kehadiran">
           <CheckSquare className="h-6 w-6" />
+        </NavLink>
+        <NavLink activeView={activeView} view="profile" setView={setActiveView} label="Profil">
+          <UserIcon className="h-6 w-6" />
         </NavLink>
       </nav>
     </div>
