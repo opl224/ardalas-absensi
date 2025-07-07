@@ -1,23 +1,84 @@
+'use client';
+import { Home, BookOpen, GraduationCap } from "lucide-react"
 import { CheckinCard } from "@/components/check-in/CheckinCard";
 import { UserNav } from "@/components/UserNav";
 import { Logo } from "@/components/Logo";
+import { Sidebar, SidebarContent, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarProvider } from "@/components/ui/sidebar";
+import { MobileStudentDashboard } from "@/components/student/MobileStudentDashboard";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList } from "@/components/ui/breadcrumb";
+import Link from "next/link";
+import { Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 export default function StudentDashboard() {
   const user = { name: "Alex Doe", role: "Student" as const, avatar: "https://placehold.co/100x100.png" };
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-background">
-      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-card px-4 md:px-6">
-        <Logo />
-        <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
-          <div className="ml-auto">
-            <UserNav user={user} />
-          </div>
-        </div>
-      </header>
-      <main className="flex flex-1 flex-col items-center justify-center p-4 md:p-8">
-        <CheckinCard user={user} />
-      </main>
-    </div>
+    <>
+      {/* Desktop View */}
+      <div className="hidden md:block">
+        <SidebarProvider>
+          <Sidebar side="left" collapsible="icon">
+            <SidebarHeader>
+              <Logo />
+            </SidebarHeader>
+            <SidebarContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive tooltip="Dashboard">
+                    <Home />
+                    <span>Dashboard</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton tooltip="My Grades">
+                    <GraduationCap />
+                    <span>My Grades</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton tooltip="Courses">
+                    <BookOpen />
+                    <span>Courses</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarContent>
+          </Sidebar>
+          <SidebarInset>
+            <div className="flex min-h-screen w-full flex-col">
+              <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-card px-4 md:px-6">
+                <Breadcrumb className="hidden md:flex">
+                  <BreadcrumbList>
+                    <BreadcrumbItem>
+                      <BreadcrumbLink asChild>
+                        <Link href="#">Dashboard</Link>
+                      </BreadcrumbLink>
+                    </BreadcrumbItem>
+                  </BreadcrumbList>
+                </Breadcrumb>
+                <div className="relative ml-auto flex-1 md:grow-0">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder="Search..."
+                    className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
+                  />
+                </div>
+                <UserNav user={user} />
+              </header>
+              <main className="flex flex-1 flex-col items-center justify-center p-4 md:p-8">
+                <CheckinCard user={user} />
+              </main>
+            </div>
+          </SidebarInset>
+        </SidebarProvider>
+      </div>
+
+      {/* Mobile View */}
+      <div className="md:hidden">
+        <MobileStudentDashboard user={user} />
+      </div>
+    </>
   );
 }
