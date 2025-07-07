@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Home, History, User as UserIcon } from 'lucide-react';
+import { Home, History, User as UserIcon, ArrowLeft } from 'lucide-react';
 import { TeacherHome } from './TeacherHome';
 import { AttendanceHistory } from './AttendanceHistory';
 import { TeacherProfile } from './TeacherProfile';
@@ -54,8 +54,16 @@ export function MobileTeacherDashboard({ user }: MobileTeacherDashboardProps) {
         return <TeacherProfile user={user} />;
       case 'checkin':
         return (
-          <div className="flex flex-1 flex-col items-center justify-center p-4">
-            <CheckinCard user={user} onSuccess={() => setActiveView('home')} />
+          <div className="p-4 h-full flex flex-col">
+            <header className="flex items-center gap-4 mb-6">
+                <button onClick={() => setActiveView('home')} className="p-1">
+                    <ArrowLeft className="h-6 w-6" />
+                </button>
+                <h1 className="text-xl font-bold text-foreground">Attendance</h1>
+            </header>
+            <div className="flex-grow flex items-center justify-center">
+              <CheckinCard user={user} onSuccess={() => setActiveView('home')} />
+            </div>
           </div>
         );
       default:
