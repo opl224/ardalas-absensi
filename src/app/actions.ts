@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { z } from "zod";
 import { doc, setDoc, collection, serverTimestamp, updateDoc } from "firebase/firestore"; 
 import { db } from "@/lib/firebase";
+// import { validateAttendance } from "@/ai/flows/attendance-validator";
 
 const checkinSchema = z.object({
   photoDataUri: z.string(),
@@ -70,7 +71,7 @@ export async function handleCheckin(
 
     if (uploadError) {
       console.error('Supabase Upload Error:', uploadError);
-      return { error: 'Gagal mengunggah foto. Silakan coba lagi.' };
+      return { error: `Gagal mengunggah foto: ${uploadError.message}. Pastikan konfigurasi Supabase Anda benar dan bucket 'selfies' ada.` };
     }
 
     const { data: urlData } = supabase.storage.from('selfies').getPublicUrl(photoPath);
