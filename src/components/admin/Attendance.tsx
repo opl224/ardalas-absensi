@@ -157,32 +157,35 @@ export function Attendance() {
 
     return (
         <div className="bg-gray-50 dark:bg-zinc-900">
-             <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex justify-between items-center">
+             <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <h1 className="text-xl font-bold text-foreground">Catatan Kehadiran</h1>
-                 <Popover>
-                    <PopoverTrigger asChild>
-                        <Button
-                            variant={"outline"}
-                            className={cn(
-                                "w-[240px] justify-start text-left font-normal",
-                                !date && "text-muted-foreground"
-                            )}
-                        >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {date ? format(date, "PPP", { locale: localeId }) : <span>Pilih tanggal</span>}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="end">
-                        <Calendar
-                            mode="single"
-                            selected={date}
-                            onSelect={setDate}
-                            initialFocus
-                        />
-                    </PopoverContent>
-                </Popover>
             </header>
             <div className="p-4">
+                 <div className="flex justify-end mb-4">
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className={cn(
+                                    "w-full sm:w-[240px] justify-start text-left font-normal",
+                                    !date && "text-muted-foreground"
+                                )}
+                            >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {date ? format(date, "PPP", { locale: localeId }) : <span>Pilih tanggal</span>}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="end">
+                            <Calendar
+                                mode="single"
+                                selected={date}
+                                onSelect={setDate}
+                                initialFocus
+                                disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                            />
+                        </PopoverContent>
+                    </Popover>
+                 </div>
                 {loading ? (
                     <div className="flex justify-center items-center h-64">
                         <LottieLoader size={80} />
