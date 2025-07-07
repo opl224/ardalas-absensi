@@ -7,6 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Search, Download, Eye, ChevronLeft, ChevronRight, Briefcase, BookCopy, Phone, Home, VenetianMask, BookMarked } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { LottieLoader } from '../ui/lottie-loader';
@@ -33,8 +40,8 @@ const USERS_PER_PAGE = 10;
 const DetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value?: string }) => {
     if (!value) return null;
     return (
-        <div className="flex items-start gap-2 text-muted-foreground">
-            <Icon className="h-4 w-4 mt-0.5 shrink-0" />
+        <div className="flex items-start gap-3 text-muted-foreground">
+            <Icon className="h-5 w-5 mt-0.5 shrink-0" />
             <div className="min-w-0">
                 <span>{label}: <strong className="text-foreground break-words">{value}</strong></span>
             </div>
@@ -47,7 +54,7 @@ export function UserManagement() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   useEffect(() => {
     const fetchUsersAndStatus = async () => {
@@ -168,132 +175,157 @@ export function UserManagement() {
 
 
   return (
-    <div className="bg-gray-50 dark:bg-zinc-900">
-      <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <h1 className="text-xl font-bold text-foreground">Manajemen Pengguna</h1>
-      </header>
+    <Dialog onOpenChange={(open) => !open && setSelectedUser(null)}>
+      <div className="bg-gray-50 dark:bg-zinc-900">
+        <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <h1 className="text-xl font-bold text-foreground">Manajemen Pengguna</h1>
+        </header>
 
-      <div className="p-4">
-        <div className="flex items-center gap-2 mb-4">
-            <Button variant="outline">
-                <Download className="mr-2 h-4 w-4" />
-                Unduh
-            </Button>
-            <Button className="ml-auto">Tambah Pengguna</Button>
+        <div className="p-4">
+          <div className="flex items-center gap-2 mb-4">
+              <Button variant="outline">
+                  <Download className="mr-2 h-4 w-4" />
+                  Unduh
+              </Button>
+              <Button className="ml-auto">Tambah Pengguna</Button>
+          </div>
+
+          <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input 
+              placeholder="Cari pengguna..." 
+              className="pl-10 bg-white" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              />
+          </div>
+
+          {loading ? (
+              <div className="flex justify-center items-center h-64">
+                  <LottieLoader size={80} />
+              </div>
+          ) : (
+              <>
+              <div className="space-y-3">
+                  {paginatedUsers.length > 0 ? (
+                      paginatedUsers.map((user) => (
+                      <Card key={user.id} className="p-3">
+                          <div className="flex items-center gap-4">
+                              <Avatar className="h-12 w-12">
+                                  <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="person portrait" />
+                                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              <div className="flex-grow min-w-0">
+                                  <p className="font-semibold text-foreground truncate">{user.name}</p>
+                                  <p className="text-sm text-muted-foreground -mt-1 truncate">{user.email}</p>
+                                  <div className="flex items-center gap-2 mt-1">
+                                  <Badge variant={getBadgeVariant(user.status)}>
+                                      {user.status}
+                                  </Badge>
+                                  <span className="text-sm text-muted-foreground capitalize">{user.role}</span>
+                                  </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <DialogTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-9 w-9 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200" onClick={() => setSelectedUser(user)}>
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </DialogTrigger>
+                              </div>
+                          </div>
+                      </Card>
+                  ))
+                  ) : (
+                      <p className="text-center text-muted-foreground py-8">Tidak ada pengguna yang ditemukan.</p>
+                  )}
+              </div>
+
+              {totalPages > 1 && (
+                  <div className="flex items-center justify-center space-x-1 mt-6">
+                      <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="text-primary"
+                      >
+                      <ChevronLeft className="h-5 w-5" />
+                      </Button>
+                      {paginationRange?.map((page, index) =>
+                      page === '...' ? (
+                          <span key={`ellipsis-${index}`} className="px-2 py-1 text-muted-foreground">
+                          ...
+                          </span>
+                      ) : (
+                          <Button
+                          key={page}
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setCurrentPage(page as number)}
+                          className={cn(
+                              'h-9 w-9',
+                              currentPage === page
+                              ? 'font-bold text-primary underline decoration-2 underline-offset-4'
+                              : 'text-muted-foreground'
+                          )}
+                          >
+                          {page}
+                          </Button>
+                      )
+                      )}
+                      <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className="text-primary"
+                      >
+                      <ChevronRight className="h-5 w-5" />
+                      </Button>
+                  </div>
+              )}
+              </>
+          )}
         </div>
-
-        <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input 
-            placeholder="Cari pengguna..." 
-            className="pl-10 bg-white" 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            />
-        </div>
-
-        {loading ? (
-            <div className="flex justify-center items-center h-64">
-                <LottieLoader size={80} />
-            </div>
-        ) : (
-            <>
-            <div className="space-y-3">
-                {paginatedUsers.length > 0 ? (
-                    paginatedUsers.map((user) => (
-                    <Card key={user.id} className="p-3 flex flex-col gap-2">
-                        <div className="flex items-center gap-4">
-                            <Avatar className="h-12 w-12">
-                                <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="person portrait" />
-                                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-grow min-w-0">
-                                <p className="font-semibold text-foreground truncate">{user.name}</p>
-                                <p className="text-sm text-muted-foreground -mt-1 truncate">{user.email}</p>
-                                <div className="flex items-center gap-2 mt-1">
-                                <Badge variant={getBadgeVariant(user.status)}>
-                                    {user.status}
-                                </Badge>
-                                <span className="text-sm text-muted-foreground capitalize">{user.role}</span>
-                                </div>
-                            </div>
-                            <div className="flex gap-2">
-                                <Button variant="ghost" size="icon" className="h-9 w-9 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200" onClick={() => setExpandedUserId(expandedUserId === user.id ? null : user.id)}>
-                                <Eye className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        </div>
-                        {expandedUserId === user.id && (
-                            <div className="pl-16 space-y-2 text-sm pt-2">
-                                <Separator />
-                                <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
-                                    <DetailItem icon={VenetianMask} label="Jenis Kelamin" value={user.gender} />
-                                    <DetailItem icon={Phone} label="No. Telepon" value={user.phone} />
-                                    <DetailItem icon={BookMarked} label="Agama" value={user.religion} />
-                                    <DetailItem icon={Home} label="Alamat" value={user.address} />
-                                    {user.role === 'Guru' && (
-                                        <>
-                                            <DetailItem icon={BookCopy} label="Mata Pelajaran" value={user.subject} />
-                                            <DetailItem icon={Briefcase} label="Kelas" value={user.class} />
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                    </Card>
-                ))
-                ) : (
-                    <p className="text-center text-muted-foreground py-8">Tidak ada pengguna yang ditemukan.</p>
-                )}
-            </div>
-
-            {totalPages > 1 && (
-                <div className="flex items-center justify-center space-x-1 mt-6">
-                    <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                    className="text-primary"
-                    >
-                    <ChevronLeft className="h-5 w-5" />
-                    </Button>
-                    {paginationRange?.map((page, index) =>
-                    page === '...' ? (
-                        <span key={`ellipsis-${index}`} className="px-2 py-1 text-muted-foreground">
-                        ...
-                        </span>
-                    ) : (
-                        <Button
-                        key={page}
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setCurrentPage(page as number)}
-                        className={cn(
-                            'h-9 w-9',
-                            currentPage === page
-                            ? 'font-bold text-primary underline decoration-2 underline-offset-4'
-                            : 'text-muted-foreground'
-                        )}
-                        >
-                        {page}
-                        </Button>
-                    )
-                    )}
-                    <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages}
-                    className="text-primary"
-                    >
-                    <ChevronRight className="h-5 w-5" />
-                    </Button>
-                </div>
-            )}
-            </>
-        )}
       </div>
-    </div>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Detail Pengguna</DialogTitle>
+        </DialogHeader>
+        {selectedUser && (
+          <div className="flex flex-col gap-4 py-4">
+            <div className="flex items-center gap-4">
+                <Avatar className="h-16 w-16">
+                    <AvatarImage src={selectedUser.avatar} alt={selectedUser.name} />
+                    <AvatarFallback>{selectedUser.name.slice(0,2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div>
+                    <p className="text-xl font-bold text-foreground">{selectedUser.name}</p>
+                    <p className="text-sm text-muted-foreground capitalize">{selectedUser.role}</p>
+                    <p className="text-sm text-muted-foreground">{selectedUser.email}</p>
+                </div>
+            </div>
+            <Separator />
+            <div className="space-y-3 text-sm">
+                <h3 className="font-semibold text-md mb-2">Informasi Pribadi</h3>
+                <DetailItem icon={VenetianMask} label="Jenis Kelamin" value={selectedUser.gender} />
+                <DetailItem icon={Phone} label="No. Telepon" value={selectedUser.phone} />
+                <DetailItem icon={BookMarked} label="Agama" value={selectedUser.religion} />
+                <DetailItem icon={Home} label="Alamat" value={selectedUser.address} />
+            </div>
+            {selectedUser.role === 'Guru' && (
+                <>
+                    <Separator />
+                    <div className="space-y-3 text-sm mt-4">
+                        <h3 className="font-semibold text-md mb-2">Informasi Akademik</h3>
+                        <DetailItem icon={BookCopy} label="Mata Pelajaran" value={selectedUser.subject} />
+                        <DetailItem icon={Briefcase} label="Kelas" value={selectedUser.class} />
+                    </div>
+                </>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
