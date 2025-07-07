@@ -7,6 +7,7 @@ import { AttendanceHistory } from './AttendanceHistory';
 import { StudentProfile } from './StudentProfile';
 import { CheckinCard } from '@/components/check-in/CheckinCard';
 import { useAuth } from '@/hooks/useAuth';
+import { CenteredLottieLoader } from '@/components/ui/lottie-loader';
 
 type ActiveView = 'home' | 'history' | 'profile' | 'checkin';
 
@@ -41,7 +42,7 @@ export function MobileStudentDashboard() {
   const { userProfile, loading } = useAuth();
 
   if (loading) {
-      return <div>Memuat dasbor...</div>
+      return <CenteredLottieLoader />;
   }
   if (!userProfile) {
       return <div>Data pengguna tidak ditemukan.</div>

@@ -145,7 +145,7 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
     return (
         <div className="p-4 space-y-6">
             <header>
-                <h1 className="text-xl font-bold text-foreground">Dasbor</h1>
+                <h1 className="text-xl font-bold text-foreground">Beranda</h1>
             </header>
 
             <div className="flex items-center justify-between">

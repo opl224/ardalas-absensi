@@ -36,9 +36,9 @@ export default function StudentDashboard() {
             <SidebarContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton isActive tooltip="Dasbor">
+                  <SidebarMenuButton isActive tooltip="Beranda">
                     <Home />
-                    <span>Dasbor</span>
+                    <span>Beranda</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
@@ -63,7 +63,7 @@ export default function StudentDashboard() {
                   <BreadcrumbList>
                     <BreadcrumbItem>
                       <BreadcrumbLink asChild>
-                        <Link href="#">Dasbor</Link>
+                        <Link href="#">Beranda</Link>
                       </BreadcrumbLink>
                     </BreadcrumbItem>
                   </BreadcrumbList>

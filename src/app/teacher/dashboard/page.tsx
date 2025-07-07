@@ -107,9 +107,9 @@ export default function TeacherDashboard() {
             <SidebarContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton isActive tooltip="Dasbor">
+                  <SidebarMenuButton isActive tooltip="Beranda">
                     <Home />
-                    <span>Dasbor</span>
+                    <span>Beranda</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
@@ -141,7 +141,7 @@ export default function TeacherDashboard() {
                     <BreadcrumbList>
                         <BreadcrumbItem>
                         <BreadcrumbLink asChild>
-                            <Link href="#">Dasbor</Link>
+                            <Link href="#">Beranda</Link>
                         </BreadcrumbLink>
                         </BreadcrumbItem>
                     </BreadcrumbList>

@@ -28,7 +28,7 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
 
     return (
         <div className="p-4">
-            <h1 className="text-xl font-bold text-foreground">Dasbor Admin</h1>
+            <h1 className="text-xl font-bold text-foreground">Beranda Admin</h1>
 
             {/* Welcome Section */}
             <div className="flex items-center justify-between mt-6">
