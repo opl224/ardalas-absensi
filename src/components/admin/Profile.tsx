@@ -1,8 +1,10 @@
 'use client'
 
+import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { User, Mail, Building2, Bell, Shield, LogOut, ChevronRight } from "lucide-react";
+import { LogoutDialog } from "./LogoutDialog";
 
 const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
     <div className="flex items-center gap-4 py-3">
@@ -30,49 +32,56 @@ const ClickableRow = ({ icon: Icon, label, onClick }: { icon: React.ElementType,
 
 
 export function Profile({ setActiveView }: { setActiveView: (view: string) => void }) {
+    const [showLogoutDialog, setShowLogoutDialog] = useState(false);
     return (
-        <div className="bg-gray-50 dark:bg-zinc-900 p-4 min-h-screen">
-            <header className="mb-6">
-                <h1 className="text-xl font-bold text-foreground">Profile</h1>
-            </header>
+        <>
+            <div className="bg-gray-50 dark:bg-zinc-900 p-4 min-h-screen">
+                <header className="mb-6">
+                    <h1 className="text-xl font-bold text-foreground">Profile</h1>
+                </header>
 
-            <div className="flex items-center gap-4 mb-6">
-                <Avatar className="h-16 w-16">
-                    <AvatarImage src="https://placehold.co/100x100.png" alt="Admin User" data-ai-hint="person portrait" />
-                    <AvatarFallback>AU</AvatarFallback>
-                </Avatar>
-                <div>
-                    <p className="text-xl font-bold text-foreground">Admin User</p>
-                    <p className="text-sm text-muted-foreground">Administrator</p>
-                </div>
-            </div>
-
-            <Card className="mb-6">
-                <CardHeader>
-                    <CardTitle className="text-lg">Profile Information</CardTitle>
-                </CardHeader>
-                <CardContent className="divide-y divide-border pt-0">
-                   <InfoRow icon={User} label="Full Name" value="Admin User" />
-                   <InfoRow icon={Mail} label="Email" value="admin@school.edu" />
-                   <InfoRow icon={Building2} label="Department" value="Administration" />
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-lg">Settings</CardTitle>
-                </CardHeader>
-                <CardContent className="divide-y divide-border pt-0">
-                    <ClickableRow icon={Bell} label="Push Notifications" onClick={() => setActiveView('push-notifications')} />
-                    <ClickableRow icon={Shield} label="Privacy" onClick={() => {}} />
-                     <div className="flex items-center justify-between py-3 cursor-pointer">
-                        <div className="flex items-center gap-4 text-destructive">
-                            <LogOut className="h-6 w-6" />
-                            <span className="font-medium">Logout</span>
-                        </div>
+                <div className="flex items-center gap-4 mb-6">
+                    <Avatar className="h-16 w-16">
+                        <AvatarImage src="https://placehold.co/100x100.png" alt="Admin User" data-ai-hint="person portrait" />
+                        <AvatarFallback>AU</AvatarFallback>
+                    </Avatar>
+                    <div>
+                        <p className="text-xl font-bold text-foreground">Admin User</p>
+                        <p className="text-sm text-muted-foreground">Administrator</p>
                     </div>
-                </CardContent>
-            </Card>
-        </div>
+                </div>
+
+                <Card className="mb-6">
+                    <CardHeader>
+                        <CardTitle className="text-lg">Profile Information</CardTitle>
+                    </CardHeader>
+                    <CardContent className="divide-y divide-border pt-0">
+                    <InfoRow icon={User} label="Full Name" value="Admin User" />
+                    <InfoRow icon={Mail} label="Email" value="admin@school.edu" />
+                    <InfoRow icon={Building2} label="Department" value="Administration" />
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg">Settings</CardTitle>
+                    </CardHeader>
+                    <CardContent className="divide-y divide-border pt-0">
+                        <ClickableRow icon={Bell} label="Push Notifications" onClick={() => setActiveView('push-notifications')} />
+                        <ClickableRow icon={Shield} label="Privacy" onClick={() => setActiveView('privacy')} />
+                        <button
+                            onClick={() => setShowLogoutDialog(true)}
+                            className="flex items-center justify-between py-3 w-full text-left"
+                        >
+                            <div className="flex items-center gap-4 text-destructive">
+                                <LogOut className="h-6 w-6" />
+                                <span className="font-medium">Logout</span>
+                            </div>
+                        </button>
+                    </CardContent>
+                </Card>
+            </div>
+            <LogoutDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog} />
+        </>
     );
 }
