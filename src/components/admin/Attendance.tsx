@@ -2,18 +2,21 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react';
+import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { collection, query, orderBy, Timestamp, getDocs, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, Timestamp, getDocs, doc, deleteDoc, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { LottieLoader } from '../ui/lottie-loader';
 import { Button, buttonVariants } from '../ui/button';
-import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash2, Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Calendar } from '../ui/calendar';
 
 
 interface AttendanceRecord {
@@ -32,6 +35,7 @@ export function Attendance() {
     const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
+    const [date, setDate] = useState<Date | undefined>(new Date());
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
@@ -40,15 +44,29 @@ export function Attendance() {
 
     useEffect(() => {
         const fetchAttendance = async () => {
+            if (!date) return;
             setLoading(true);
             try {
-                const q = query(collection(db, "photo_attendances"), orderBy("checkInTime", "desc"));
+                const startOfDay = new Date(date);
+                startOfDay.setHours(0, 0, 0, 0);
+
+                const endOfDay = new Date(date);
+                endOfDay.setHours(23, 59, 59, 999);
+
+                const q = query(
+                    collection(db, "photo_attendances"),
+                    where("checkInTime", ">=", startOfDay),
+                    where("checkInTime", "<=", endOfDay),
+                    orderBy("checkInTime", "desc")
+                );
+                
                 const querySnapshot = await getDocs(q);
                 const data: AttendanceRecord[] = querySnapshot.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data(),
                 })) as AttendanceRecord[];
                  setAttendanceData(data);
+                 setCurrentPage(1); // Reset page on new date
             } catch (error) {
                 console.error("Error fetching attendance data: ", error);
             } finally {
@@ -57,7 +75,7 @@ export function Attendance() {
         };
 
         fetchAttendance();
-    }, []);
+    }, [date]);
 
     const handleDelete = async (id: string) => {
         try {
@@ -138,8 +156,30 @@ export function Attendance() {
 
     return (
         <div className="bg-gray-50 dark:bg-zinc-900">
-             <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+             <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex justify-between items-center">
                 <h1 className="text-xl font-bold text-foreground">Catatan Kehadiran</h1>
+                 <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant={"outline"}
+                            className={cn(
+                                "w-[240px] justify-start text-left font-normal",
+                                !date && "text-muted-foreground"
+                            )}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {date ? format(date, "PPP", { locale: require('date-fns/locale/id') }) : <span>Pilih tanggal</span>}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end">
+                        <Calendar
+                            mode="single"
+                            selected={date}
+                            onSelect={setDate}
+                            initialFocus
+                        />
+                    </PopoverContent>
+                </Popover>
             </header>
             <div className="p-4">
                 {loading ? (
@@ -184,7 +224,7 @@ export function Attendance() {
                                 </Card>
                             ))
                         ) : (
-                            <p className="text-center text-muted-foreground py-8">Tidak ada catatan kehadiran.</p>
+                            <p className="text-center text-muted-foreground py-8">Tidak ada catatan kehadiran untuk tanggal yang dipilih.</p>
                         )}
                     </div>
                     {totalPages > 1 && (
