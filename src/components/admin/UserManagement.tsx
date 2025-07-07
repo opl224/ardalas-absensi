@@ -1,66 +1,63 @@
 'use client'
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Search, Download, Filter, FilePen, Trash2 } from 'lucide-react';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { Skeleton } from '../ui/skeleton';
 
-const users = [
-  {
-    name: 'John Smith',
-    email: 'john.smith@school.edu',
-    role: 'Guru',
-    status: 'Terlambat',
-    avatar: 'https://placehold.co/100x100.png',
-    dataAiHint: 'man portrait'
-  },
-  {
-    name: 'Sarah Johnson',
-    email: 'sarah.johnson@school.edu',
-    role: 'Guru',
-    status: 'Terlambat',
-    avatar: 'https://placehold.co/100x100.png',
-    dataAiHint: 'woman portrait'
-  },
-  {
-    name: 'Michael Brown',
-    email: 'michael.brown@school.edu',
-    role: 'Siswa',
-    status: 'Absen',
-    avatar: 'https://placehold.co/100x100.png',
-    dataAiHint: 'man portrait'
-  },
-  {
-    name: 'Emily Davis',
-    email: 'emily.davis@school.edu',
-    role: 'Siswa',
-    status: 'Absen',
-    avatar: 'https://placehold.co/100x100.png',
-    dataAiHint: 'woman portrait'
-  },
-  {
-    name: 'David Wilson',
-    email: 'david.wilson@school.edu',
-    role: 'Siswa',
-    status: 'Absen',
-    avatar: 'https://placehold.co/100x100.png',
-    dataAiHint: 'man portrait'
-  },
-];
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'Guru' | 'Siswa' | 'Admin';
+  status: 'Hadir' | 'Terlambat' | 'Absen' | 'Penipuan'; // This might need to be fetched separately
+  avatar: string;
+}
 
 type FilterType = 'Semua' | 'Admin' | 'Guru' | 'Siswa';
 
 export function UserManagement() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<FilterType>('Semua');
   const [searchTerm, setSearchTerm] = useState('');
 
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setLoading(true);
+      try {
+        let usersQuery;
+        if (activeFilter === 'Semua') {
+          usersQuery = query(collection(db, 'users'));
+        } else {
+          // Firestore roles are lowercase, UI is capitalized
+          usersQuery = query(collection(db, 'users'), where('role', '==', activeFilter.toLowerCase()));
+        }
+        const querySnapshot = await getDocs(usersQuery);
+        const fetchedUsers = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          // Placeholder for status, as it's dynamic
+          status: 'Absen' 
+        })) as User[];
+        setUsers(fetchedUsers);
+      } catch (error) {
+        console.error("Error fetching users: ", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUsers();
+  }, [activeFilter]);
+
   const filteredUsers = users.filter(user => {
-    const matchesFilter = activeFilter === 'Semua' || user.role === activeFilter;
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) || user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesFilter && matchesSearch;
+    return user.name.toLowerCase().includes(searchTerm.toLowerCase()) || user.email.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
   return (
@@ -89,7 +86,7 @@ export function UserManagement() {
       </div>
 
       <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-        {(['Semua', 'Admin', 'Guru', 'Siswa'] as FilterType[]).map(filter => (
+        {(['Semua', 'Guru', 'Siswa', 'Admin'] as FilterType[]).map(filter => (
           <Button
             key={filter}
             variant={activeFilter === filter ? 'default' : 'outline'}
@@ -102,10 +99,19 @@ export function UserManagement() {
       </div>
 
       <div className="space-y-3">
-        {filteredUsers.map((user, index) => (
-          <Card key={index} className="p-3 flex items-center gap-4">
+        {loading && Array.from({length: 5}).map((_, i) => (
+            <Card key={i} className="p-3 flex items-center gap-4">
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <div className="flex-grow space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                </div>
+            </Card>
+        ))}
+        {!loading && filteredUsers.map((user) => (
+          <Card key={user.id} className="p-3 flex items-center gap-4">
             <Avatar className="h-12 w-12">
-              <AvatarImage src={user.avatar} alt={user.name} data-ai-hint={user.dataAiHint} />
+              <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="person portrait" />
               <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
             </Avatar>
             <div className="flex-grow">
@@ -115,7 +121,7 @@ export function UserManagement() {
                 <Badge variant={user.status === 'Absen' ? 'destructive' : 'warning'}>
                   {user.status}
                 </Badge>
-                <span className="text-sm text-muted-foreground">{user.role}</span>
+                <span className="text-sm text-muted-foreground capitalize">{user.role}</span>
               </div>
             </div>
             <div className="flex gap-2">

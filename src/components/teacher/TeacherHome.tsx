@@ -9,14 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { BarChart2, CalendarDays, Clock, MapPin, CheckCircle, Loader2, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFormStatus } from 'react-dom';
+import { useAuth } from '@/hooks/useAuth';
 
 interface TeacherHomeProps {
-  user: {
-    name: string;
-    role: 'Teacher';
-    avatar: string;
-    subject: string;
-  };
   setActiveView: (view: 'home' | 'history' | 'profile' | 'checkin') => void;
 }
 
@@ -49,13 +44,13 @@ function QuickCheckoutButton() {
 }
 
 
-export function TeacherHome({ user, setActiveView }: TeacherHomeProps) {
+export function TeacherHome({ setActiveView }: TeacherHomeProps) {
     const [dateTime, setDateTime] = useState({ date: '', time: '' });
-    const [isClient, setIsClient] = useState(false);
     const [status, setStatus] = useState<CheckinStatus>('not_checked_in');
-    const [checkinData, setCheckinData] = useState({ time: '', photo: '' });
+    const [checkinData, setCheckinData] = useState({ time: '', photo: '', attendanceId: '' });
     const [checkoutTime, setCheckoutTime] = useState('');
 
+    const { userProfile } = useAuth();
     const { toast } = useToast();
 
     // Checkout form action
@@ -63,7 +58,6 @@ export function TeacherHome({ user, setActiveView }: TeacherHomeProps) {
     const [checkoutState, formAction] = useActionState(handleCheckout, initialState);
 
     useEffect(() => {
-        setIsClient(true);
         const updateDateTime = () => {
             const now = new Date();
             setDateTime({
@@ -77,50 +71,26 @@ export function TeacherHome({ user, setActiveView }: TeacherHomeProps) {
     }, []);
 
     useEffect(() => {
-        if (isClient) {
-            const storedStatus = localStorage.getItem('checkin_status') as CheckinStatus | null;
-            if (storedStatus) {
-                setStatus(storedStatus);
-                if (storedStatus === 'checked_in' || storedStatus === 'checked_out') {
-                    setCheckinData({
-                        time: localStorage.getItem('checkin_time') || '',
-                        photo: localStorage.getItem('checkin_photo') || '',
-                    });
-                }
-                if (storedStatus === 'checked_out') {
-                    setCheckoutTime(localStorage.getItem('checkout_time') || '');
-                }
-            }
-        }
-    }, [isClient]);
+      // TODO: Fetch latest attendance status from Firestore
+    }, [userProfile]);
+
 
     useEffect(() => {
         if (checkoutState.success) {
-            const newCheckoutTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
             setStatus('checked_out');
-            setCheckoutTime(newCheckoutTime);
-            if(isClient) {
-                localStorage.setItem('checkin_status', 'checked_out');
-                localStorage.setItem('checkout_time', newCheckoutTime);
-            }
             toast({ title: 'Berhasil', description: 'Anda telah berhasil check out.' });
         }
         if (checkoutState.error) {
             toast({ variant: 'destructive', title: 'Kesalahan', description: checkoutState.error });
         }
-    }, [checkoutState, toast, isClient]);
+    }, [checkoutState, toast]);
 
     const handleReset = () => {
-        if (isClient) {
-            localStorage.removeItem('checkin_status');
-            localStorage.removeItem('checkin_time');
-            localStorage.removeItem('checkout_time');
-            localStorage.removeItem('checkin_photo');
-            localStorage.removeItem('checkin_location');
-            setStatus('not_checked_in');
-            setCheckinData({ time: '', photo: ''});
-            setCheckoutTime('');
-        }
+      setStatus('not_checked_in');
+    }
+
+    if (!userProfile) {
+        return <div>Memuat...</div>;
     }
 
     return (
@@ -132,12 +102,12 @@ export function TeacherHome({ user, setActiveView }: TeacherHomeProps) {
             <div className="flex items-center justify-between">
                 <div>
                     <p className="text-sm text-muted-foreground">Halo,</p>
-                    <p className="text-2xl font-bold text-foreground">{user.name}</p>
-                    <p className="text-sm text-muted-foreground">{user.role} &bull; {user.subject}</p>
+                    <p className="text-2xl font-bold text-foreground">{userProfile.name}</p>
+                    <p className="text-sm text-muted-foreground capitalize">{userProfile.role} &bull; {userProfile.subject}</p>
                 </div>
                 <Avatar className="h-14 w-14">
-                    <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="person portrait"/>
-                    <AvatarFallback>{user.name.slice(0,2).toUpperCase()}</AvatarFallback>
+                    <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait"/>
+                    <AvatarFallback>{userProfile.name.slice(0,2).toUpperCase()}</AvatarFallback>
                 </Avatar>
             </div>
 
@@ -186,7 +156,9 @@ export function TeacherHome({ user, setActiveView }: TeacherHomeProps) {
                                 </div>
                             </div>
                             {status === 'checked_in' && (
-                                <form action={formAction} className="pt-2">
+                                <form action={formAction}>
+                                    <input type="hidden" name="userId" value={userProfile.uid} />
+                                    <input type="hidden" name="attendanceId" value={checkinData.attendanceId} />
                                     <CheckoutButton />
                                 </form>
                             )}
@@ -200,7 +172,6 @@ export function TeacherHome({ user, setActiveView }: TeacherHomeProps) {
 
             <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                    {/* Check In Button */}
                     <button
                         onClick={() => setActiveView('checkin')}
                         disabled={status !== 'not_checked_in'}
@@ -213,10 +184,10 @@ export function TeacherHome({ user, setActiveView }: TeacherHomeProps) {
                             </p>
                         </Card>
                     </button>
-
-                    {/* Check Out Button */}
                     {status === 'checked_in' ? (
                         <form action={formAction}>
+                            <input type="hidden" name="userId" value={userProfile.uid} />
+                            <input type="hidden" name="attendanceId" value={checkinData.attendanceId} />
                             <QuickCheckoutButton />
                         </form>
                     ) : (
@@ -233,8 +204,6 @@ export function TeacherHome({ user, setActiveView }: TeacherHomeProps) {
                         </button>
                     )}
                 </div>
-                
-                {/* History Button */}
                 <button onClick={() => setActiveView('history')} className="w-full rounded-lg p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                     <Card className="flex h-full w-full flex-col items-center justify-center p-4 text-center hover:bg-accent">
                         <BarChart2 className="h-8 w-8 text-primary" />

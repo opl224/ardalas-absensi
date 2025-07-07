@@ -1,17 +1,27 @@
 'use client';
-import { Home, BookOpen, GraduationCap } from "lucide-react"
+import { Home, BookOpen, GraduationCap, Search } from "lucide-react"
+import Link from "next/link";
 import { CheckinCard } from "@/components/check-in/CheckinCard";
 import { UserNav } from "@/components/UserNav";
 import { Logo } from "@/components/Logo";
 import { Sidebar, SidebarContent, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarProvider } from "@/components/ui/sidebar";
 import { MobileStudentDashboard } from "@/components/student/MobileStudentDashboard";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList } from "@/components/ui/breadcrumb";
-import Link from "next/link";
-import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function StudentDashboard() {
-  const user = { name: "Alex Doe", role: "Student" as const, avatar: "https://placehold.co/100x100.png" };
+  const { userProfile } = useAuth();
+
+  if (!userProfile) {
+    return <div>Memuat...</div>;
+  }
+  
+  const user = {
+    name: userProfile.name,
+    role: "Student" as const,
+    avatar: userProfile.avatar || "https://placehold.co/100x100.png"
+  };
 
   return (
     <>
@@ -65,10 +75,10 @@ export default function StudentDashboard() {
                     className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
                   />
                 </div>
-                <UserNav user={user} />
+                <UserNav />
               </header>
               <main className="flex flex-1 flex-col items-center justify-center p-4 md:p-8">
-                <CheckinCard user={user} />
+                <CheckinCard />
               </main>
             </div>
           </SidebarInset>
@@ -77,7 +87,7 @@ export default function StudentDashboard() {
 
       {/* Mobile View */}
       <div className="md:hidden">
-        <MobileStudentDashboard user={user} />
+        <MobileStudentDashboard />
       </div>
     </>
   );

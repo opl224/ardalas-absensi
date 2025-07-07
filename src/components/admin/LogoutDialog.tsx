@@ -1,6 +1,5 @@
 'use client'
 
-import { useRouter } from 'next/navigation';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,14 +11,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-export function LogoutDialog({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) {
-    const router = useRouter();
+interface LogoutDialogProps {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onConfirm: () => void;
+}
 
-    const handleLogout = () => {
-        // Here you would typically also clear any session/auth state
-        router.push('/');
-    };
-
+export function LogoutDialog({ open, onOpenChange, onConfirm }: LogoutDialogProps) {
     return (
         <AlertDialog open={open} onOpenChange={onOpenChange}>
             <AlertDialogContent>
@@ -31,7 +29,7 @@ export function LogoutDialog({ open, onOpenChange }: { open: boolean, onOpenChan
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel>Batal</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleLogout}>Keluar</AlertDialogAction>
+                    <AlertDialogAction onClick={onConfirm}>Keluar</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>

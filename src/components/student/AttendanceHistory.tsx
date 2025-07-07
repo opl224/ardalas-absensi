@@ -1,26 +1,28 @@
 'use client'
 
+import { useState, useEffect } from 'react';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from '@/hooks/useAuth';
 
-interface AttendanceHistoryProps {
-  user: {
-    name: string;
-    avatar: string;
-  };
-}
+// TODO: Ganti dengan data asli dari Firestore
+const historyData: any[] = [];
 
-const historyData = [
-  { date: '7 Juli 2025', checkIn: '08:01 AM', checkOut: '03:30 PM', status: 'Hadir' },
-  { date: '6 Juli 2025', checkIn: '08:03 AM', checkOut: '03:32 PM', status: 'Hadir' },
-  { date: '5 Juli 2025', checkIn: '08:15 AM', checkOut: '03:25 PM', status: 'Terlambat' },
-  { date: '4 Juli 2025', checkIn: '-', checkOut: '-', status: 'Absen' },
-  { date: '3 Juli 2025', checkIn: '08:00 AM', checkOut: '03:30 PM', status: 'Hadir' },
-  { date: '2 Juli 2025', checkIn: '09:00 AM', checkOut: '03:31 PM', status: 'Penipuan' },
-];
+export function AttendanceHistory() {
+    const { userProfile } = useAuth();
+    // const [history, setHistory] = useState([]);
+    // const [loading, setLoading] = useState(true);
 
-export function AttendanceHistory({ user }: AttendanceHistoryProps) {
+    // useEffect(() => {
+    //   // TODO: Fetch attendance history for the logged-in user from Firestore
+    //   setLoading(false);
+    // }, [userProfile]);
+
+    if (!userProfile) {
+        return <div>Memuat...</div>
+    }
+
     return (
         <div className="bg-gray-50 dark:bg-zinc-900 p-4 min-h-screen">
             <header className="mb-6">
@@ -28,11 +30,12 @@ export function AttendanceHistory({ user }: AttendanceHistoryProps) {
             </header>
 
             <div className="space-y-3">
+                {historyData.length === 0 && <p className="text-muted-foreground text-center py-8">Belum ada riwayat kehadiran.</p>}
                 {historyData.map((item, index) => (
                     <Card key={index} className="p-3 flex items-center gap-4">
                         <Avatar className="h-12 w-12">
-                            <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="person portrait" />
-                            <AvatarFallback>{user.name.slice(0,2).toUpperCase()}</AvatarFallback>
+                            <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait" />
+                            <AvatarFallback>{userProfile.name.slice(0,2).toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div className="flex-grow">
                             <p className="font-semibold text-foreground">{item.date}</p>

@@ -1,35 +1,76 @@
 'use client'
 
+import { useState, useEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { collection, query, orderBy, limit, Timestamp, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { Skeleton } from '../ui/skeleton';
 
-const attendanceData = [
-    { name: "Alex Doe", role: "Siswa", time: "08:01 AM", status: "Hadir", location: "Di tempat", avatar: 'https://placehold.co/100x100.png', dataAiHint: 'person portrait' },
-    { name: "Samantha Bee", role: "Siswa", time: "08:03 AM", status: "Hadir", location: "Di tempat", avatar: 'https://placehold.co/100x100.png', dataAiHint: 'person portrait' },
-    { name: "Dr. Evelyn Reed", role: "Guru", time: "07:55 AM", status: "Hadir", location: "Di tempat", avatar: 'https://placehold.co/100x100.png', dataAiHint: 'person portrait' },
-    { name: "John Smith", role: "Siswa", time: "08:15 AM", status: "Terlambat", location: "Di tempat", avatar: 'https://placehold.co/100x100.png', dataAiHint: 'person portrait' },
-    { name: "Jane Roe", role: "Siswa", time: "09:00 AM", status: "Penipuan", location: "Di luar lokasi", avatar: 'https://placehold.co/100x100.png', dataAiHint: 'person portrait' },
-    { name: "Mike Ross", role: "Guru", time: "07:45 AM", status: "Hadir", location: "Di tempat", avatar: 'https://placehold.co/100x100.png', dataAiHint: 'person portrait' },
-];
+interface AttendanceRecord {
+    id: string;
+    name: string;
+    role: string;
+    checkInTime: Timestamp;
+    status: 'Hadir' | 'Terlambat' | 'Penipuan' | 'Absen';
+    location: string;
+    avatar?: string;
+}
 
 export function Attendance() {
+    const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        // TODO: Implement real-time data fetching from Firestore
+        const fetchAttendance = async () => {
+            setLoading(true);
+            try {
+                // This is a placeholder fetch, replace with your actual Firestore query
+                const q = query(collection(db, "attendance"), orderBy("checkInTime", "desc"), limit(20));
+                const querySnapshot = await getDocs(q);
+                const data: AttendanceRecord[] = querySnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                })) as AttendanceRecord[];
+                 setAttendanceData(data);
+            } catch (error) {
+                console.error("Error fetching attendance data: ", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchAttendance();
+    }, []);
+
     return (
         <div className="bg-gray-50 dark:bg-zinc-900 p-4">
              <header className="flex items-center justify-between mb-4">
                 <h1 className="text-xl font-bold text-foreground">Catatan Kehadiran</h1>
             </header>
             <div className="space-y-3">
-                {attendanceData.map((item, index) => (
-                    <Card key={index} className="p-3 flex items-center gap-4">
+                {loading && Array.from({ length: 5 }).map((_, i) => (
+                    <Card key={i} className="p-3 flex items-center gap-4">
+                        <Skeleton className="h-12 w-12 rounded-full" />
+                        <div className="flex-grow space-y-2">
+                            <Skeleton className="h-4 w-3/4" />
+                            <Skeleton className="h-3 w-1/2" />
+                        </div>
+                        <Skeleton className="h-6 w-24 rounded-full" />
+                    </Card>
+                ))}
+                {!loading && attendanceData.map((item) => (
+                    <Card key={item.id} className="p-3 flex items-center gap-4">
                         <Avatar className="h-12 w-12">
-                            <AvatarImage src={item.avatar} alt={item.name} data-ai-hint={item.dataAiHint} />
+                            <AvatarImage src={item.avatar} alt={item.name} data-ai-hint="person portrait" />
                             <AvatarFallback>{item.name.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div className="flex-grow">
                             <p className="font-semibold text-foreground">{item.name}</p>
                             <p className="text-sm text-muted-foreground">{item.role}</p>
-                            <p className="text-sm text-muted-foreground">{item.time} - {item.location}</p>
+                            <p className="text-sm text-muted-foreground">{item.checkInTime.toDate().toLocaleTimeString('id-ID')} - {item.location}</p>
                         </div>
                         <Badge variant={
                             item.status === 'Hadir' ? 'default' :

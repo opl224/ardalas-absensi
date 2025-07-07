@@ -4,15 +4,8 @@ import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { User, Mail, GraduationCap, LogOut } from "lucide-react";
-import { LogoutDialog } from "@/components/admin/LogoutDialog"; // Reusing admin logout dialog
-
-interface StudentProfileProps {
-  user: {
-    name: string;
-    role: 'Student';
-    avatar: string;
-  };
-}
+import { LogoutDialog } from "@/components/admin/LogoutDialog"; 
+import { useAuth } from "@/hooks/useAuth";
 
 const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
     <div className="flex items-center gap-4 py-3">
@@ -24,8 +17,14 @@ const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label:
     </div>
 );
 
-export function StudentProfile({ user }: StudentProfileProps) {
+export function StudentProfile() {
+    const { userProfile, logout } = useAuth();
     const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+    
+    if (!userProfile) {
+        return <div>Memuat profil...</div>
+    }
+
     return (
         <>
             <div className="bg-gray-50 dark:bg-zinc-900 p-4 min-h-screen">
@@ -35,12 +34,12 @@ export function StudentProfile({ user }: StudentProfileProps) {
 
                 <div className="flex items-center gap-4 mb-6">
                     <Avatar className="h-16 w-16">
-                        <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="person portrait" />
-                        <AvatarFallback>{user.name.slice(0,2).toUpperCase()}</AvatarFallback>
+                        <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait" />
+                        <AvatarFallback>{userProfile.name.slice(0,2).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div>
-                        <p className="text-xl font-bold text-foreground">{user.name}</p>
-                        <p className="text-sm text-muted-foreground">{user.role}</p>
+                        <p className="text-xl font-bold text-foreground">{userProfile.name}</p>
+                        <p className="text-sm text-muted-foreground capitalize">{userProfile.role}</p>
                     </div>
                 </div>
 
@@ -49,9 +48,9 @@ export function StudentProfile({ user }: StudentProfileProps) {
                         <CardTitle className="text-lg">Informasi Profil</CardTitle>
                     </CardHeader>
                     <CardContent className="divide-y divide-border pt-0">
-                        <InfoRow icon={User} label="Nama Lengkap" value={user.name} />
-                        <InfoRow icon={Mail} label="Email" value={`${user.name.toLowerCase().replace(' ', '.')}@school.edu`} />
-                        <InfoRow icon={GraduationCap} label="Kelas" value="10B" />
+                        <InfoRow icon={User} label="Nama Lengkap" value={userProfile.name} />
+                        <InfoRow icon={Mail} label="Email" value={userProfile.email} />
+                        <InfoRow icon={GraduationCap} label="Kelas" value={userProfile.class || 'Tidak diketahui'} />
                     </CardContent>
                 </Card>
 
@@ -72,7 +71,7 @@ export function StudentProfile({ user }: StudentProfileProps) {
                     </CardContent>
                 </Card>
             </div>
-            <LogoutDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog} />
+            <LogoutDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog} onConfirm={logout} />
         </>
     );
 }

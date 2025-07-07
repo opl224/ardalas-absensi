@@ -1,6 +1,7 @@
 'use client';
 
-import { Home, LineChart, Search, GraduationCap, BookOpen } from "lucide-react"
+import { useEffect, useState } from "react";
+import { Home, LineChart, Search, GraduationCap, BookOpen, Users } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -30,18 +31,24 @@ import { Sidebar, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarProvid
 import { Logo } from "@/components/Logo"
 import { MobileTeacherDashboard } from "@/components/teacher/MobileTeacherDashboard"
 import { CheckinCard } from "@/components/check-in/CheckinCard"
+import { useAuth } from "@/hooks/useAuth";
 
-// Mock data for teacher dashboard
-const studentAttendanceData = [
-    { name: "Alex Doe", time: "08:01 AM", status: "Hadir" },
-    { name: "Samantha Bee", time: "08:03 AM", status: "Hadir" },
-    { name: "Jane Roe", time: "09:00 AM", status: "Penipuan" },
-    { name: "Michael Brown", time: "-", status: "Absen" },
-    { name: "Emily Davis", time: "-", status: "Absen" },
-];
+// TODO: Ganti dengan data asli dari Firestore
+const studentAttendanceData: any[] = [];
 
 export default function TeacherDashboard() {
-  const user = { name: "John Smith", role: "Teacher" as const, avatar: "https://placehold.co/100x100.png", subject: "Matematika" };
+  const { userProfile } = useAuth();
+  
+  if (!userProfile) {
+      return <div>Memuat...</div>
+  }
+
+  const user = {
+    name: userProfile.name,
+    role: "Teacher" as const,
+    avatar: userProfile.avatar || "https://placehold.co/100x100.png",
+    subject: userProfile.subject || "Tidak diketahui"
+  };
   
   return (
     <>
@@ -102,16 +109,17 @@ export default function TeacherDashboard() {
                         className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
                     />
                     </div>
-                    <UserNav user={user} />
+                    <UserNav />
                 </header>
                 <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
                     <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">Total Siswa</CardTitle>
-                                <GraduationCap className="h-4 w-4 text-muted-foreground" />
+                                <Users className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
+                                {/* TODO: Fetch data from Firestore */}
                                 <div className="text-2xl font-bold">45</div>
                                 <p className="text-xs text-muted-foreground">di kelas Anda</p>
                             </CardContent>
@@ -150,7 +158,7 @@ export default function TeacherDashboard() {
                     <div className="grid gap-4 md:gap-8 lg:grid-cols-3">
                         <Card className="lg:col-span-2">
                             <CardHeader>
-                            <CardTitle>Absensi Hari Ini - Matematika 10B</CardTitle>
+                            <CardTitle>Absensi Hari Ini - {user.subject}</CardTitle>
                             <CardDescription>
                                 Catatan kehadiran siswa untuk kelas Anda hari ini.
                             </CardDescription>
@@ -165,6 +173,7 @@ export default function TeacherDashboard() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
+                                    {studentAttendanceData.length === 0 && <TableRow><TableCell colSpan={3}>Belum ada data absensi hari ini.</TableCell></TableRow>}
                                     {studentAttendanceData.map((item, index) => (
                                     <TableRow key={index}>
                                         <TableCell>
@@ -185,7 +194,7 @@ export default function TeacherDashboard() {
                             </CardContent>
                         </Card>
                         <div className="lg:col-span-1">
-                            <CheckinCard user={user} />
+                            <CheckinCard />
                         </div>
                     </div>
                 </main>
@@ -196,7 +205,7 @@ export default function TeacherDashboard() {
       
       {/* Mobile View */}
       <div className="md:hidden">
-        <MobileTeacherDashboard user={user} />
+        <MobileTeacherDashboard />
       </div>
     </>
   );

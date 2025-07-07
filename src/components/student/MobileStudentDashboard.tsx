@@ -6,14 +6,7 @@ import { StudentHome } from './StudentHome';
 import { AttendanceHistory } from './AttendanceHistory';
 import { StudentProfile } from './StudentProfile';
 import { CheckinCard } from '@/components/check-in/CheckinCard';
-
-interface MobileStudentDashboardProps {
-  user: {
-    name: string;
-    role: 'Student';
-    avatar: string;
-  };
-}
+import { useAuth } from '@/hooks/useAuth';
 
 type ActiveView = 'home' | 'history' | 'profile' | 'checkin';
 
@@ -43,17 +36,25 @@ const NavLink = ({
   );
 };
 
-export function MobileStudentDashboard({ user }: MobileStudentDashboardProps) {
+export function MobileStudentDashboard() {
   const [activeView, setActiveView] = useState<ActiveView>('home');
+  const { userProfile, loading } = useAuth();
+
+  if (loading) {
+      return <div>Memuat dasbor...</div>
+  }
+  if (!userProfile) {
+      return <div>Data pengguna tidak ditemukan.</div>
+  }
 
   const renderContent = () => {
     switch (activeView) {
       case 'home':
-        return <StudentHome user={user} setActiveView={setActiveView} />;
+        return <StudentHome setActiveView={setActiveView} />;
       case 'history':
-        return <AttendanceHistory user={user} />;
+        return <AttendanceHistory />;
       case 'profile':
-        return <StudentProfile user={user} />;
+        return <StudentProfile />;
       case 'checkin':
         return (
           <div className="p-4 h-full flex flex-col">
@@ -64,12 +65,12 @@ export function MobileStudentDashboard({ user }: MobileStudentDashboardProps) {
                 <h1 className="text-xl font-bold text-foreground">Kehadiran</h1>
             </header>
             <div className="flex-grow flex items-center justify-center">
-              <CheckinCard user={user} onSuccess={() => setActiveView('home')} />
+              <CheckinCard onSuccess={() => setActiveView('home')} />
             </div>
           </div>
         );
       default:
-        return <StudentHome user={user} setActiveView={setActiveView} />;
+        return <StudentHome setActiveView={setActiveView} />;
     }
   };
 

@@ -9,12 +9,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { handleCheckin, type CheckinState } from "@/app/actions";
 import { Progress } from "@/components/ui/progress";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 interface CheckinCardProps {
-  user: {
-    name: string;
-    role: "Student" | "Teacher";
-  };
   onSuccess?: () => void;
 }
 
@@ -28,7 +26,9 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
   );
 }
 
-export function CheckinCard({ user, onSuccess }: CheckinCardProps) {
+export function CheckinCard({ onSuccess }: CheckinCardProps) {
+  const { userProfile } = useAuth();
+  const { toast } = useToast();
   const initialState: CheckinState = {};
   const [state, formAction] = useActionState(handleCheckin, initialState);
 
@@ -37,7 +37,6 @@ export function CheckinCard({ user, onSuccess }: CheckinCardProps) {
   const [photoDataUri, setPhotoDataUri] = useState<string | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
-  const [isClient, setIsClient] = useState(false);
   
   const [resultDialogOpen, setResultDialogOpen] = useState(false);
 
@@ -45,64 +44,13 @@ export function CheckinCard({ user, onSuccess }: CheckinCardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  // Load from local storage on mount
-  useEffect(() => {
-    if (isClient) {
-      try {
-        const savedLocation = localStorage.getItem('checkin_location');
-        if (savedLocation) {
-          setLocation(JSON.parse(savedLocation));
-        }
-        const savedPhoto = localStorage.getItem('checkin_photo');
-        if (savedPhoto) {
-          setPhotoDataUri(savedPhoto);
-        }
-      } catch (error) {
-        console.error("Failed to read from localStorage", error);
-        localStorage.clear();
-      }
-    }
-  }, [isClient]);
-
-  // Save location to local storage
-  useEffect(() => {
-    if (isClient) {
-      if (location) {
-        localStorage.setItem('checkin_location', JSON.stringify(location));
-      } else {
-        localStorage.removeItem('checkin_location');
-      }
-    }
-  }, [location, isClient]);
-
-  // Save photo to local storage
-  useEffect(() => {
-    if (isClient) {
-      if (photoDataUri) {
-        localStorage.setItem('checkin_photo', photoDataUri);
-      } else {
-        localStorage.removeItem('checkin_photo');
-      }
-    }
-  }, [photoDataUri, isClient]);
-
-
-  useEffect(() => {
     if (state.error || state.success || state.isFraudulent) {
       setResultDialogOpen(true);
-      if (state.success) {
-        if (isClient) {
-          localStorage.setItem('checkin_status', 'checked_in');
-          localStorage.setItem('checkin_time', new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
-        }
-        setLocation(null); // Clear location from state
-        onSuccess?.();
+      if (state.success && onSuccess) {
+        onSuccess();
       }
     }
-  }, [state, onSuccess, isClient]);
+  }, [state, onSuccess]);
 
   const getLocation = () => {
     setLocationError(null);
@@ -116,16 +64,18 @@ export function CheckinCard({ user, onSuccess }: CheckinCardProps) {
         },
         (error) => {
           setLocationError(`Kesalahan: ${error.message}. Harap aktifkan layanan lokasi.`);
+          toast({ variant: 'destructive', title: 'Kesalahan Lokasi', description: `Kesalahan: ${error.message}. Harap aktifkan layanan lokasi.` });
         }
       );
     } else {
       setLocationError("Geolocation tidak didukung oleh browser ini.");
+      toast({ variant: 'destructive', title: 'Kesalahan Lokasi', description: "Geolocation tidak didukung oleh browser ini." });
     }
   };
   
   const startCamera = () => {
     setCameraError(null);
-    setPhotoDataUri(null); // This will trigger the useEffect to remove from localStorage
+    setPhotoDataUri(null);
     setIsCameraOn(true);
   };
 
@@ -140,6 +90,7 @@ export function CheckinCard({ user, onSuccess }: CheckinCardProps) {
           }
         } catch (err) {
           setCameraError("Tidak dapat mengakses kamera. Harap berikan izin.");
+          toast({ variant: 'destructive', title: 'Kesalahan Kamera', description: "Tidak dapat mengakses kamera. Harap berikan izin." });
           setIsCameraOn(false);
         }
       };
@@ -154,7 +105,7 @@ export function CheckinCard({ user, onSuccess }: CheckinCardProps) {
         }
       }
     }
-  }, [isCameraOn]);
+  }, [isCameraOn, toast]);
 
   const stopCamera = () => {
     setIsCameraOn(false);
@@ -170,7 +121,7 @@ export function CheckinCard({ user, onSuccess }: CheckinCardProps) {
       if (context) {
         context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
         const dataUri = canvas.toDataURL("image/jpeg");
-        setPhotoDataUri(dataUri); // This will trigger the useEffect to save to localStorage
+        setPhotoDataUri(dataUri);
         stopCamera();
       }
     }
@@ -190,11 +141,15 @@ export function CheckinCard({ user, onSuccess }: CheckinCardProps) {
   
   const progressValue = (getStep() - 1) * 50;
 
+  if (!userProfile) {
+    return <Card className="w-full max-w-lg shadow-lg p-8 text-center">Memuat data pengguna...</Card>;
+  }
+
   return (
     <>
       <Card className="w-full max-w-lg shadow-lg">
         <CardHeader>
-          <CardTitle className="font-headline text-2xl">Hai, {user.name}!</CardTitle>
+          <CardTitle className="font-headline text-2xl">Hai, {userProfile.name}!</CardTitle>
           <CardDescription>Ikuti langkah-langkah di bawah ini untuk menandai kehadiran Anda.</CardDescription>
           <Progress value={progressValue} className="mt-2" />
         </CardHeader>
@@ -203,6 +158,9 @@ export function CheckinCard({ user, onSuccess }: CheckinCardProps) {
             <input type="hidden" name="photoDataUri" value={photoDataUri || ""} />
             <input type="hidden" name="latitude" value={location?.latitude || ""} />
             <input type="hidden" name="longitude" value={location?.longitude || ""} />
+            <input type="hidden" name="userId" value={userProfile.uid || ""} />
+            <input type="hidden" name="userName" value={userProfile.name || ""} />
+            <input type="hidden" name="userRole" value={userProfile.role || ""} />
             
             <div className="space-y-4">
               <div className="flex items-center gap-4">
@@ -276,7 +234,7 @@ export function CheckinCard({ user, onSuccess }: CheckinCardProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={onSuccess ? () => {} : resetCheckin}>Tutup</AlertDialogAction>
+            <AlertDialogAction onClick={onSuccess ? onSuccess : resetCheckin}>Tutup</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

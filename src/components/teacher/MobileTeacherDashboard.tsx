@@ -6,15 +6,7 @@ import { TeacherHome } from './TeacherHome';
 import { AttendanceHistory } from './AttendanceHistory';
 import { TeacherProfile } from './TeacherProfile';
 import { CheckinCard } from '@/components/check-in/CheckinCard';
-
-interface MobileTeacherDashboardProps {
-  user: {
-    name: string;
-    role: 'Teacher';
-    avatar: string;
-    subject: string;
-  };
-}
+import { useAuth } from '@/hooks/useAuth';
 
 type ActiveView = 'home' | 'history' | 'profile' | 'checkin';
 
@@ -44,17 +36,25 @@ const NavLink = ({
   );
 };
 
-export function MobileTeacherDashboard({ user }: MobileTeacherDashboardProps) {
+export function MobileTeacherDashboard() {
   const [activeView, setActiveView] = useState<ActiveView>('home');
+  const { userProfile, loading } = useAuth();
+
+  if (loading) {
+      return <div>Memuat dasbor...</div>
+  }
+  if (!userProfile) {
+      return <div>Data pengguna tidak ditemukan.</div>
+  }
 
   const renderContent = () => {
     switch (activeView) {
       case 'home':
-        return <TeacherHome user={user} setActiveView={setActiveView} />;
+        return <TeacherHome setActiveView={setActiveView} />;
       case 'history':
-        return <AttendanceHistory user={user} />;
+        return <AttendanceHistory />;
       case 'profile':
-        return <TeacherProfile user={user} />;
+        return <TeacherProfile />;
       case 'checkin':
         return (
           <div className="p-4 h-full flex flex-col">
@@ -65,12 +65,12 @@ export function MobileTeacherDashboard({ user }: MobileTeacherDashboardProps) {
                 <h1 className="text-xl font-bold text-foreground">Kehadiran</h1>
             </header>
             <div className="flex-grow flex items-center justify-center">
-              <CheckinCard user={user} onSuccess={() => setActiveView('home')} />
+              <CheckinCard onSuccess={() => setActiveView('home')} />
             </div>
           </div>
         );
       default:
-        return <TeacherHome user={user} setActiveView={setActiveView} />;
+        return <TeacherHome setActiveView={setActiveView} />;
     }
   };
 

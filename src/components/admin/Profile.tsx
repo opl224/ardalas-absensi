@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { User, Mail, Building2, Bell, Shield, LogOut, ChevronRight } from "lucide-react";
 import { LogoutDialog } from "./LogoutDialog";
+import { useAuth } from "@/hooks/useAuth";
 
 const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
     <div className="flex items-center gap-4 py-3">
@@ -32,7 +33,13 @@ const ClickableRow = ({ icon: Icon, label, onClick }: { icon: React.ElementType,
 
 
 export function Profile({ setActiveView }: { setActiveView: (view: string) => void }) {
+    const { userProfile, logout } = useAuth();
     const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+    
+    if (!userProfile) {
+        return <div>Memuat profil...</div>;
+    }
+
     return (
         <>
             <div className="bg-gray-50 dark:bg-zinc-900 p-4 min-h-screen">
@@ -42,12 +49,12 @@ export function Profile({ setActiveView }: { setActiveView: (view: string) => vo
 
                 <div className="flex items-center gap-4 mb-6">
                     <Avatar className="h-16 w-16">
-                        <AvatarImage src="https://placehold.co/100x100.png" alt="Admin User" data-ai-hint="person portrait" />
-                        <AvatarFallback>AU</AvatarFallback>
+                        <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait" />
+                        <AvatarFallback>{userProfile.name.slice(0,2).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div>
-                        <p className="text-xl font-bold text-foreground">Admin User</p>
-                        <p className="text-sm text-muted-foreground">Administrator</p>
+                        <p className="text-xl font-bold text-foreground">{userProfile.name}</p>
+                        <p className="text-sm text-muted-foreground capitalize">{userProfile.role}</p>
                     </div>
                 </div>
 
@@ -56,8 +63,8 @@ export function Profile({ setActiveView }: { setActiveView: (view: string) => vo
                         <CardTitle className="text-lg">Informasi Profil</CardTitle>
                     </CardHeader>
                     <CardContent className="divide-y divide-border pt-0">
-                    <InfoRow icon={User} label="Nama Lengkap" value="Admin User" />
-                    <InfoRow icon={Mail} label="Email" value="admin@school.edu" />
+                    <InfoRow icon={User} label="Nama Lengkap" value={userProfile.name} />
+                    <InfoRow icon={Mail} label="Email" value={userProfile.email} />
                     <InfoRow icon={Building2} label="Departemen" value="Administrasi" />
                     </CardContent>
                 </Card>
@@ -81,7 +88,7 @@ export function Profile({ setActiveView }: { setActiveView: (view: string) => vo
                     </CardContent>
                 </Card>
             </div>
-            <LogoutDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog} />
+            <LogoutDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog} onConfirm={logout} />
         </>
     );
 }

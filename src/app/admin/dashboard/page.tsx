@@ -1,3 +1,6 @@
+'use client';
+
+import { useEffect, useState } from "react";
 import { Home, LineChart, Search, Users2, BookUser, Users, AlertTriangle, GraduationCap, Briefcase } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
@@ -28,19 +31,47 @@ import { Sidebar, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarProvid
 import { Logo } from "@/components/Logo"
 import { AttendanceChart } from "@/components/admin/AttendanceChart"
 import { MobileAdminDashboard } from "@/components/admin/MobileAdminDashboard"
+import { useAuth } from "@/hooks/useAuth";
+import { collection, getDocs, query, orderBy, limit, Timestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
-const attendanceData = [
-    { name: "Alex Doe", role: "Siswa", time: "08:01 AM", status: "Hadir", location: "Di tempat" },
-    { name: "Samantha Bee", role: "Siswa", time: "08:03 AM", status: "Hadir", location: "Di tempat" },
-    { name: "Dr. Evelyn Reed", role: "Guru", time: "07:55 AM", status: "Hadir", location: "Di tempat" },
-    { name: "John Smith", role: "Siswa", time: "08:15 AM", status: "Terlambat", location: "Di tempat" },
-    { name: "Jane Roe", role: "Siswa", time: "09:00 AM", status: "Penipuan", location: "Di luar lokasi" },
-    { name: "Mike Ross", role: "Guru", time: "07:45 AM", status: "Hadir", location: "Di tempat" },
-];
+interface AttendanceRecord {
+    id: string;
+    name: string;
+    role: string;
+    checkInTime: Timestamp;
+    status: 'Hadir' | 'Terlambat' | 'Penipuan' | 'Absen';
+    location: string;
+}
 
 export default function AdminDashboard() {
-  const adminUser = { name: "Admin User", role: "Admin" as const, avatar: "https://placehold.co/100x100.png" };
+  const { userProfile } = useAuth();
+  const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // TODO: Implement real-time data fetching from Firestore
+    const fetchAttendance = async () => {
+        try {
+            const q = query(collection(db, "attendance"), orderBy("checkInTime", "desc"), limit(10));
+            const querySnapshot = await getDocs(q);
+            const data = querySnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                checkInTime: doc.data().checkInTime,
+            })) as AttendanceRecord[];
+            setAttendanceData(data);
+        } catch (error) {
+            console.error("Error fetching attendance data: ", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchAttendance();
+  }, []);
   
+  if (!userProfile) return null;
+
   return (
     <>
       {/* Desktop View */}
@@ -100,7 +131,7 @@ export default function AdminDashboard() {
                         className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
                     />
                     </div>
-                    <UserNav user={adminUser} />
+                    <UserNav />
                 </header>
                 <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
                     <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
@@ -110,6 +141,7 @@ export default function AdminDashboard() {
                         <Users2 className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
+                        {/* TODO: Fetch data from Firestore */}
                         <div className="text-2xl font-bold">450</div>
                         <p className="text-xs text-muted-foreground">380 Siswa, 70 Guru</p>
                         </CardContent>
@@ -165,22 +197,26 @@ export default function AdminDashboard() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {attendanceData.map((item, index) => (
-                                <TableRow key={index}>
-                                    <TableCell>
-                                    <div className="font-medium">{item.name}</div>
-                                    </TableCell>
-                                    <TableCell className="hidden sm:table-cell">{item.role}</TableCell>
-                                    <TableCell className="hidden sm:table-cell">{item.time}</TableCell>
-                                    <TableCell>
-                                    <Badge variant={
-                                        item.status === 'Hadir' ? 'default' :
-                                        item.status === 'Terlambat' ? 'secondary' : 'destructive'
-                                    }>{item.status}</Badge>
-                                    </TableCell>
-                                    <TableCell className="hidden md:table-cell">{item.location}</TableCell>
-                                </TableRow>
-                                ))}
+                                {loading ? (
+                                    <TableRow><TableCell colSpan={5}>Memuat...</TableCell></TableRow>
+                                ) : (
+                                    attendanceData.map((item) => (
+                                    <TableRow key={item.id}>
+                                        <TableCell>
+                                        <div className="font-medium">{item.name}</div>
+                                        </TableCell>
+                                        <TableCell className="hidden sm:table-cell">{item.role}</TableCell>
+                                        <TableCell className="hidden sm:table-cell">{item.checkInTime.toDate().toLocaleTimeString('id-ID')}</TableCell>
+                                        <TableCell>
+                                        <Badge variant={
+                                            item.status === 'Hadir' ? 'default' :
+                                            item.status === 'Terlambat' ? 'secondary' : 'destructive'
+                                        }>{item.status}</Badge>
+                                        </TableCell>
+                                        <TableCell className="hidden md:table-cell">{item.location}</TableCell>
+                                    </TableRow>
+                                    ))
+                                )}
                             </TableBody>
                             </Table>
                         </CardContent>
