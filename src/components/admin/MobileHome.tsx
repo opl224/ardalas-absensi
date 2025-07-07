@@ -18,7 +18,7 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
             const mockDate = new Date('2025-07-07T12:33:00');
             setDateTime({
                 date: mockDate.toLocaleDateString('id-ID', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }),
-                time: mockDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: true })
+                time: mockDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
             });
         };
 

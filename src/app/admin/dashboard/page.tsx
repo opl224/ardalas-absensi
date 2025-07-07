@@ -207,7 +207,7 @@ export default function AdminDashboard() {
                                         <div className="font-medium">{item.name}</div>
                                         </TableCell>
                                         <TableCell className="hidden sm:table-cell">{item.role}</TableCell>
-                                        <TableCell className="hidden sm:table-cell">{item.checkInTime.toDate().toLocaleTimeString('id-ID')}</TableCell>
+                                        <TableCell className="hidden sm:table-cell">{item.checkInTime.toDate().toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'})}</TableCell>
                                         <TableCell>
                                         <Badge variant={
                                             item.status === 'Hadir' ? 'default' :

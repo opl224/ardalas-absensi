@@ -65,7 +65,7 @@ export function Attendance() {
                             <div className="flex-grow">
                                 <p className="font-semibold text-foreground">{item.name}</p>
                                 <p className="text-sm text-muted-foreground">{item.role}</p>
-                                <p className="text-sm text-muted-foreground">{item.checkInTime.toDate().toLocaleTimeString('id-ID')} - {item.location}</p>
+                                <p className="text-sm text-muted-foreground">{item.checkInTime.toDate().toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'})} - {item.location}</p>
                             </div>
                             <Badge variant={
                                 item.status === 'Hadir' ? 'default' :

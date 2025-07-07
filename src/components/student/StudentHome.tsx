@@ -64,7 +64,7 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
             const now = new Date();
             setDateTime({
                 date: now.toLocaleDateString('id-ID', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }),
-                time: now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: true })
+                time: now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
             });
         };
         updateDateTime();
@@ -101,7 +101,7 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
                 const checkInTimestamp = data.checkInTime as Timestamp;
                 
                 setCheckinData({
-                    time: checkInTimestamp.toDate().toLocaleTimeString('id-ID'),
+                    time: checkInTimestamp.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit'}),
                     photo: data.checkInPhotoUrl,
                     attendanceId: doc.id
                 });
@@ -109,7 +109,7 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
                 if (data.checkOutTime) {
                     const checkOutTimestamp = data.checkOutTime as Timestamp;
                     setStatus('checked_out');
-                    setCheckoutTime(checkOutTimestamp.toDate().toLocaleTimeString('id-ID'));
+                    setCheckoutTime(checkOutTimestamp.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit'}));
                 } else {
                     setStatus('checked_in');
                     setCheckoutTime(null);
