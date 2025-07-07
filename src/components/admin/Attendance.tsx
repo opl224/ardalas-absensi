@@ -67,7 +67,7 @@ export function Attendance() {
                 title: "Berhasil",
                 description: "Catatan kehadiran telah dihapus.",
             });
-        } catch (error) => {
+        } catch (error) {
             console.error("Error deleting document: ", error);
             toast({
                 title: "Gagal",
