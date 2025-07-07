@@ -10,8 +10,6 @@ import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { LottieLoader } from '../ui/lottie-loader';
 import { Button } from '../ui/button';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 interface ReportStats {
     totalGurus: number;
@@ -178,7 +176,7 @@ export function Reports() {
         fetchReportData();
     }, [activeTab]);
 
-    const handleDownload = (format: 'pdf' | 'csv') => {
+    const handleDownload = async (format: 'pdf' | 'csv') => {
         if (loading || reportData.length === 0) {
             alert('Data tidak tersedia atau sedang dimuat. Silakan coba lagi nanti.');
             return;
@@ -214,6 +212,9 @@ export function Reports() {
         }
 
         if (format === 'pdf') {
+            const jsPDF = (await import('jspdf')).default;
+            const autoTable = (await import('jspdf-autotable')).default;
+
             const doc = new jsPDF();
             doc.text(`Laporan Kehadiran Guru - ${period}`, 14, 16);
             autoTable(doc, {
