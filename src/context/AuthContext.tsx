@@ -58,9 +58,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                             // Use teacher-specific data, but ensure the role is set correctly from the 'users' doc.
                             setUserProfile({ uid: user.uid, ...teacherDocSnap.data(), role: 'guru' } as UserProfile);
                         } else {
-                            console.error(`Teacher profile for user ${user.uid} not found in 'teachers' collection.`);
-                            setUserProfile(null);
-                            router.push('/');
+                            console.warn(`Teacher profile for user ${user.uid} not found in 'teachers' collection. Falling back to basic data from 'users' collection.`);
+                            // Fallback to the user data from 'users' collection if the teacher profile is missing.
+                            // This allows the user to still log in, though with possibly incomplete data.
+                            setUserProfile({ uid: user.uid, ...userData } as UserProfile);
                         }
                     } else {
                         // For admins and students, use the data from the 'users' collection
