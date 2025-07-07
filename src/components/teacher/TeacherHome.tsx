@@ -1,7 +1,6 @@
 'use client';
 
 import { useActionState, useState, useEffect } from 'react';
-import { useFormStatus } from 'react-dom';
 import { handleCheckout, type CheckoutState } from '@/app/actions';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from '@/components/ui/badge';
 import { CalendarDays, Clock, MapPin, CheckCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useFormStatus } from 'react-dom';
 
 interface TeacherHomeProps {
   user: {
@@ -76,7 +76,7 @@ export function TeacherHome({ user, setActiveView }: TeacherHomeProps) {
                 }
             }
         }
-    }, [isClient, activeView]); // Rerun when returning to home view
+    }, [isClient]); // Rerun when returning to home view
 
     useEffect(() => {
         if (checkoutState.success) {
