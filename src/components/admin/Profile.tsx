@@ -2,8 +2,7 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
-import { User, Mail, Building2, Bell, Shield, LogOut } from "lucide-react";
+import { User, Mail, Building2, Bell, Shield, LogOut, ChevronRight } from "lucide-react";
 
 const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
     <div className="flex items-center gap-4 py-3">
@@ -15,7 +14,22 @@ const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label:
     </div>
 );
 
-export function Profile() {
+const ClickableRow = ({ icon: Icon, label, onClick }: { icon: React.ElementType, label: string, onClick?: () => void }) => (
+    <button
+        onClick={onClick}
+        className="flex items-center justify-between py-3 w-full text-left disabled:opacity-50"
+        disabled={!onClick}
+    >
+        <div className="flex items-center gap-4">
+            <Icon className="h-6 w-6 text-muted-foreground" />
+            <span className="font-medium text-foreground">{label}</span>
+        </div>
+        {onClick && <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+    </button>
+);
+
+
+export function Profile({ setActiveView }: { setActiveView: (view: string) => void }) {
     return (
         <div className="bg-gray-50 dark:bg-zinc-900 p-4 min-h-screen">
             <header className="mb-6">
@@ -49,20 +63,9 @@ export function Profile() {
                     <CardTitle className="text-lg">Settings</CardTitle>
                 </CardHeader>
                 <CardContent className="divide-y divide-border pt-0">
-                    <div className="flex items-center justify-between py-3">
-                        <div className="flex items-center gap-4">
-                            <Bell className="h-6 w-6 text-muted-foreground" />
-                            <span className="font-medium text-foreground">Push Notifications</span>
-                        </div>
-                        <Switch id="notifications-switch" />
-                    </div>
-                     <div className="flex items-center justify-between py-3">
-                        <div className="flex items-center gap-4">
-                            <Shield className="h-6 w-6 text-muted-foreground" />
-                            <span className="font-medium text-foreground">Privacy</span>
-                        </div>
-                    </div>
-                     <div className="flex items-center justify-between py-3">
+                    <ClickableRow icon={Bell} label="Push Notifications" onClick={() => setActiveView('push-notifications')} />
+                    <ClickableRow icon={Shield} label="Privacy" onClick={() => {}} />
+                     <div className="flex items-center justify-between py-3 cursor-pointer">
                         <div className="flex items-center gap-4 text-destructive">
                             <LogOut className="h-6 w-6" />
                             <span className="font-medium">Logout</span>

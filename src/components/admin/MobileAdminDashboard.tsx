@@ -7,8 +7,9 @@ import { Reports } from "./Reports";
 import { MobileHome } from "./MobileHome";
 import { Profile } from "./Profile";
 import { Attendance } from "./Attendance";
+import { PushNotifications } from "./PushNotifications";
 
-type ActiveView = 'home' | 'profile' | 'users' | 'reports' | 'attendance';
+type ActiveView = 'home' | 'profile' | 'users' | 'reports' | 'attendance' | 'push-notifications';
 
 const NavLink = ({
     activeView,
@@ -44,9 +45,11 @@ export function MobileAdminDashboard() {
       case 'reports':
         return <Reports />;
       case 'profile':
-        return <Profile />;
+        return <Profile setActiveView={setActiveView} />;
       case 'attendance':
         return <Attendance />;
+      case 'push-notifications':
+        return <PushNotifications onBack={() => setActiveView('profile')} />;
       default:
         return <MobileHome setActiveView={setActiveView} />;
     }
