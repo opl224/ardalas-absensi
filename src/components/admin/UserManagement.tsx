@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Search, Download, FilePen, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { collection, getDocs, query } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { LottieLoader } from '../ui/lottie-loader';
 import { cn } from '@/lib/utils';
@@ -17,7 +17,7 @@ interface User {
   name: string;
   email: string;
   role: 'Guru' | 'Siswa' | 'Admin';
-  status: 'Hadir' | 'Terlambat' | 'Absen' | 'Penipuan'; // This might need to be fetched separately
+  status: 'Hadir' | 'Terlambat' | 'Absen' | 'Penipuan';
   avatar: string;
 }
 
@@ -30,25 +30,55 @@ export function UserManagement() {
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchUsersAndStatus = async () => {
       setLoading(true);
       try {
-        const usersQuery = query(collection(db, 'users'));
+        // 1. Fetch today's attendance records to determine status
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
+
+        const attendanceQuery = query(
+          collection(db, "photo_attendances"),
+          where("checkInTime", ">=", todayStart),
+          where("checkInTime", "<=", todayEnd)
+        );
+        const attendanceSnapshot = await getDocs(attendanceQuery);
+        const attendanceStatusMap = new Map<string, string>();
+        attendanceSnapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.userId && data.status) {
+                attendanceStatusMap.set(data.userId, data.status);
+            }
+        });
+
+        // 2. Fetch only teacher users
+        const usersQuery = query(collection(db, 'users'), where('role', '==', 'guru'));
         const querySnapshot = await getDocs(usersQuery);
-        const fetchedUsers = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          // Placeholder for status, as it's dynamic
-          status: 'Absen' 
-        })) as User[];
+
+        // 3. Combine user data with today's status
+        const fetchedUsers = querySnapshot.docs.map(doc => {
+          const userData = doc.data();
+          const userId = doc.id;
+          // Default to 'Absen' if no attendance record is found for today
+          const status = attendanceStatusMap.get(userId) || 'Absen';
+
+          return {
+            id: userId,
+            ...userData,
+            status: status,
+          } as User;
+        });
+
         setUsers(fetchedUsers);
       } catch (error) {
-        console.error("Error fetching users: ", error);
+        console.error("Error fetching users and status: ", error);
       } finally {
         setLoading(false);
       }
     };
-    fetchUsers();
+    fetchUsersAndStatus();
   }, []);
 
   const filteredUsers = useMemo(() => {
@@ -148,7 +178,12 @@ export function UserManagement() {
                         <p className="font-semibold text-foreground">{user.name}</p>
                         <p className="text-sm text-muted-foreground -mt-1">{user.email}</p>
                         <div className="flex items-center gap-2 mt-1">
-                        <Badge variant={user.status === 'Absen' ? 'destructive' : 'warning'}>
+                        <Badge variant={
+                            user.status === 'Hadir' ? 'default' :
+                            user.status === 'Terlambat' ? 'secondary' :
+                            user.status === 'Penipuan' ? 'destructive' :
+                            'outline'
+                        }>
                             {user.status}
                         </Badge>
                         <span className="text-sm text-muted-foreground capitalize">{user.role}</span>
