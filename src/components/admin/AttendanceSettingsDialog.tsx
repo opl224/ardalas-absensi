@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useFormState } from 'react-dom';
+import { useEffect, useState, useActionState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,7 +40,7 @@ interface AttendanceSettingsDialogProps {
 export function AttendanceSettingsDialog({ open, onOpenChange }: AttendanceSettingsDialogProps) {
     const { toast } = useToast();
     const initialState: SettingsState = {};
-    const [state, formAction] = useFormState(updateAttendanceSettings, initialState);
+    const [state, formAction] = useActionState(updateAttendanceSettings, initialState);
     const [settings, setSettings] = useState<Settings | null>(null);
     const [loading, setLoading] = useState(true);
 
