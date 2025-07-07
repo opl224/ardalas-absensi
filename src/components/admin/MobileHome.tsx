@@ -3,11 +3,13 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { CalendarDays, Clock, Users, FileText } from "lucide-react";
+import { CalendarDays, Clock, Users, FileText, Settings } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LottieLoader } from "@/components/ui/lottie-loader";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, onSnapshot, Timestamp } from "firebase/firestore";
+import { collection, query, where, getDocs, onSnapshot, Timestamp, doc } from "firebase/firestore";
+import { AttendanceSettingsDialog } from "./AttendanceSettingsDialog";
+import { Button } from "../ui/button";
 
 type ActiveView = 'home' | 'profile' | 'users' | 'reports' | 'attendance';
 
@@ -23,6 +25,7 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
     const [dateTime, setDateTime] = useState({ date: '', time: '' });
     const [stats, setStats] = useState<Stats>({ present: 0, absent: 0, late: 0, total: 0, rate: 0 });
     const [loading, setLoading] = useState(true);
+    const [showSettingsDialog, setShowSettingsDialog] = useState(false);
 
     useEffect(() => {
         const updateDateTime = () => {
@@ -42,6 +45,16 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
         const fetchStats = async () => {
             setLoading(true);
             try {
+                // Fetch settings first
+                const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
+                const settings = settingsDoc.exists() ? settingsDoc.data() : {
+                    checkInEndTime: '09:00',
+                    offDays: ['Saturday', 'Sunday']
+                };
+
+                const now = new Date();
+                const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
+
                 // Get total non-admin users first
                 const usersQuery = query(collection(db, 'users'), where('role', 'in', ['siswa', 'guru']));
                 const usersSnapshot = await getDocs(usersQuery);
@@ -52,8 +65,14 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
                     setLoading(false);
                     return;
                 }
-
-                // Then listen for today's attendance
+                
+                // If it's an off day, no one is absent, everyone is... well, off.
+                if (settings.offDays.includes(todayStr)) {
+                     setStats({ present: 0, absent: 0, late: 0, total: totalUserCount, rate: 100 });
+                     setLoading(false);
+                     return;
+                }
+                
                 const today = new Date();
                 const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
                 const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
@@ -66,11 +85,19 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
 
                 const unsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
                     const attendances = snapshot.docs.map(doc => doc.data());
-                    
                     const presentCount = attendances.length;
                     const lateCount = attendances.filter(a => a.status === 'Terlambat').length;
+                    
+                    const [endHours, endMinutes] = settings.checkInEndTime.split(':').map(Number);
+                    const checkInDeadline = new Date();
+                    checkInDeadline.setHours(endHours, endMinutes, 0, 0);
 
-                    const absentCount = totalUserCount - presentCount;
+                    let absentCount = 0;
+                    // Only count as absent if the check-in time has passed
+                    if (new Date() > checkInDeadline) {
+                        absentCount = totalUserCount - presentCount;
+                    }
+
                     const attendanceRate = totalUserCount > 0 ? Math.round((presentCount / totalUserCount) * 100) : 0;
                     
                     setStats({
@@ -99,7 +126,9 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
 
     return (
         <div className="p-4">
-            <h1 className="text-xl font-bold text-foreground">Beranda Admin</h1>
+            <header className="sticky top-0 z-10 border-b bg-background/95 p-4 -mx-4 -mt-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                <h1 className="text-xl font-bold text-foreground">Beranda Admin</h1>
+            </header>
 
             {/* Welcome Section */}
             <div className="flex items-center justify-between mt-6">
@@ -116,16 +145,22 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
 
             {/* Date and Time */}
             <Card className="mt-6 p-4">
-                <CardContent className="p-0 space-y-3">
-                    <div className="flex items-center gap-4">
-                        <CalendarDays className="h-5 w-5 text-muted-foreground" />
-                        <span className="font-medium text-sm text-foreground">{dateTime.date || 'Memuat tanggal...'}</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <Clock className="h-5 w-5 text-muted-foreground" />
-                        <span className="font-medium text-sm text-foreground">{dateTime.time || 'Memuat waktu...'}</span>
-                    </div>
-                </CardContent>
+                <div className="flex justify-between items-start">
+                    <CardContent className="p-0 space-y-3">
+                        <div className="flex items-center gap-4">
+                            <CalendarDays className="h-5 w-5 text-muted-foreground" />
+                            <span className="font-medium text-sm text-foreground">{dateTime.date || 'Memuat tanggal...'}</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <Clock className="h-5 w-5 text-muted-foreground" />
+                            <span className="font-medium text-sm text-foreground">{dateTime.time || 'Memuat waktu...'}</span>
+                        </div>
+                    </CardContent>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setShowSettingsDialog(true)}>
+                        <Settings className="h-5 w-5 text-muted-foreground" />
+                        <span className="sr-only">Pengaturan</span>
+                    </Button>
+                </div>
             </Card>
 
             {/* Today's Overview */}
@@ -173,6 +208,7 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
                     <p className="mt-2 font-medium text-sm text-foreground">Lihat Laporan</p>
                 </Card>
             </div>
+            <AttendanceSettingsDialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog} />
         </div>
     );
 }

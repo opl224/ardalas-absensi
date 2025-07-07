@@ -2,7 +2,7 @@
 
 import { supabase } from "@/lib/supabase";
 import { z } from "zod";
-import { doc, setDoc, collection, serverTimestamp, updateDoc } from "firebase/firestore"; 
+import { doc, setDoc, collection, serverTimestamp, updateDoc, getDoc } from "firebase/firestore"; 
 import { db } from "@/lib/firebase";
 // import { validateAttendance } from "@/ai/flows/attendance-validator";
 
@@ -140,4 +140,43 @@ export async function handleCheckout(prevState: CheckoutState, formData: FormDat
         const errorMessage = e instanceof Error ? e.message : "Terjadi kesalahan yang tidak terduga.";
         return { error: `Kesalahan server: ${errorMessage}. Silakan coba lagi.` };
     }
+}
+
+const settingsSchema = z.object({
+  checkInStart: z.string().regex(/^\d{2}:\d{2}$/),
+  checkInEnd: z.string().regex(/^\d{2}:\d{2}$/),
+  checkOutStart: z.string().regex(/^\d{2}:\d{2}$/),
+  checkOutEnd: z.string().regex(/^\d{2}:\d{2}$/),
+  offDays: z.array(z.string()).optional().default([]),
+});
+
+export type SettingsState = {
+  success?: boolean;
+  error?: string | null;
+}
+
+export async function updateAttendanceSettings(prevState: SettingsState, formData: FormData): Promise<SettingsState> {
+  try {
+    const validatedFields = settingsSchema.safeParse({
+      checkInStart: formData.get("checkInStart"),
+      checkInEnd: formData.get("checkInEnd"),
+      checkOutStart: formData.get("checkOutStart"),
+      checkOutEnd: formData.get("checkOutEnd"),
+      offDays: formData.getAll("offDays"),
+    });
+
+    if (!validatedFields.success) {
+      console.error("Validation Error:", validatedFields.error.flatten().fieldErrors);
+      return { error: "Data masukan tidak valid." };
+    }
+
+    const settingsRef = doc(db, "settings", "attendance");
+    await setDoc(settingsRef, validatedFields.data, { merge: true });
+
+    return { success: true, error: null };
+  } catch (e) {
+    console.error(e);
+    const errorMessage = e instanceof Error ? e.message : "Terjadi kesalahan yang tidak terduga.";
+    return { success: false, error: `Kesalahan server: ${errorMessage}` };
+  }
 }

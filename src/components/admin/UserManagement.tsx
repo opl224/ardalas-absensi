@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { LottieLoader } from '../ui/lottie-loader';
 import { cn } from '@/lib/utils';
@@ -25,7 +25,7 @@ interface User {
   name: string;
   email: string;
   role: 'Guru' | 'Admin';
-  status: 'Hadir' | 'Terlambat' | 'Absen' | 'Penipuan';
+  status: 'Hadir' | 'Terlambat' | 'Absen' | 'Penipuan' | 'Libur' | 'Belum Absen';
   avatar: string;
   subject?: string;
   class?: string;
@@ -60,6 +60,22 @@ export function UserManagement() {
     const fetchUsersAndStatus = async () => {
       setLoading(true);
       try {
+        // Fetch settings
+        const settingsDoc = await getDocs(doc(db, "settings", "attendance"));
+        const settings = settingsDoc.exists() ? settingsDoc.data() : {
+            checkInEndTime: '09:00',
+            offDays: ['Saturday', 'Sunday']
+        };
+
+        const now = new Date();
+        const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
+        const isOffDay = settings.offDays.includes(todayStr);
+
+        const [endHours, endMinutes] = settings.checkInEndTime.split(':').map(Number);
+        const checkInDeadline = new Date();
+        checkInDeadline.setHours(endHours, endMinutes, 0, 0);
+        const isPastDeadline = now > checkInDeadline;
+
         // 1. Fetch today's attendance records to determine status for all users
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
@@ -81,16 +97,14 @@ export function UserManagement() {
         });
 
         // 2. Fetch users from their respective collections
-        // Fetch all teachers from the 'teachers' collection
         const teachersQuery = collection(db, 'teachers');
         const teachersSnapshot = await getDocs(teachersQuery);
         const teacherUsers = teachersSnapshot.docs.map(doc => ({
           id: doc.id,
-          role: 'Guru', // Manually assign role
+          role: 'Guru',
           ...doc.data(),
         })) as User[];
 
-        // Fetch all admins from the 'users' collection
         const adminsQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
         const adminsSnapshot = await getDocs(adminsQuery);
         const adminUsers = adminsSnapshot.docs.map(doc => ({
@@ -103,7 +117,17 @@ export function UserManagement() {
         // 3. Combine user data with today's status
         const fetchedUsers = allUsers.map(user => {
           const userId = user.id;
-          const status = attendanceStatusMap.get(userId) || 'Absen';
+          let status = attendanceStatusMap.get(userId);
+
+          if (!status) { // If no attendance record found
+            if(isOffDay) {
+                status = 'Libur';
+            } else if (isPastDeadline) {
+                status = 'Absen';
+            } else {
+                status = 'Belum Absen';
+            }
+          }
 
           return {
             ...user,
@@ -139,7 +163,7 @@ export function UserManagement() {
 
   const paginationRange = useMemo(() => {
     const siblingCount = 1;
-    const totalPageNumbers = siblingCount + 5; // siblingCount + first/last + current + 2*ellipsis
+    const totalPageNumbers = siblingCount + 5;
 
     if (totalPageNumbers >= totalPages) {
       return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -182,6 +206,9 @@ export function UserManagement() {
         case 'Absen':
         case 'Penipuan':
             return 'destructive';
+        case 'Libur':
+        case 'Belum Absen':
+            return 'secondary';
         default: return 'outline';
     }
   }
