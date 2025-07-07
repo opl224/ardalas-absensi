@@ -13,6 +13,7 @@ import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 
 
 interface AttendanceRecord {
@@ -33,6 +34,8 @@ export function Attendance() {
     const [currentPage, setCurrentPage] = useState(1);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
+    const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+    const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -64,7 +67,7 @@ export function Attendance() {
                 title: "Berhasil",
                 description: "Catatan kehadiran telah dihapus.",
             });
-        } catch (error) {
+        } catch (error) => {
             console.error("Error deleting document: ", error);
             toast({
                 title: "Gagal",
@@ -76,7 +79,17 @@ export function Attendance() {
             setSelectedRecordId(null);
         }
     };
+    
+    const openViewDialog = (record: AttendanceRecord) => {
+        setSelectedRecord(record);
+        setIsViewDialogOpen(true);
+    };
 
+    const openDeleteDialog = (e: React.MouseEvent, id: string) => {
+        e.stopPropagation(); // prevent view dialog
+        setSelectedRecordId(id);
+        setIsDeleteDialogOpen(true);
+    }
 
     const totalPages = Math.ceil(attendanceData.length / RECORDS_PER_PAGE);
     const paginatedRecords = useMemo(() => {
@@ -138,15 +151,16 @@ export function Attendance() {
                     <div className="space-y-3">
                         {paginatedRecords.length > 0 ? (
                             paginatedRecords.map((item) => (
-                                <Card key={item.id} className="p-3 flex items-center gap-4 relative">
+                                <Card 
+                                    key={item.id} 
+                                    className="p-3 flex items-center gap-4 relative cursor-pointer hover:bg-accent/80 transition-colors"
+                                    onClick={() => openViewDialog(item)}
+                                >
                                     <Button
                                         variant="ghost"
                                         size="icon"
                                         className="absolute top-1 right-1 h-7 w-7 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
-                                        onClick={() => {
-                                            setSelectedRecordId(item.id);
-                                            setIsDeleteDialogOpen(true);
-                                        }}
+                                        onClick={(e) => openDeleteDialog(e, item.id)}
                                     >
                                         <Trash2 className="h-4 w-4" />
                                         <span className="sr-only">Hapus Catatan</span>
@@ -241,6 +255,21 @@ export function Attendance() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+                <DialogContent className="sm:max-w-xs">
+                    <DialogHeader>
+                        <DialogTitle className="text-center text-lg">{selectedRecord?.name}</DialogTitle>
+                    </DialogHeader>
+                    {selectedRecord && (
+                        <div className="flex flex-col items-center pt-2">
+                            <Avatar className="h-52 w-52 rounded-lg">
+                                <AvatarImage src={selectedRecord.checkInPhotoUrl} alt={selectedRecord.name} className="object-cover" />
+                                <AvatarFallback className="text-5xl rounded-lg">{selectedRecord.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
