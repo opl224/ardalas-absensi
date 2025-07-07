@@ -23,15 +23,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart"
-import { Bar, BarChart as RechartsBarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
 import { UserNav } from "@/components/UserNav"
 import { Sidebar, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarProvider, SidebarContent, SidebarHeader, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { Logo } from "@/components/Logo"
+import { AttendanceChart } from "@/components/admin/AttendanceChart"
 
 const attendanceData = [
     { name: "Alex Doe", role: "Student", time: "08:01 AM", status: "Present", location: "On-site" },
@@ -41,21 +36,6 @@ const attendanceData = [
     { name: "Jane Roe", role: "Student", time: "09:00 AM", status: "Fraudulent", location: "Off-site" },
     { name: "Mike Ross", role: "Teacher", time: "07:45 AM", status: "Present", location: "On-site" },
 ];
-
-const chartData = [
-    { day: "Mon", present: 350 },
-    { day: "Tue", present: 365 },
-    { day: "Wed", present: 355 },
-    { day: "Thu", present: 370 },
-    { day: "Fri", present: 360 },
-];
-
-const chartConfig = {
-    present: {
-        label: "Present",
-        color: "hsl(var(--primary))",
-    },
-};
 
 export default function AdminDashboard() {
   const adminUser = { name: "Admin User", role: "Admin" as const, avatar: "https://placehold.co/100x100.png" };
@@ -201,28 +181,7 @@ export default function AdminDashboard() {
                         </Table>
                     </CardContent>
                 </Card>
-                <Card>
-                    <CardHeader>
-                    <CardTitle>Weekly Attendance</CardTitle>
-                    <CardDescription>Student presence over the last week.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                     <ChartContainer config={chartConfig} className="h-[250px] w-full">
-                        <RechartsBarChart data={chartData} accessibilityLayer>
-                            <XAxis
-                                dataKey="day"
-                                tickLine={false}
-                                axisLine={false}
-                                tickMargin={8}
-                                tickFormatter={(value) => value.slice(0, 3)}
-                            />
-                            <YAxis tickLine={false} axisLine={false} tickMargin={8} />
-                            <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-                            <Bar dataKey="present" fill="var(--color-present)" radius={4} />
-                        </RechartsBarChart>
-                        </ChartContainer>
-                    </CardContent>
-                </Card>
+                <AttendanceChart />
                 </div>
             </main>
         </div>
