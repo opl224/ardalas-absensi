@@ -121,7 +121,7 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
       const context = canvas.getContext("2d");
       if (context) {
         context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-        const dataUri = canvas.toDataURL("image/jpeg");
+        const dataUri = canvas.toDataURL("image/jpeg", 0.8);
         setPhotoDataUri(dataUri);
         stopCamera();
       }

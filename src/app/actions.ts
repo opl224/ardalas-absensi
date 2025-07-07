@@ -1,6 +1,5 @@
 'use server'
 
-// import { validateAttendance, ValidateAttendanceInput } from "@/ai/flows/attendance-validator";
 import { supabase } from "@/lib/supabase";
 import { z } from "zod";
 import { doc, setDoc, collection, serverTimestamp, updateDoc } from "firebase/firestore"; 
@@ -81,22 +80,8 @@ export async function handleCheckin(
     }
     const publicUrl = urlData.publicUrl;
 
-    // 2. AI Validator is temporarily disabled.
+    // 2. AI Validator is disabled.
     const result = { isFraudulent: false, reason: 'Validasi AI dilewati.' };
-    /*
-    const aiInput: ValidateAttendanceInput = {
-      photoDataUri,
-      latitude,
-      longitude,
-      expectedLocation: {
-        latitude: -6.2088, // Lokasi sekolah statis untuk sekarang
-        longitude: 106.8456,
-        radius: 500,
-      },
-    };
-
-    const result = await validateAttendance(aiInput);
-    */
     
     // 3. Save attendance record to Firestore
     const attendanceRecord = {
