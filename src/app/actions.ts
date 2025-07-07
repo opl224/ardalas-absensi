@@ -63,3 +63,21 @@ export async function handleCheckin(
     return { error: `Server error: ${errorMessage} Please try again.` };
   }
 }
+
+
+export type CheckoutState = {
+    success?: boolean;
+    error?: string;
+};
+
+export async function handleCheckout(prevState: CheckoutState, formData: FormData): Promise<CheckoutState> {
+    try {
+        // In a real app, you would save the checkout time for the user in a database.
+        console.log("User is checking out.");
+        return { success: true };
+    } catch (e) {
+        console.error(e);
+        const errorMessage = e instanceof Error ? e.message : "An unexpected error occurred.";
+        return { error: `Server error: ${errorMessage} Please try again.` };
+    }
+}

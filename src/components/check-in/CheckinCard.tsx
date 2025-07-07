@@ -15,6 +15,7 @@ interface CheckinCardProps {
     name: string;
     role: "Student" | "Teacher";
   };
+  onSuccess?: () => void;
 }
 
 function SubmitButton({ disabled }: { disabled: boolean }) {
@@ -27,7 +28,7 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
   );
 }
 
-export function CheckinCard({ user }: CheckinCardProps) {
+export function CheckinCard({ user, onSuccess }: CheckinCardProps) {
   const initialState: CheckinState = {};
   const [state, formAction] = useFormState(handleCheckin, initialState);
 
@@ -93,12 +94,15 @@ export function CheckinCard({ user }: CheckinCardProps) {
     if (state.error || state.success || state.isFraudulent) {
       setResultDialogOpen(true);
       if (state.success) {
-        // On success, reset state which will trigger other effects to clear storage
-        setPhotoDataUri(null);
-        setLocation(null);
+        if (isClient) {
+          localStorage.setItem('checkin_status', 'checked_in');
+          localStorage.setItem('checkin_time', new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
+        }
+        setLocation(null); // Clear location from state
+        onSuccess?.();
       }
     }
-  }, [state]);
+  }, [state, onSuccess, isClient]);
 
   const getLocation = () => {
     setLocationError(null);
@@ -173,7 +177,6 @@ export function CheckinCard({ user }: CheckinCardProps) {
   };
 
   const resetCheckin = () => {
-    // Just setting state to null will trigger useEffects to clear storage
     setPhotoDataUri(null);
     setLocation(null);
     setResultDialogOpen(false);
@@ -273,7 +276,7 @@ export function CheckinCard({ user }: CheckinCardProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={resetCheckin}>Close</AlertDialogAction>
+            <AlertDialogAction onClick={onSuccess ? () => {} : resetCheckin}>Close</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
