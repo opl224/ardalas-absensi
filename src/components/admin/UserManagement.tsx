@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, Download, Eye, ChevronLeft, ChevronRight, Briefcase, BookCopy } from 'lucide-react';
+import { Search, Download, Eye, ChevronLeft, ChevronRight, Briefcase, BookCopy, Phone, Home, VenetianMask, BookMarked } from 'lucide-react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { LottieLoader } from '../ui/lottie-loader';
@@ -17,14 +17,30 @@ interface User {
   id: string;
   name: string;
   email: string;
-  role: 'Guru' | 'Siswa' | 'Admin';
+  role: 'Guru' | 'Admin';
   status: 'Hadir' | 'Terlambat' | 'Absen' | 'Penipuan';
   avatar: string;
   subject?: string;
   class?: string;
+  gender?: string;
+  phone?: string;
+  religion?: string;
+  address?: string;
 }
 
 const USERS_PER_PAGE = 10;
+
+const DetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value?: string }) => {
+    if (!value) return null;
+    return (
+        <div className="flex items-start gap-2 text-muted-foreground">
+            <Icon className="h-4 w-4 mt-0.5 shrink-0" />
+            <div className="min-w-0">
+                <span>{label}: <strong className="text-foreground break-words">{value}</strong></span>
+            </div>
+        </div>
+    );
+};
 
 export function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
@@ -207,21 +223,19 @@ export function UserManagement() {
                                 </Button>
                             </div>
                         </div>
-                        {expandedUserId === user.id && user.role === 'Guru' && (
+                        {expandedUserId === user.id && (
                             <div className="pl-16 space-y-2 text-sm pt-2">
                                 <Separator />
-                                <div className="pt-2">
-                                    {user.subject && (
-                                        <div className="flex items-center gap-2 text-muted-foreground">
-                                            <BookCopy className="h-4 w-4" />
-                                            <span>Mata Pelajaran: <strong className='text-foreground'>{user.subject}</strong></span>
-                                        </div>
-                                    )}
-                                    {user.class && (
-                                        <div className="flex items-center gap-2 text-muted-foreground mt-1">
-                                            <Briefcase className="h-4 w-4" />
-                                            <span>Kelas: <strong className='text-foreground'>{user.class}</strong></span>
-                                        </div>
+                                <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+                                    <DetailItem icon={VenetianMask} label="Jenis Kelamin" value={user.gender} />
+                                    <DetailItem icon={Phone} label="No. Telepon" value={user.phone} />
+                                    <DetailItem icon={BookMarked} label="Agama" value={user.religion} />
+                                    <DetailItem icon={Home} label="Alamat" value={user.address} />
+                                    {user.role === 'Guru' && (
+                                        <>
+                                            <DetailItem icon={BookCopy} label="Mata Pelajaran" value={user.subject} />
+                                            <DetailItem icon={Briefcase} label="Kelas" value={user.class} />
+                                        </>
                                     )}
                                 </div>
                             </div>

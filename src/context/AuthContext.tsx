@@ -16,6 +16,10 @@ export interface UserProfile {
     avatar?: string;
     subject?: string;
     class?: string;
+    gender?: string;
+    phone?: string;
+    religion?: string;
+    address?: string;
 }
 
 export interface AuthContextType {
