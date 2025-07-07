@@ -127,10 +127,10 @@ export function MobileAdminDashboard() {
                 transition={transition}
                 drag={!isSubView ? "x" : false}
                 dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0.2}
+                dragElastic={1}
                 onDragEnd={(e, { offset, velocity }) => {
                     if (isSubView) return;
-                    const swipeThreshold = 50;
+                    const swipeThreshold = 100;
                     if (offset.x < -swipeThreshold || velocity.x < -500) {
                         handleSwipe(1); // Swipe left
                     } else if (offset.x > swipeThreshold || velocity.x > 500) {
