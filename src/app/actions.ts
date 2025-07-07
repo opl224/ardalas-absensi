@@ -1,6 +1,6 @@
 'use server'
 
-import { validateAttendance, ValidateAttendanceInput } from "@/ai/flows/attendance-validator";
+// import { validateAttendance, ValidateAttendanceInput } from "@/ai/flows/attendance-validator";
 import { supabase } from "@/lib/supabase";
 import { z } from "zod";
 import { doc, setDoc, collection, serverTimestamp, updateDoc } from "firebase/firestore"; 
@@ -25,6 +25,9 @@ export type CheckinState = {
 // Helper function to convert data URI to Blob using Buffer for server-side reliability
 function dataURItoBlob(dataURI: string) {
     const base64 = dataURI.split(',')[1];
+    if (!base64) {
+        throw new Error('Invalid data URI');
+    }
     const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
     const buffer = Buffer.from(base64, 'base64');
     return new Blob([buffer], { type: mimeString });
@@ -78,10 +81,7 @@ export async function handleCheckin(
     }
     const publicUrl = urlData.publicUrl;
 
-    // 2. Call AI Validator
-    // The "fetch failed" error can happen when a server-side process like this AI call fails,
-    // often due to missing API keys. I'm temporarily disabling it to ensure check-in works.
-    // To re-enable, please make sure your Google AI API key is correctly configured.
+    // 2. AI Validator is temporarily disabled.
     const result = { isFraudulent: false, reason: 'Validasi AI dilewati.' };
     /*
     const aiInput: ValidateAttendanceInput = {
@@ -121,7 +121,7 @@ export async function handleCheckin(
     return { success: true, reason: "Absensi berhasil ditandai!" };
 
   } catch (e) {
-    console.error(e);
+    console.error('An error occurred during check-in:', e);
     const errorMessage = e instanceof Error ? e.message : "Terjadi kesalahan yang tidak terduga.";
     return { error: `Kesalahan server: ${errorMessage}. Silakan coba lagi.` };
   }
