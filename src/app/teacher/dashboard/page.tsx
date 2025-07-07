@@ -32,12 +32,56 @@ import { Logo } from "@/components/Logo"
 import { MobileTeacherDashboard } from "@/components/teacher/MobileTeacherDashboard"
 import { CheckinCard } from "@/components/check-in/CheckinCard"
 import { useAuth } from "@/hooks/useAuth";
+import { collection, query, where, getDocs, Timestamp, onSnapshot, orderBy, startOfToday, endOfToday } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
-// TODO: Ganti dengan data asli dari Firestore
-const studentAttendanceData: any[] = [];
+interface StudentAttendanceRecord {
+    id: string;
+    name: string;
+    checkInTime: Timestamp;
+    status: 'Hadir' | 'Terlambat' | 'Penipuan' | 'Absen';
+}
 
 export default function TeacherDashboard() {
   const { userProfile } = useAuth();
+  const [studentAttendanceData, setStudentAttendanceData] = useState<StudentAttendanceRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!userProfile || !userProfile.subject) return;
+
+    setLoading(true);
+    // TODO: This query assumes students have a `class` field that matches the teacher's subject.
+    // This might need adjustment based on your actual data structure.
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const q = query(
+      collection(db, "attendance"),
+      where("role", "==", "siswa"),
+      // where("className", "==", userProfile.subject), // Assuming teacher's subject matches a class name
+      where("checkInTime", ">=", todayStart),
+      where("checkInTime", "<=", todayEnd),
+      orderBy("checkInTime", "desc")
+    );
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const data = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          checkInTime: doc.data().checkInTime,
+      })) as StudentAttendanceRecord[];
+      setStudentAttendanceData(data);
+      setLoading(false);
+    }, (error) => {
+        console.error("Error fetching student attendance: ", error);
+        setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [userProfile]);
   
   if (!userProfile) {
       return <div>Memuat...</div>
@@ -45,7 +89,7 @@ export default function TeacherDashboard() {
 
   const user = {
     name: userProfile.name,
-    role: "Teacher" as const,
+    role: "Guru" as const,
     avatar: userProfile.avatar || "https://placehold.co/100x100.png",
     subject: userProfile.subject || "Tidak diketahui"
   };
@@ -130,7 +174,7 @@ export default function TeacherDashboard() {
                                 <GraduationCap className="h-4 w-4 text-primary" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold text-primary">40</div>
+                                <div className="text-2xl font-bold text-primary">{studentAttendanceData.filter(s => s.status === 'Hadir').length}</div>
                                 <p className="text-xs text-muted-foreground">di kelas Anda saat ini</p>
                             </CardContent>
                         </Card>
@@ -140,8 +184,9 @@ export default function TeacherDashboard() {
                                 <GraduationCap className="h-4 w-4 text-destructive" />
                             </CardHeader>
                             <CardContent>
+                                 {/* TODO: This needs to be calculated based on total students */}
                                 <div className="text-2xl font-bold text-destructive">5</div>
-                                <p className="text-xs text-muted-foreground">termasuk 2 terlambat</p>
+                                <p className="text-xs text-muted-foreground">termasuk {studentAttendanceData.filter(s => s.status === 'Terlambat').length} terlambat</p>
                             </CardContent>
                         </Card>
                          <Card>
@@ -173,13 +218,14 @@ export default function TeacherDashboard() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {studentAttendanceData.length === 0 && <TableRow><TableCell colSpan={3}>Belum ada data absensi hari ini.</TableCell></TableRow>}
-                                    {studentAttendanceData.map((item, index) => (
-                                    <TableRow key={index}>
+                                    {loading && <TableRow><TableCell colSpan={3}>Memuat...</TableCell></TableRow>}
+                                    {!loading && studentAttendanceData.length === 0 && <TableRow><TableCell colSpan={3}>Belum ada data absensi hari ini.</TableCell></TableRow>}
+                                    {!loading && studentAttendanceData.map((item) => (
+                                    <TableRow key={item.id}>
                                         <TableCell>
                                         <div className="font-medium">{item.name}</div>
                                         </TableCell>
-                                        <TableCell className="hidden sm:table-cell">{item.time}</TableCell>
+                                        <TableCell className="hidden sm:table-cell">{item.checkInTime.toDate().toLocaleTimeString('id-ID')}</TableCell>
                                         <TableCell>
                                         <Badge variant={
                                             item.status === 'Hadir' ? 'default' :

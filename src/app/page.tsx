@@ -48,9 +48,9 @@ export default function LoginPage() {
         const role = userData.role;
         if (role === 'admin') {
           router.push('/admin/dashboard');
-        } else if (role === 'teacher') {
+        } else if (role === 'guru') {
           router.push('/teacher/dashboard');
-        } else if (role === 'student') {
+        } else if (role === 'siswa') {
           router.push('/student/dashboard');
         } else {
           throw new Error('Peran pengguna tidak dikenali.');

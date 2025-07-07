@@ -19,7 +19,7 @@ export default function StudentDashboard() {
   
   const user = {
     name: userProfile.name,
-    role: "Student" as const,
+    role: "Siswa" as const,
     avatar: userProfile.avatar || "https://placehold.co/100x100.png"
   };
 
