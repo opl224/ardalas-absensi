@@ -28,7 +28,7 @@ export function Attendance() {
             setLoading(true);
             try {
                 // This is a placeholder fetch, replace with your actual Firestore query
-                const q = query(collection(db, "attendance"), orderBy("checkInTime", "desc"), limit(20));
+                const q = query(collection(db, "photo_attendances"), orderBy("checkInTime", "desc"), limit(20));
                 const querySnapshot = await getDocs(q);
                 const data: AttendanceRecord[] = querySnapshot.docs.map(doc => ({
                     id: doc.id,

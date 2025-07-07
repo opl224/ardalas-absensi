@@ -54,7 +54,7 @@ export default function AdminDashboard() {
     // TODO: Implement real-time data fetching from Firestore
     const fetchAttendance = async () => {
         try {
-            const q = query(collection(db, "attendance"), orderBy("checkInTime", "desc"), limit(10));
+            const q = query(collection(db, "photo_attendances"), orderBy("checkInTime", "desc"), limit(10));
             const querySnapshot = await getDocs(q);
             const data = querySnapshot.docs.map(doc => ({
                 id: doc.id,

@@ -96,7 +96,7 @@ export async function handleCheckin(
       status: result.isFraudulent ? "Penipuan" : "Hadir",
     };
 
-    const attendanceRef = doc(collection(db, "attendance"));
+    const attendanceRef = doc(collection(db, "photo_attendances"));
     await setDoc(attendanceRef, attendanceRecord);
 
     if (result.isFraudulent) {
@@ -127,7 +127,7 @@ export async function handleCheckout(prevState: CheckoutState, formData: FormDat
             return { error: "Informasi pengguna atau absensi tidak ditemukan." };
         }
 
-        const attendanceRef = doc(db, "attendance", attendanceId);
+        const attendanceRef = doc(db, "photo_attendances", attendanceId);
         await updateDoc(attendanceRef, {
             checkOutTime: serverTimestamp(),
             status: 'Hadir', // Assuming they are not "late" anymore when checking out

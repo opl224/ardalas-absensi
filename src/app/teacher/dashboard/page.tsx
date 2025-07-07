@@ -60,7 +60,7 @@ export default function TeacherDashboard() {
     todayEnd.setHours(23, 59, 59, 999);
 
     const q = query(
-      collection(db, "attendance"),
+      collection(db, "photo_attendances"),
       where("role", "==", "siswa"),
       // where("className", "==", userProfile.subject), // Assuming teacher's subject matches a class name
       where("checkInTime", ">=", todayStart),

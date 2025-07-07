@@ -116,12 +116,16 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      const MAX_WIDTH = 600; // Resize to max 600px width
+
+      const aspectRatio = video.videoWidth / video.videoHeight;
+      canvas.width = MAX_WIDTH;
+      canvas.height = MAX_WIDTH / aspectRatio;
+
       const context = canvas.getContext("2d");
       if (context) {
-        context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-        const dataUri = canvas.toDataURL("image/jpeg", 0.8);
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUri = canvas.toDataURL("image/jpeg", 0.7); // 70% quality JPEG
         setPhotoDataUri(dataUri);
         stopCamera();
       }
