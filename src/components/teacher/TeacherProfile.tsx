@@ -31,7 +31,7 @@ export function TeacherProfile({ user }: TeacherProfileProps) {
         <>
             <div className="bg-gray-50 dark:bg-zinc-900 p-4 min-h-screen">
                 <header className="mb-6">
-                    <h1 className="text-xl font-bold text-foreground">Profile</h1>
+                    <h1 className="text-xl font-bold text-foreground">Profil</h1>
                 </header>
 
                 <div className="flex items-center gap-4 mb-6">
@@ -47,18 +47,18 @@ export function TeacherProfile({ user }: TeacherProfileProps) {
 
                 <Card className="mb-6">
                     <CardHeader>
-                        <CardTitle className="text-lg">Profile Information</CardTitle>
+                        <CardTitle className="text-lg">Informasi Profil</CardTitle>
                     </CardHeader>
                     <CardContent className="divide-y divide-border pt-0">
-                        <InfoRow icon={User} label="Full Name" value={user.name} />
+                        <InfoRow icon={User} label="Nama Lengkap" value={user.name} />
                         <InfoRow icon={Mail} label="Email" value={`${user.name.toLowerCase().replace(' ', '.')}@school.edu`} />
-                        <InfoRow icon={Book} label="Subject" value={user.subject} />
+                        <InfoRow icon={Book} label="Mata Pelajaran" value={user.subject} />
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-lg">Settings</CardTitle>
+                        <CardTitle className="text-lg">Pengaturan</CardTitle>
                     </CardHeader>
                      <CardContent className="divide-y divide-border pt-0">
                         <button
@@ -67,7 +67,7 @@ export function TeacherProfile({ user }: TeacherProfileProps) {
                         >
                             <div className="flex items-center gap-4 text-destructive">
                                 <LogOut className="h-6 w-6" />
-                                <span className="font-medium">Logout</span>
+                                <span className="font-medium">Keluar</span>
                             </div>
                         </button>
                     </CardContent>

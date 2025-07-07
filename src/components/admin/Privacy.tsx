@@ -21,34 +21,34 @@ export function Privacy({ onBack }: { onBack: () => void }) {
                 <button onClick={onBack} className="p-1">
                     <ArrowLeft className="h-6 w-6" />
                 </button>
-                <h1 className="text-xl font-bold text-foreground">Privacy</h1>
+                <h1 className="text-xl font-bold text-foreground">Privasi</h1>
             </header>
 
             <div className="text-center mb-8">
                 <Shield className="h-12 w-12 text-primary mx-auto mb-2" />
-                <h2 className="text-2xl font-bold">Privacy & Security</h2>
-                <p className="text-muted-foreground">Manage your privacy settings and data</p>
+                <h2 className="text-2xl font-bold">Privasi & Keamanan</h2>
+                <p className="text-muted-foreground">Kelola pengaturan privasi dan data Anda</p>
             </div>
 
             <Card>
                 <CardContent className="p-4 pt-2">
-                     <h3 className="font-semibold text-lg my-2">Data Privacy</h3>
+                     <h3 className="font-semibold text-lg my-2">Privasi Data</h3>
                      <Separator />
                      <div className="divide-y divide-border">
                         <PrivacyRow 
                             icon={Eye} 
-                            title="Data Collection" 
-                            description="We collect attendance data, location information, and photos for verification purposes only." 
+                            title="Pengumpulan Data" 
+                            description="Kami mengumpulkan data kehadiran, informasi lokasi, dan foto hanya untuk tujuan verifikasi." 
                         />
                          <PrivacyRow 
                             icon={Database} 
-                            title="Data Storage" 
-                            description="Your data is securely stored and encrypted. We do not share your personal information with third parties." 
+                            title="Penyimpanan Data" 
+                            description="Data Anda disimpan dan dienkripsi dengan aman. Kami tidak membagikan informasi pribadi Anda dengan pihak ketiga." 
                         />
                          <PrivacyRow 
                             icon={Lock} 
-                            title="Data Security" 
-                            description="All data transmission is encrypted using industry-standard security protocols." 
+                            title="Keamanan Data" 
+                            description="Semua transmisi data dienkripsi menggunakan protokol keamanan standar industri." 
                         />
                      </div>
                 </CardContent>

@@ -30,12 +30,12 @@ import { AttendanceChart } from "@/components/admin/AttendanceChart"
 import { MobileAdminDashboard } from "@/components/admin/MobileAdminDashboard"
 
 const attendanceData = [
-    { name: "Alex Doe", role: "Student", time: "08:01 AM", status: "Present", location: "On-site" },
-    { name: "Samantha Bee", role: "Student", time: "08:03 AM", status: "Present", location: "On-site" },
-    { name: "Dr. Evelyn Reed", role: "Teacher", time: "07:55 AM", status: "Present", location: "On-site" },
-    { name: "John Smith", role: "Student", time: "08:15 AM", status: "Late", location: "On-site" },
-    { name: "Jane Roe", role: "Student", time: "09:00 AM", status: "Fraudulent", location: "Off-site" },
-    { name: "Mike Ross", role: "Teacher", time: "07:45 AM", status: "Present", location: "On-site" },
+    { name: "Alex Doe", role: "Siswa", time: "08:01 AM", status: "Hadir", location: "Di tempat" },
+    { name: "Samantha Bee", role: "Siswa", time: "08:03 AM", status: "Hadir", location: "Di tempat" },
+    { name: "Dr. Evelyn Reed", role: "Guru", time: "07:55 AM", status: "Hadir", location: "Di tempat" },
+    { name: "John Smith", role: "Siswa", time: "08:15 AM", status: "Terlambat", location: "Di tempat" },
+    { name: "Jane Roe", role: "Siswa", time: "09:00 AM", status: "Penipuan", location: "Di luar lokasi" },
+    { name: "Mike Ross", role: "Guru", time: "07:45 AM", status: "Hadir", location: "Di tempat" },
 ];
 
 export default function AdminDashboard() {
@@ -53,27 +53,27 @@ export default function AdminDashboard() {
             <SidebarContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton isActive tooltip="Dashboard">
+                  <SidebarMenuButton isActive tooltip="Dasbor">
                     <Home />
-                    <span>Dashboard</span>
+                    <span>Dasbor</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="Students">
+                  <SidebarMenuButton tooltip="Siswa">
                     <GraduationCap />
-                    <span>Students</span>
+                    <span>Siswa</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="Teachers">
+                  <SidebarMenuButton tooltip="Guru">
                     <Briefcase />
-                    <span>Teachers</span>
+                    <span>Guru</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="Reports">
+                  <SidebarMenuButton tooltip="Laporan">
                     <LineChart />
-                    <span>Reports</span>
+                    <span>Laporan</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
@@ -87,7 +87,7 @@ export default function AdminDashboard() {
                     <BreadcrumbList>
                         <BreadcrumbItem>
                         <BreadcrumbLink asChild>
-                            <Link href="#">Dashboard</Link>
+                            <Link href="#">Dasbor</Link>
                         </BreadcrumbLink>
                         </BreadcrumbItem>
                     </BreadcrumbList>
@@ -96,7 +96,7 @@ export default function AdminDashboard() {
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                         type="search"
-                        placeholder="Search..."
+                        placeholder="Cari..."
                         className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
                     />
                     </div>
@@ -106,62 +106,62 @@ export default function AdminDashboard() {
                     <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                        <CardTitle className="text-sm font-medium">Total Pengguna</CardTitle>
                         <Users2 className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
                         <div className="text-2xl font-bold">450</div>
-                        <p className="text-xs text-muted-foreground">380 Students, 70 Teachers</p>
+                        <p className="text-xs text-muted-foreground">380 Siswa, 70 Guru</p>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Present Today</CardTitle>
+                        <CardTitle className="text-sm font-medium">Hadir Hari Ini</CardTitle>
                         <BookUser className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
                         <div className="text-2xl font-bold text-primary">370</div>
-                        <p className="text-xs text-muted-foreground">+5% from yesterday</p>
+                        <p className="text-xs text-muted-foreground">+5% dari kemarin</p>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Absent Today</CardTitle>
+                        <CardTitle className="text-sm font-medium">Absen Hari Ini</CardTitle>
                         <Users className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
                         <div className="text-2xl font-bold text-destructive">10</div>
-                        <p className="text-xs text-muted-foreground">2.6% of students</p>
+                        <p className="text-xs text-muted-foreground">2.6% dari siswa</p>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Fraud Alerts</CardTitle>
+                        <CardTitle className="text-sm font-medium">Peringatan Penipuan</CardTitle>
                         <AlertTriangle className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
                         <div className="text-2xl font-bold text-destructive">1</div>
-                        <p className="text-xs text-muted-foreground">Manual verification needed</p>
+                        <p className="text-xs text-muted-foreground">Verifikasi manual diperlukan</p>
                         </CardContent>
                     </Card>
                     </div>
                     <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
                     <Card className="xl:col-span-2">
                         <CardHeader>
-                        <CardTitle>Recent Activity</CardTitle>
+                        <CardTitle>Aktivitas Terbaru</CardTitle>
                         <CardDescription>
-                            A log of the latest attendance check-ins.
+                            Catatan absensi masuk terbaru.
                         </CardDescription>
                         </CardHeader>
                         <CardContent>
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                <TableHead>User</TableHead>
-                                <TableHead className="hidden sm:table-cell">Role</TableHead>
-                                <TableHead className="hidden sm:table-cell">Time</TableHead>
+                                <TableHead>Pengguna</TableHead>
+                                <TableHead className="hidden sm:table-cell">Peran</TableHead>
+                                <TableHead className="hidden sm:table-cell">Waktu</TableHead>
                                 <TableHead>Status</TableHead>
-                                <TableHead className="hidden md:table-cell">Location</TableHead>
+                                <TableHead className="hidden md:table-cell">Lokasi</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -174,8 +174,8 @@ export default function AdminDashboard() {
                                     <TableCell className="hidden sm:table-cell">{item.time}</TableCell>
                                     <TableCell>
                                     <Badge variant={
-                                        item.status === 'Present' ? 'default' :
-                                        item.status === 'Late' ? 'secondary' : 'destructive'
+                                        item.status === 'Hadir' ? 'default' :
+                                        item.status === 'Terlambat' ? 'secondary' : 'destructive'
                                     }>{item.status}</Badge>
                                     </TableCell>
                                     <TableCell className="hidden md:table-cell">{item.location}</TableCell>

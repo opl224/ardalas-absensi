@@ -12,19 +12,19 @@ interface AttendanceHistoryProps {
 }
 
 const historyData = [
-  { date: 'July 7, 2025', checkIn: '08:05 AM', checkOut: '03:30 PM', status: 'Present' },
-  { date: 'July 6, 2025', checkIn: '08:01 AM', checkOut: '03:32 PM', status: 'Present' },
-  { date: 'July 5, 2025', checkIn: '08:17 AM', checkOut: '03:25 PM', status: 'Late' },
-  { date: 'July 4, 2025', checkIn: '-', checkOut: '-', status: 'Absent' },
-  { date: 'July 3, 2025', checkIn: '08:00 AM', checkOut: '03:30 PM', status: 'Present' },
-  { date: 'July 2, 2025', checkIn: '08:03 AM', checkOut: '03:31 PM', status: 'Present' },
+  { date: '7 Juli 2025', checkIn: '08:05 AM', checkOut: '03:30 PM', status: 'Hadir' },
+  { date: '6 Juli 2025', checkIn: '08:01 AM', checkOut: '03:32 PM', status: 'Hadir' },
+  { date: '5 Juli 2025', checkIn: '08:17 AM', checkOut: '03:25 PM', status: 'Terlambat' },
+  { date: '4 Juli 2025', checkIn: '-', checkOut: '-', status: 'Absen' },
+  { date: '3 Juli 2025', checkIn: '08:00 AM', checkOut: '03:30 PM', status: 'Hadir' },
+  { date: '2 Juli 2025', checkIn: '08:03 AM', checkOut: '03:31 PM', status: 'Hadir' },
 ];
 
 export function AttendanceHistory({ user }: AttendanceHistoryProps) {
     return (
         <div className="bg-gray-50 dark:bg-zinc-900 p-4 min-h-screen">
             <header className="mb-6">
-                <h1 className="text-xl font-bold text-foreground">Attendance History</h1>
+                <h1 className="text-xl font-bold text-foreground">Riwayat Kehadiran</h1>
             </header>
 
             <div className="space-y-3">
@@ -36,11 +36,11 @@ export function AttendanceHistory({ user }: AttendanceHistoryProps) {
                         </Avatar>
                         <div className="flex-grow">
                             <p className="font-semibold text-foreground">{item.date}</p>
-                            <p className="text-sm text-muted-foreground">In: {item.checkIn} | Out: {item.checkOut}</p>
+                            <p className="text-sm text-muted-foreground">Masuk: {item.checkIn} | Keluar: {item.checkOut}</p>
                         </div>
                         <Badge variant={
-                            item.status === 'Present' ? 'default' :
-                            item.status === 'Late' ? 'secondary' : 'destructive'
+                            item.status === 'Hadir' ? 'default' :
+                            item.status === 'Terlambat' ? 'secondary' : 'destructive'
                         } className="w-20 justify-center">{item.status}</Badge>
                     </Card>
                 ))}

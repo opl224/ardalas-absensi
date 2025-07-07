@@ -22,11 +22,13 @@ const NavLink = ({
   view,
   setView,
   children,
+  label
 }: {
   activeView: ActiveView;
   view: ActiveView;
   setView: (view: ActiveView) => void;
   children: React.ReactNode;
+  label: string;
 }) => {
   return (
     <button
@@ -36,6 +38,7 @@ const NavLink = ({
       }`}
     >
       {children}
+      <span className="text-xs mt-1 font-medium">{label}</span>
     </button>
   );
 };
@@ -58,7 +61,7 @@ export function MobileStudentDashboard({ user }: MobileStudentDashboardProps) {
                 <button onClick={() => setActiveView('home')} className="p-1">
                     <ArrowLeft className="h-6 w-6" />
                 </button>
-                <h1 className="text-xl font-bold text-foreground">Attendance</h1>
+                <h1 className="text-xl font-bold text-foreground">Kehadiran</h1>
             </header>
             <div className="flex-grow flex items-center justify-center">
               <CheckinCard user={user} onSuccess={() => setActiveView('home')} />
@@ -83,17 +86,14 @@ export function MobileStudentDashboard({ user }: MobileStudentDashboardProps) {
       <main className="flex-grow pb-20">{renderContent()}</main>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t p-1 flex justify-around">
-        <NavLink activeView={activeView} view="home" setView={setActiveView}>
+        <NavLink activeView={activeView} view="home" setView={setActiveView} label="Beranda">
           <Home className="h-6 w-6" />
-          <span className="text-xs mt-1 font-medium">Home</span>
         </NavLink>
-        <NavLink activeView={activeView} view="history" setView={setActiveView}>
+        <NavLink activeView={activeView} view="history" setView={setActiveView} label="Riwayat">
           <History className="h-6 w-6" />
-          <span className="text-xs mt-1">History</span>
         </NavLink>
-        <NavLink activeView={activeView} view="profile" setView={setActiveView}>
+        <NavLink activeView={activeView} view="profile" setView={setActiveView} label="Profil">
           <UserIcon className="h-6 w-6" />
-          <span className="text-xs mt-1">Profile</span>
         </NavLink>
       </nav>
     </div>

@@ -25,21 +25,21 @@ export default function StudentDashboard() {
             <SidebarContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton isActive tooltip="Dashboard">
+                  <SidebarMenuButton isActive tooltip="Dasbor">
                     <Home />
-                    <span>Dashboard</span>
+                    <span>Dasbor</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="My Grades">
+                  <SidebarMenuButton tooltip="Nilai Saya">
                     <GraduationCap />
-                    <span>My Grades</span>
+                    <span>Nilai Saya</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="Courses">
+                  <SidebarMenuButton tooltip="Mata Pelajaran">
                     <BookOpen />
-                    <span>Courses</span>
+                    <span>Mata Pelajaran</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
@@ -52,7 +52,7 @@ export default function StudentDashboard() {
                   <BreadcrumbList>
                     <BreadcrumbItem>
                       <BreadcrumbLink asChild>
-                        <Link href="#">Dashboard</Link>
+                        <Link href="#">Dasbor</Link>
                       </BreadcrumbLink>
                     </BreadcrumbItem>
                   </BreadcrumbList>
@@ -61,7 +61,7 @@ export default function StudentDashboard() {
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="search"
-                    placeholder="Search..."
+                    placeholder="Cari..."
                     className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
                   />
                 </div>

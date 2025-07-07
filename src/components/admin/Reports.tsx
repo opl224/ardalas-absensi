@@ -8,42 +8,42 @@ export function Reports() {
     return (
         <div className="bg-gray-50 dark:bg-zinc-900 p-4">
             <header className="flex items-center justify-between mb-4">
-                <h1 className="text-xl font-bold text-foreground">View Reports</h1>
+                <h1 className="text-xl font-bold text-foreground">Lihat Laporan</h1>
             </header>
             <div className="space-y-4">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Daily Attendance Report</CardTitle>
-                        <CardDescription>A summary of today's attendance records.</CardDescription>
+                        <CardTitle>Laporan Kehadiran Harian</CardTitle>
+                        <CardDescription>Ringkasan catatan kehadiran hari ini.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <Button>
                             <Download className="mr-2 h-4 w-4" />
-                            Download PDF
+                            Unduh PDF
                         </Button>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader>
-                        <CardTitle>Monthly Attendance Summary</CardTitle>
-                        <CardDescription>An overview of attendance for the current month.</CardDescription>
+                        <CardTitle>Ringkasan Kehadiran Bulanan</CardTitle>
+                        <CardDescription>Gambaran kehadiran untuk bulan ini.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <Button>
                             <Download className="mr-2 h-4 w-4" />
-                            Download CSV
+                            Unduh CSV
                         </Button>
                     </CardContent>
                 </Card>
                  <Card>
                     <CardHeader>
-                        <CardTitle>Fraud Report</CardTitle>
-                        <CardDescription>A log of all fraudulent check-in attempts.</CardDescription>
+                        <CardTitle>Laporan Penipuan</CardTitle>
+                        <CardDescription>Catatan semua upaya check-in yang curang.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <Button>
                             <Download className="mr-2 h-4 w-4" />
-                            Download PDF
+                            Unduh PDF
                         </Button>
                     </CardContent>
                 </Card>

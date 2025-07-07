@@ -42,15 +42,15 @@ export function UserNav({ user }: UserNavProps) {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem>
-            Profile
+            Profil
           </DropdownMenuItem>
           <DropdownMenuItem>
-            Settings
+            Pengaturan
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/">Log out</Link>
+          <Link href="/">Keluar</Link>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

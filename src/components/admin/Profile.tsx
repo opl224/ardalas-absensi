@@ -37,7 +37,7 @@ export function Profile({ setActiveView }: { setActiveView: (view: string) => vo
         <>
             <div className="bg-gray-50 dark:bg-zinc-900 p-4 min-h-screen">
                 <header className="mb-6">
-                    <h1 className="text-xl font-bold text-foreground">Profile</h1>
+                    <h1 className="text-xl font-bold text-foreground">Profil</h1>
                 </header>
 
                 <div className="flex items-center gap-4 mb-6">
@@ -53,29 +53,29 @@ export function Profile({ setActiveView }: { setActiveView: (view: string) => vo
 
                 <Card className="mb-6">
                     <CardHeader>
-                        <CardTitle className="text-lg">Profile Information</CardTitle>
+                        <CardTitle className="text-lg">Informasi Profil</CardTitle>
                     </CardHeader>
                     <CardContent className="divide-y divide-border pt-0">
-                    <InfoRow icon={User} label="Full Name" value="Admin User" />
+                    <InfoRow icon={User} label="Nama Lengkap" value="Admin User" />
                     <InfoRow icon={Mail} label="Email" value="admin@school.edu" />
-                    <InfoRow icon={Building2} label="Department" value="Administration" />
+                    <InfoRow icon={Building2} label="Departemen" value="Administrasi" />
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-lg">Settings</CardTitle>
+                        <CardTitle className="text-lg">Pengaturan</CardTitle>
                     </CardHeader>
                     <CardContent className="divide-y divide-border pt-0">
-                        <ClickableRow icon={Bell} label="Push Notifications" onClick={() => setActiveView('push-notifications')} />
-                        <ClickableRow icon={Shield} label="Privacy" onClick={() => setActiveView('privacy')} />
+                        <ClickableRow icon={Bell} label="Notifikasi Push" onClick={() => setActiveView('push-notifications')} />
+                        <ClickableRow icon={Shield} label="Privasi" onClick={() => setActiveView('privacy')} />
                         <button
                             onClick={() => setShowLogoutDialog(true)}
                             className="flex items-center justify-between py-3 w-full text-left"
                         >
                             <div className="flex items-center gap-4 text-destructive">
                                 <LogOut className="h-6 w-6" />
-                                <span className="font-medium">Logout</span>
+                                <span className="font-medium">Keluar</span>
                             </div>
                         </button>
                     </CardContent>

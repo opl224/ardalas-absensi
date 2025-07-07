@@ -1,11 +1,11 @@
 'use server';
 
 /**
- * @fileOverview An attendance validator AI agent.
+ * @fileOverview Agen AI validator kehadiran.
  *
- * - validateAttendance - A function that handles the attendance validation process.
- * - ValidateAttendanceInput - The input type for the validateAttendance function.
- * - ValidateAttendanceOutput - The return type for the validateAttendance function.
+ * - validateAttendance - Fungsi yang menangani proses validasi kehadiran.
+ * - ValidateAttendanceInput - Tipe masukan untuk fungsi validateAttendance.
+ * - ValidateAttendanceOutput - Tipe kembalian untuk fungsi validateAttendance.
  */
 
 import {ai} from '@/ai/genkit';
@@ -15,21 +15,21 @@ const ValidateAttendanceInputSchema = z.object({
   photoDataUri: z
     .string()
     .describe(
-      "A selfie photo of the person checking in, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+      "Foto selfie orang yang melakukan check-in, sebagai URI data yang harus menyertakan tipe MIME dan menggunakan enkode Base64. Format yang diharapkan: 'data:<mimetype>;base64,<encoded_data>'."
     ),
-  latitude: z.number().describe('The latitude of the location where the person is checking in.'),
-  longitude: z.number().describe('The longitude of the location where the person is checking in.'),
+  latitude: z.number().describe('Garis lintang dari lokasi tempat orang tersebut check-in.'),
+  longitude: z.number().describe('Garis bujur dari lokasi tempat orang tersebut check-in.'),
   expectedLocation: z.object({
-    latitude: z.number().describe('The expected latitude of the school.'),
-    longitude: z.number().describe('The expected longitude of the school.'),
-    radius: z.number().describe('The acceptable radius (in meters) from the school.'),
-  }).describe('The expected location of the school.'),
+    latitude: z.number().describe('Garis lintang sekolah yang diharapkan.'),
+    longitude: z.number().describe('Garis bujur sekolah yang diharapkan.'),
+    radius: z.number().describe('Radius yang dapat diterima (dalam meter) dari sekolah.'),
+  }).describe('Lokasi sekolah yang diharapkan.'),
 });
 export type ValidateAttendanceInput = z.infer<typeof ValidateAttendanceInputSchema>;
 
 const ValidateAttendanceOutputSchema = z.object({
-  isFraudulent: z.boolean().describe('Whether or not the attendance check-in is potentially fraudulent.'),
-  reason: z.string().describe('The reason why the attendance check-in is potentially fraudulent.'),
+  isFraudulent: z.boolean().describe('Apakah check-in kehadiran berpotensi curang atau tidak.'),
+  reason: z.string().describe('Alasan mengapa check-in kehadiran berpotensi curang.'),
 });
 export type ValidateAttendanceOutput = z.infer<typeof ValidateAttendanceOutputSchema>;
 
@@ -41,21 +41,21 @@ const prompt = ai.definePrompt({
   name: 'validateAttendancePrompt',
   input: {schema: ValidateAttendanceInputSchema},
   output: {schema: ValidateAttendanceOutputSchema},
-  prompt: `You are an expert attendance validator specializing in detecting attendance fraud.
+  prompt: `Anda adalah seorang ahli validator kehadiran yang berspesialisasi dalam mendeteksi kecurangan absensi.
 
-You will use the provided information to determine if the attendance check-in is potentially fraudulent. Consider factors such as the person's location compared to the expected school location, and whether the selfie matches the expected person.
+Anda akan menggunakan informasi yang diberikan untuk menentukan apakah check-in kehadiran berpotensi curang. Pertimbangkan faktor-faktor seperti lokasi orang tersebut dibandingkan dengan lokasi sekolah yang diharapkan, dan apakah foto selfie cocok dengan orang yang diharapkan.
 
-Latitude: {{{latitude}}}
-Longitude: {{{longitude}}}
+Lintang: {{{latitude}}}
+Bujur: {{{longitude}}}
 
-Expected School Location:
-Latitude: {{{expectedLocation.latitude}}}
-Longitude: {{{expectedLocation.longitude}}}
-Radius: {{{expectedLocation.radius}}} meters
+Lokasi Sekolah yang Diharapkan:
+Lintang: {{{expectedLocation.latitude}}}
+Bujur: {{{expectedLocation.longitude}}}
+Radius: {{{expectedLocation.radius}}} meter
 
-Selfie Photo: {{media url=photoDataUri}}
+Foto Selfie: {{media url=photoDataUri}}
 
-Based on this information, determine if the attendance check-in is potentially fraudulent, and provide a reason for your determination.  Set the isFraudulent output field appropriately.
+Berdasarkan informasi ini, tentukan apakah check-in kehadiran berpotensi curang, dan berikan alasan untuk penentuan Anda. Atur bidang keluaran isFraudulent dengan tepat.
 `,
 });
 

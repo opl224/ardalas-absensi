@@ -23,34 +23,34 @@ export function PushNotifications({ onBack }: { onBack: () => void }) {
                 <button onClick={onBack} className="p-1">
                     <ArrowLeft className="h-6 w-6" />
                 </button>
-                <h1 className="text-xl font-bold text-foreground">Push Notifications</h1>
+                <h1 className="text-xl font-bold text-foreground">Notifikasi Push</h1>
             </header>
 
             <div className="text-center mb-8">
                 <Bell className="h-12 w-12 text-primary mx-auto mb-2" />
-                <h2 className="text-2xl font-bold">Notification Settings</h2>
-                <p className="text-muted-foreground">Customize how you receive notifications and alerts</p>
+                <h2 className="text-2xl font-bold">Pengaturan Notifikasi</h2>
+                <p className="text-muted-foreground">Sesuaikan cara Anda menerima notifikasi dan peringatan</p>
             </div>
 
             <Card className="mb-6">
                 <CardContent className="p-4 pt-2">
-                     <h3 className="font-semibold text-lg my-2">General Notifications</h3>
+                     <h3 className="font-semibold text-lg my-2">Notifikasi Umum</h3>
                      <Separator />
                      <div className="divide-y divide-border">
-                        <NotificationRow icon={Bell} title="Push Notifications" description="Receive push notifications on your device" defaultChecked />
-                        <NotificationRow icon={Clock} title="Attendance Reminders" description="Get reminded to check in for attendance" defaultChecked />
-                        <NotificationRow icon={Users} title="Class Updates" description="Notifications about class schedules and changes" />
-                        <NotificationRow icon={Calendar} title="System Alerts" description="Important system notifications and updates" defaultChecked />
+                        <NotificationRow icon={Bell} title="Notifikasi Push" description="Terima notifikasi push di perangkat Anda" defaultChecked />
+                        <NotificationRow icon={Clock} title="Pengingat Kehadiran" description="Dapatkan pengingat untuk melakukan absensi" defaultChecked />
+                        <NotificationRow icon={Users} title="Pembaruan Kelas" description="Notifikasi tentang jadwal dan perubahan kelas" />
+                        <NotificationRow icon={Calendar} title="Peringatan Sistem" description="Notifikasi dan pembaruan sistem penting" defaultChecked />
                      </div>
                 </CardContent>
             </Card>
 
             <Card>
                 <CardContent className="p-4 pt-2">
-                     <h3 className="font-semibold text-lg my-2">Notification Style</h3>
+                     <h3 className="font-semibold text-lg my-2">Gaya Notifikasi</h3>
                      <Separator />
                      <div className="divide-y divide-border">
-                        <NotificationRow icon={Volume2} title="Sound" description="Play sound for notifications" defaultChecked />
+                        <NotificationRow icon={Volume2} title="Suara" description="Mainkan suara untuk notifikasi" defaultChecked />
                      </div>
                 </CardContent>
             </Card>

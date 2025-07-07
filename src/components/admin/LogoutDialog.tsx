@@ -24,14 +24,14 @@ export function LogoutDialog({ open, onOpenChange }: { open: boolean, onOpenChan
         <AlertDialog open={open} onOpenChange={onOpenChange}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle>Are you sure you want to log out?</AlertDialogTitle>
+                    <AlertDialogTitle>Apakah Anda yakin ingin keluar?</AlertDialogTitle>
                     <AlertDialogDescription>
-                        You will be returned to the login page.
+                        Anda akan dikembalikan ke halaman login.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleLogout}>Logout</AlertDialogAction>
+                    <AlertDialogCancel>Batal</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleLogout}>Keluar</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>

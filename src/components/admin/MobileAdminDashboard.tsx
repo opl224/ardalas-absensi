@@ -16,12 +16,14 @@ const NavLink = ({
     activeView,
     view,
     setView,
-    children
+    children,
+    label
 }: {
     activeView: ActiveView,
     view: ActiveView,
     setView: (view: ActiveView) => void,
-    children: React.ReactNode
+    children: React.ReactNode,
+    label: string
 }) => {
     return (
         <button
@@ -29,6 +31,7 @@ const NavLink = ({
             className={`flex flex-col items-center w-1/5 pt-1 ${activeView === view ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
         >
             {children}
+            <span className="text-xs mt-1 font-medium">{label}</span>
         </button>
     );
 };
@@ -66,25 +69,20 @@ export function MobileAdminDashboard() {
 
       {/* Bottom Nav */}
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t p-2 flex justify-around">
-        <NavLink activeView={activeView} view="home" setView={setActiveView}>
+        <NavLink activeView={activeView} view="home" setView={setActiveView} label="Beranda">
           <Home className="h-6 w-6" />
-          <span className="text-xs mt-1 font-medium">Home</span>
         </NavLink>
-        <NavLink activeView={activeView} view="profile" setView={setActiveView}>
+        <NavLink activeView={activeView} view="profile" setView={setActiveView} label="Profil">
           <UserIcon className="h-6 w-6" />
-          <span className="text-xs mt-1">Profile</span>
         </NavLink>
-        <NavLink activeView={activeView} view="users" setView={setActiveView}>
+        <NavLink activeView={activeView} view="users" setView={setActiveView} label="Pengguna">
           <Users2 className="h-6 w-6" />
-          <span className="text-xs mt-1">Users</span>
         </NavLink>
-        <NavLink activeView={activeView} view="reports" setView={setActiveView}>
+        <NavLink activeView={activeView} view="reports" setView={setActiveView} label="Laporan">
           <LineChart className="h-6 w-6" />
-          <span className="text-xs mt-1">Reports</span>
         </NavLink>
-        <NavLink activeView={activeView} view="attendance" setView={setActiveView}>
+        <NavLink activeView={activeView} view="attendance" setView={setActiveView} label="Kehadiran">
           <CheckSquare className="h-6 w-6" />
-          <span className="text-xs mt-1">Attendance</span>
         </NavLink>
       </nav>
     </div>

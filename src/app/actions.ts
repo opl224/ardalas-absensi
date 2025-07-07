@@ -29,13 +29,13 @@ export async function handleCheckin(
 
     if (!validatedFields.success) {
         console.error("Validation Error:", validatedFields.error.flatten().fieldErrors);
-      return { error: "Invalid input data. Please try again." };
+      return { error: "Data masukan tidak valid. Silakan coba lagi." };
     }
 
     const { photoDataUri, latitude, longitude } = validatedFields.data;
 
     if (!photoDataUri.startsWith('data:image/')) {
-        return { error: 'Invalid image data. Please retake your selfie.' };
+        return { error: 'Data gambar tidak valid. Silakan ambil ulang foto selfie Anda.' };
     }
 
     const aiInput: ValidateAttendanceInput = {
@@ -55,12 +55,12 @@ export async function handleCheckin(
       return { isFraudulent: true, reason: result.reason };
     }
 
-    return { success: true, reason: "Attendance marked successfully!" };
+    return { success: true, reason: "Absensi berhasil ditandai!" };
 
   } catch (e) {
     console.error(e);
-    const errorMessage = e instanceof Error ? e.message : "An unexpected error occurred.";
-    return { error: `Server error: ${errorMessage} Please try again.` };
+    const errorMessage = e instanceof Error ? e.message : "Terjadi kesalahan yang tidak terduga.";
+    return { error: `Kesalahan server: ${errorMessage} Silakan coba lagi.` };
   }
 }
 
@@ -77,7 +77,7 @@ export async function handleCheckout(prevState: CheckoutState, formData: FormDat
         return { success: true };
     } catch (e) {
         console.error(e);
-        const errorMessage = e instanceof Error ? e.message : "An unexpected error occurred.";
-        return { error: `Server error: ${errorMessage} Please try again.` };
+        const errorMessage = e instanceof Error ? e.message : "Terjadi kesalahan yang tidak terduga.";
+        return { error: `Kesalahan server: ${errorMessage} Silakan coba lagi.` };
     }
 }

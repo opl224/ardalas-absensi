@@ -33,15 +33,15 @@ import { CheckinCard } from "@/components/check-in/CheckinCard"
 
 // Mock data for teacher dashboard
 const studentAttendanceData = [
-    { name: "Alex Doe", time: "08:01 AM", status: "Present" },
-    { name: "Samantha Bee", time: "08:03 AM", status: "Present" },
-    { name: "Jane Roe", time: "09:00 AM", status: "Fraudulent" },
-    { name: "Michael Brown", time: "-", status: "Absent" },
-    { name: "Emily Davis", time: "-", status: "Absent" },
+    { name: "Alex Doe", time: "08:01 AM", status: "Hadir" },
+    { name: "Samantha Bee", time: "08:03 AM", status: "Hadir" },
+    { name: "Jane Roe", time: "09:00 AM", status: "Penipuan" },
+    { name: "Michael Brown", time: "-", status: "Absen" },
+    { name: "Emily Davis", time: "-", status: "Absen" },
 ];
 
 export default function TeacherDashboard() {
-  const user = { name: "John Smith", role: "Teacher" as const, avatar: "https://placehold.co/100x100.png", subject: "Mathematics" };
+  const user = { name: "John Smith", role: "Teacher" as const, avatar: "https://placehold.co/100x100.png", subject: "Matematika" };
   
   return (
     <>
@@ -55,27 +55,27 @@ export default function TeacherDashboard() {
             <SidebarContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton isActive tooltip="Dashboard">
+                  <SidebarMenuButton isActive tooltip="Dasbor">
                     <Home />
-                    <span>Dashboard</span>
+                    <span>Dasbor</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="My Classes">
+                  <SidebarMenuButton tooltip="Kelas Saya">
                     <BookOpen />
-                    <span>My Classes</span>
+                    <span>Kelas Saya</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="Students">
+                  <SidebarMenuButton tooltip="Siswa">
                     <GraduationCap />
-                    <span>Students</span>
+                    <span>Siswa</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="Reports">
+                  <SidebarMenuButton tooltip="Laporan">
                     <LineChart />
-                    <span>Reports</span>
+                    <span>Laporan</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
@@ -89,7 +89,7 @@ export default function TeacherDashboard() {
                     <BreadcrumbList>
                         <BreadcrumbItem>
                         <BreadcrumbLink asChild>
-                            <Link href="#">Dashboard</Link>
+                            <Link href="#">Dasbor</Link>
                         </BreadcrumbLink>
                         </BreadcrumbItem>
                     </BreadcrumbList>
@@ -98,7 +98,7 @@ export default function TeacherDashboard() {
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                         type="search"
-                        placeholder="Search students..."
+                        placeholder="Cari siswa..."
                         className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
                     />
                     </div>
@@ -108,59 +108,59 @@ export default function TeacherDashboard() {
                     <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Total Students</CardTitle>
+                                <CardTitle className="text-sm font-medium">Total Siswa</CardTitle>
                                 <GraduationCap className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold">45</div>
-                                <p className="text-xs text-muted-foreground">in your classes</p>
+                                <p className="text-xs text-muted-foreground">di kelas Anda</p>
                             </CardContent>
                         </Card>
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Present Today</CardTitle>
+                                <CardTitle className="text-sm font-medium">Hadir Hari Ini</CardTitle>
                                 <GraduationCap className="h-4 w-4 text-primary" />
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold text-primary">40</div>
-                                <p className="text-xs text-muted-foreground">in your current class</p>
+                                <p className="text-xs text-muted-foreground">di kelas Anda saat ini</p>
                             </CardContent>
                         </Card>
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Absent Today</CardTitle>
+                                <CardTitle className="text-sm font-medium">Absen Hari Ini</CardTitle>
                                 <GraduationCap className="h-4 w-4 text-destructive" />
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold text-destructive">5</div>
-                                <p className="text-xs text-muted-foreground">incl. 2 late</p>
+                                <p className="text-xs text-muted-foreground">termasuk 2 terlambat</p>
                             </CardContent>
                         </Card>
                          <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Your Schedule</CardTitle>
+                            <CardTitle className="text-sm font-medium">Jadwal Anda</CardTitle>
                             <BookOpen className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
                             <div className="text-2xl font-bold">10:00 AM</div>
-                            <p className="text-xs text-muted-foreground">Next class: Math 10B</p>
+                            <p className="text-xs text-muted-foreground">Kelas berikutnya: Matematika 10B</p>
                             </CardContent>
                         </Card>
                     </div>
                     <div className="grid gap-4 md:gap-8 lg:grid-cols-3">
                         <Card className="lg:col-span-2">
                             <CardHeader>
-                            <CardTitle>Today's Attendance - Math 10B</CardTitle>
+                            <CardTitle>Absensi Hari Ini - Matematika 10B</CardTitle>
                             <CardDescription>
-                                A log of student attendance for your class today.
+                                Catatan kehadiran siswa untuk kelas Anda hari ini.
                             </CardDescription>
                             </CardHeader>
                             <CardContent>
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                    <TableHead>Student</TableHead>
-                                    <TableHead className="hidden sm:table-cell">Check-in Time</TableHead>
+                                    <TableHead>Siswa</TableHead>
+                                    <TableHead className="hidden sm:table-cell">Waktu Check-in</TableHead>
                                     <TableHead>Status</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -173,9 +173,9 @@ export default function TeacherDashboard() {
                                         <TableCell className="hidden sm:table-cell">{item.time}</TableCell>
                                         <TableCell>
                                         <Badge variant={
-                                            item.status === 'Present' ? 'default' :
-                                            item.status === 'Late' ? 'secondary' : 
-                                            item.status === 'Absent' ? 'outline' : 'destructive'
+                                            item.status === 'Hadir' ? 'default' :
+                                            item.status === 'Terlambat' ? 'secondary' : 
+                                            item.status === 'Absen' ? 'outline' : 'destructive'
                                         }>{item.status}</Badge>
                                         </TableCell>
                                     </TableRow>

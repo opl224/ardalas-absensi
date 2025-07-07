@@ -30,7 +30,7 @@ export function StudentProfile({ user }: StudentProfileProps) {
         <>
             <div className="bg-gray-50 dark:bg-zinc-900 p-4 min-h-screen">
                 <header className="mb-6">
-                    <h1 className="text-xl font-bold text-foreground">Profile</h1>
+                    <h1 className="text-xl font-bold text-foreground">Profil</h1>
                 </header>
 
                 <div className="flex items-center gap-4 mb-6">
@@ -46,18 +46,18 @@ export function StudentProfile({ user }: StudentProfileProps) {
 
                 <Card className="mb-6">
                     <CardHeader>
-                        <CardTitle className="text-lg">Profile Information</CardTitle>
+                        <CardTitle className="text-lg">Informasi Profil</CardTitle>
                     </CardHeader>
                     <CardContent className="divide-y divide-border pt-0">
-                        <InfoRow icon={User} label="Full Name" value={user.name} />
+                        <InfoRow icon={User} label="Nama Lengkap" value={user.name} />
                         <InfoRow icon={Mail} label="Email" value={`${user.name.toLowerCase().replace(' ', '.')}@school.edu`} />
-                        <InfoRow icon={GraduationCap} label="Grade" value="10B" />
+                        <InfoRow icon={GraduationCap} label="Kelas" value="10B" />
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-lg">Settings</CardTitle>
+                        <CardTitle className="text-lg">Pengaturan</CardTitle>
                     </CardHeader>
                      <CardContent className="divide-y divide-border pt-0">
                         <button
@@ -66,7 +66,7 @@ export function StudentProfile({ user }: StudentProfileProps) {
                         >
                             <div className="flex items-center gap-4 text-destructive">
                                 <LogOut className="h-6 w-6" />
-                                <span className="font-medium">Logout</span>
+                                <span className="font-medium">Keluar</span>
                             </div>
                         </button>
                     </CardContent>

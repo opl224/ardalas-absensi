@@ -23,7 +23,7 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
   return (
     <Button type="submit" className="w-full" disabled={disabled || pending}>
       {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-      Submit Attendance
+      Kirim Absensi
     </Button>
   );
 }
@@ -115,11 +115,11 @@ export function CheckinCard({ user, onSuccess }: CheckinCardProps) {
           });
         },
         (error) => {
-          setLocationError(`Error: ${error.message}. Please enable location services.`);
+          setLocationError(`Kesalahan: ${error.message}. Harap aktifkan layanan lokasi.`);
         }
       );
     } else {
-      setLocationError("Geolocation is not supported by this browser.");
+      setLocationError("Geolocation tidak didukung oleh browser ini.");
     }
   };
   
@@ -139,7 +139,7 @@ export function CheckinCard({ user, onSuccess }: CheckinCardProps) {
             videoRef.current.srcObject = stream;
           }
         } catch (err) {
-          setCameraError("Could not access camera. Please grant permission.");
+          setCameraError("Tidak dapat mengakses kamera. Harap berikan izin.");
           setIsCameraOn(false);
         }
       };
@@ -194,8 +194,8 @@ export function CheckinCard({ user, onSuccess }: CheckinCardProps) {
     <>
       <Card className="w-full max-w-lg shadow-lg">
         <CardHeader>
-          <CardTitle className="font-headline text-2xl">Hi, {user.name}!</CardTitle>
-          <CardDescription>Follow the steps below to mark your attendance.</CardDescription>
+          <CardTitle className="font-headline text-2xl">Hai, {user.name}!</CardTitle>
+          <CardDescription>Ikuti langkah-langkah di bawah ini untuk menandai kehadiran Anda.</CardDescription>
           <Progress value={progressValue} className="mt-2" />
         </CardHeader>
         <CardContent>
@@ -210,13 +210,13 @@ export function CheckinCard({ user, onSuccess }: CheckinCardProps) {
                   {location ? <CheckCircle /> : <MapPin />}
                 </div>
                 <div>
-                  <h3 className="font-semibold">Step 1: Location Access</h3>
-                  {!location && <p className="text-sm text-muted-foreground">We need your location for verification.</p>}
-                  {location && <p className="text-sm text-primary">Location captured successfully.</p>}
+                  <h3 className="font-semibold">Langkah 1: Akses Lokasi</h3>
+                  {!location && <p className="text-sm text-muted-foreground">Kami membutuhkan lokasi Anda untuk verifikasi.</p>}
+                  {location && <p className="text-sm text-primary">Lokasi berhasil direkam.</p>}
                   {locationError && <p className="text-sm text-destructive">{locationError}</p>}
                 </div>
                  {!location && (
-                    <Button type="button" onClick={getLocation} className="ml-auto">Enable Location</Button>
+                    <Button type="button" onClick={getLocation} className="ml-auto">Aktifkan Lokasi</Button>
                 )}
               </div>
 
@@ -225,8 +225,8 @@ export function CheckinCard({ user, onSuccess }: CheckinCardProps) {
                   {photoDataUri ? <CheckCircle /> : <Camera />}
                 </div>
                 <div className="flex-grow">
-                  <h3 className="font-semibold">Step 2: Take a Selfie</h3>
-                  <p className="text-sm text-muted-foreground">Your photo is used to validate your presence.</p>
+                  <h3 className="font-semibold">Langkah 2: Ambil Foto Selfie</h3>
+                  <p className="text-sm text-muted-foreground">Foto Anda digunakan untuk memvalidasi kehadiran Anda.</p>
                   
                   {cameraError && <p className="text-sm text-destructive mt-2">{cameraError}</p>}
 
@@ -234,20 +234,20 @@ export function CheckinCard({ user, onSuccess }: CheckinCardProps) {
                     {isCameraOn && (
                       <>
                         <video ref={videoRef} autoPlay playsInline muted className="w-full rounded-md border" />
-                        <Button type="button" onClick={takePhoto} className="w-full">Take Selfie</Button>
+                        <Button type="button" onClick={takePhoto} className="w-full">Ambil Selfie</Button>
                       </>
                     )}
 
                     {!isCameraOn && photoDataUri && (
                       <>
                         <img src={photoDataUri} alt="User selfie" className="rounded-md border" />
-                        <Button type="button" variant="outline" onClick={startCamera} className="w-full">Retake Photo</Button>
+                        <Button type="button" variant="outline" onClick={startCamera} className="w-full">Ambil Ulang Foto</Button>
                       </>
                     )}
                   </div>
 
                   {location && !isCameraOn && !photoDataUri && (
-                     <Button type="button" onClick={startCamera} className="mt-2" disabled={!location}>Start Camera</Button>
+                     <Button type="button" onClick={startCamera} className="mt-2" disabled={!location}>Mulai Kamera</Button>
                   )}
                 </div>
               </div>
@@ -268,15 +268,15 @@ export function CheckinCard({ user, onSuccess }: CheckinCardProps) {
               {state.success && <CheckCircle className="text-primary" />}
               {state.isFraudulent && <AlertTriangle className="text-destructive" />}
               {state.error && <XCircle className="text-destructive" />}
-              {state.success ? "Success!" : state.isFraudulent ? "Verification Required" : "Error"}
+              {state.success ? "Berhasil!" : state.isFraudulent ? "Verifikasi Diperlukan" : "Kesalahan"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {state.reason || state.error || "An unknown issue occurred."}
-              {state.isFraudulent && " Please contact an administrator for manual check-in."}
+              {state.reason || state.error || "Terjadi masalah yang tidak diketahui."}
+              {state.isFraudulent && " Silakan hubungi administrator untuk check-in manual."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={onSuccess ? () => {} : resetCheckin}>Close</AlertDialogAction>
+            <AlertDialogAction onClick={onSuccess ? () => {} : resetCheckin}>Tutup</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

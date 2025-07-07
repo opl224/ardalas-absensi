@@ -12,53 +12,53 @@ const users = [
   {
     name: 'John Smith',
     email: 'john.smith@school.edu',
-    role: 'Teacher',
-    status: 'Late',
+    role: 'Guru',
+    status: 'Terlambat',
     avatar: 'https://placehold.co/100x100.png',
     dataAiHint: 'man portrait'
   },
   {
     name: 'Sarah Johnson',
     email: 'sarah.johnson@school.edu',
-    role: 'Teacher',
-    status: 'Late',
+    role: 'Guru',
+    status: 'Terlambat',
     avatar: 'https://placehold.co/100x100.png',
     dataAiHint: 'woman portrait'
   },
   {
     name: 'Michael Brown',
     email: 'michael.brown@school.edu',
-    role: 'Student',
-    status: 'Absent',
+    role: 'Siswa',
+    status: 'Absen',
     avatar: 'https://placehold.co/100x100.png',
     dataAiHint: 'man portrait'
   },
   {
     name: 'Emily Davis',
     email: 'emily.davis@school.edu',
-    role: 'Student',
-    status: 'Absent',
+    role: 'Siswa',
+    status: 'Absen',
     avatar: 'https://placehold.co/100x100.png',
     dataAiHint: 'woman portrait'
   },
   {
     name: 'David Wilson',
     email: 'david.wilson@school.edu',
-    role: 'Student',
-    status: 'Absent',
+    role: 'Siswa',
+    status: 'Absen',
     avatar: 'https://placehold.co/100x100.png',
     dataAiHint: 'man portrait'
   },
 ];
 
-type FilterType = 'All' | 'Admin' | 'Teacher' | 'Student';
+type FilterType = 'Semua' | 'Admin' | 'Guru' | 'Siswa';
 
 export function UserManagement() {
-  const [activeFilter, setActiveFilter] = useState<FilterType>('All');
+  const [activeFilter, setActiveFilter] = useState<FilterType>('Semua');
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredUsers = users.filter(user => {
-    const matchesFilter = activeFilter === 'All' || user.role === activeFilter;
+    const matchesFilter = activeFilter === 'Semua' || user.role === activeFilter;
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) || user.email.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesFilter && matchesSearch;
   });
@@ -66,7 +66,7 @@ export function UserManagement() {
   return (
     <div className="bg-gray-50 dark:bg-zinc-900 p-4">
       <header className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold text-foreground">User Management</h1>
+        <h1 className="text-xl font-bold text-foreground">Manajemen Pengguna</h1>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" className="bg-card">
             <Download className="h-4 w-4" />
@@ -74,14 +74,14 @@ export function UserManagement() {
           <Button variant="outline" size="icon" className="bg-card">
             <Filter className="h-4 w-4" />
           </Button>
-          <Button>Add User</Button>
+          <Button>Tambah Pengguna</Button>
         </div>
       </header>
 
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
         <Input 
-          placeholder="Search users..." 
+          placeholder="Cari pengguna..." 
           className="pl-10 bg-white" 
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -89,7 +89,7 @@ export function UserManagement() {
       </div>
 
       <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-        {(['All', 'Admin', 'Teacher', 'Student'] as FilterType[]).map(filter => (
+        {(['Semua', 'Admin', 'Guru', 'Siswa'] as FilterType[]).map(filter => (
           <Button
             key={filter}
             variant={activeFilter === filter ? 'default' : 'outline'}
@@ -112,7 +112,7 @@ export function UserManagement() {
               <p className="font-semibold text-foreground">{user.name}</p>
               <p className="text-sm text-muted-foreground -mt-1">{user.email}</p>
               <div className="flex items-center gap-2 mt-1">
-                <Badge variant={user.status === 'Absent' ? 'destructive' : 'warning'}>
+                <Badge variant={user.status === 'Absen' ? 'destructive' : 'warning'}>
                   {user.status}
                 </Badge>
                 <span className="text-sm text-muted-foreground">{user.role}</span>

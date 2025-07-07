@@ -17,16 +17,16 @@ import {
 
 
 const chartData = [
-    { day: "Mon", present: 350 },
-    { day: "Tue", present: 365 },
-    { day: "Wed", present: 355 },
-    { day: "Thu", present: 370 },
-    { day: "Fri", present: 360 },
+    { day: "Sen", present: 350 },
+    { day: "Sel", present: 365 },
+    { day: "Rab", present: 355 },
+    { day: "Kam", present: 370 },
+    { day: "Jum", present: 360 },
 ];
 
 const chartConfig = {
     present: {
-        label: "Present",
+        label: "Hadir",
         color: "hsl(var(--primary))",
     },
 } satisfies ChartConfig;
@@ -35,8 +35,8 @@ export function AttendanceChart() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Weekly Attendance</CardTitle>
-                <CardDescription>Student presence over the last week.</CardDescription>
+                <CardTitle>Kehadiran Mingguan</CardTitle>
+                <CardDescription>Kehadiran siswa selama seminggu terakhir.</CardDescription>
             </CardHeader>
             <CardContent>
                 <ChartContainer config={chartConfig} className="h-[250px] w-full">
