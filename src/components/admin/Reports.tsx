@@ -1,9 +1,10 @@
+
 'use client'
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, TrendingUp, Clock } from 'lucide-react';
+import { Users, TrendingUp, Clock, Download } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
@@ -11,7 +12,7 @@ import { LottieLoader } from '../ui/lottie-loader';
 import { Button } from '../ui/button';
 
 interface ReportStats {
-    totalStudents: number;
+    totalGurus: number;
     present: number;
     absent: number;
     late: number;
@@ -19,7 +20,7 @@ interface ReportStats {
     rateChange: number;
 }
 
-const StatCard = ({ title, value, icon: Icon, color, description }: { title: string, value: string | number, icon: React.ElementType, color: string, description?: string }) => (
+const StatCard = ({ title, value, icon: Icon, color }: { title: string, value: string | number, icon: React.ElementType, color: string }) => (
     <Card className={`border-l-4 ${color}`}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
             <Icon className="h-6 w-6 text-muted-foreground" />
@@ -43,16 +44,16 @@ const AttendanceRateChart = ({ rate, change }: { rate: number, change: number })
             <CardHeader>
                 <CardTitle>Tingkat Kehadiran</CardTitle>
             </CardHeader>
-            <CardContent className="flex items-center gap-4">
-                <div className="w-24 h-24 relative">
+            <CardContent className="flex flex-col sm:flex-row items-center gap-4">
+                <div className="w-28 h-28 relative shrink-0">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie
                                 data={data}
                                 cx="50%"
                                 cy="50%"
-                                innerRadius={30}
-                                outerRadius={40}
+                                innerRadius={35}
+                                outerRadius={45}
                                 startAngle={90}
                                 endAngle={450}
                                 paddingAngle={0}
@@ -66,11 +67,11 @@ const AttendanceRateChart = ({ rate, change }: { rate: number, change: number })
                         </PieChart>
                     </ResponsiveContainer>
                     <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-xl font-bold text-foreground">{`${rate.toFixed(1)}%`}</span>
+                        <span className="text-2xl font-bold text-foreground">{`${rate.toFixed(0)}%`}</span>
                     </div>
                 </div>
-                <div className="flex-grow">
-                    <p className="font-medium">Tingkat kehadiran yang sangat baik untuk hari ini</p>
+                <div className="flex-1 text-center sm:text-left">
+                    <p className="font-medium">Tingkat kehadiran untuk periode yang dipilih.</p>
                     <p className={`text-sm font-semibold ${change >= 0 ? 'text-success-foreground' : 'text-destructive'}`}>
                         {change >= 0 ? `+${change.toFixed(1)}%` : `${change.toFixed(1)}%`} dari periode sebelumnya
                     </p>
@@ -90,40 +91,59 @@ export function Reports() {
         const fetchReportData = async () => {
             setLoading(true);
             try {
-                // For now, only 'today' is implemented
-                const today = new Date();
-                const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-                const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+                const now = new Date();
+                let startDate: Date;
+                const endDate: Date = new Date(); // Today is always the end date
 
-                // Fetch total students
-                const studentsQuery = query(collection(db, 'users'), where('role', '==', 'siswa'));
-                const studentsSnapshot = await getDocs(studentsQuery);
-                const totalStudents = studentsSnapshot.size;
+                switch (activeTab) {
+                    case 'week':
+                        const firstDayOfWeek = now.getDate() - now.getDay();
+                        startDate = new Date(now.setDate(firstDayOfWeek));
+                        break;
+                    case 'month':
+                        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                        break;
+                    case 'year':
+                        startDate = new Date(now.getFullYear(), 0, 1);
+                        break;
+                    case 'today':
+                    default:
+                        startDate = new Date();
+                        break;
+                }
+                startDate.setHours(0, 0, 0, 0);
+                endDate.setHours(23, 59, 59, 999);
+                
 
-                // Fetch today's attendance for students
+                const gurusQuery = query(collection(db, 'users'), where('role', '==', 'guru'));
+                const gurusSnapshot = await getDocs(gurusQuery);
+                const totalGurus = gurusSnapshot.size;
+
                 const attendanceQuery = query(
                     collection(db, "photo_attendances"),
-                    where("role", "==", "siswa"),
-                    where("checkInTime", ">=", startOfToday),
-                    where("checkInTime", "<", endOfToday)
+                    where("role", "==", "guru"),
+                    where("checkInTime", ">=", startDate),
+                    where("checkInTime", "<=", endDate)
                 );
                 const attendanceSnapshot = await getDocs(attendanceQuery);
+                const attendanceDocs = attendanceSnapshot.docs;
                 
-                const presentCount = attendanceSnapshot.docs.filter(doc => doc.data().status !== 'Terlambat').length;
-                const lateCount = attendanceSnapshot.docs.filter(doc => doc.data().status === 'Terlambat').length;
-                const totalPresent = presentCount + lateCount;
-                const absentCount = totalStudents - totalPresent;
-                const attendanceRate = totalStudents > 0 ? (totalPresent / totalStudents) * 100 : 0;
+                const presentUserIds = new Set(attendanceDocs.map(doc => doc.data().userId));
+                const presentCount = presentUserIds.size;
+                const lateCount = attendanceDocs.filter(doc => doc.data().status === 'Terlambat').length;
                 
-                // Placeholder for rate change
-                const rateChange = 2.3;
+                // For "today", absent is total minus present. For other periods, this is an approximation.
+                const absentCount = totalGurus - presentCount;
+                const attendanceRate = totalGurus > 0 ? (presentCount / totalGurus) * 100 : 0;
+                
+                const rateChange = 2.3; // Placeholder
 
                 setStats({
-                    totalStudents,
-                    present: totalPresent,
+                    totalGurus,
+                    present: presentCount,
                     absent: absentCount < 0 ? 0 : absentCount,
                     late: lateCount,
-                    attendanceRate: attendanceRate,
+                    attendanceRate,
                     rateChange,
                 });
 
@@ -137,11 +157,16 @@ export function Reports() {
         fetchReportData();
     }, [activeTab]);
 
+    const handleDownload = (format: 'pdf' | 'csv') => {
+        // This is a placeholder for actual download logic
+        console.log(`Downloading ${activeTab} report as ${format.toUpperCase()}...`);
+        alert(`Fungsionalitas unduh ${format.toUpperCase()} belum diimplementasikan.`);
+    }
 
     return (
         <div className="bg-gray-50 dark:bg-zinc-900 min-h-screen">
             <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                <h1 className="text-xl font-bold text-foreground">Laporan Kehadiran</h1>
+                <h1 className="text-xl font-bold text-foreground">Laporan Kehadiran Guru</h1>
             </header>
             <div className="p-4 space-y-6">
                 <Tabs defaultValue="today" onValueChange={setActiveTab} className="w-full">
@@ -160,10 +185,10 @@ export function Reports() {
                 ) : (
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
-                            <StatCard title="Total Siswa" value={stats.totalStudents} icon={Users} color="border-primary" />
-                            <StatCard title="Hadir Hari Ini" value={stats.present} icon={TrendingUp} color="border-success" />
-                            <StatCard title="Absen Hari Ini" value={stats.absent} icon={Clock} color="border-destructive" />
-                            <StatCard title="Terlambat Hari Ini" value={stats.late} icon={Clock} color="border-warning" />
+                            <StatCard title="Total Guru" value={stats.totalGurus} icon={Users} color="border-primary" />
+                            <StatCard title="Hadir" value={stats.present} icon={TrendingUp} color="border-success" />
+                            <StatCard title="Absen" value={stats.absent} icon={Clock} color="border-destructive" />
+                            <StatCard title="Terlambat" value={stats.late} icon={Clock} color="border-warning" />
                         </div>
 
                         <AttendanceRateChart rate={stats.attendanceRate} change={stats.rateChange} />
@@ -171,11 +196,17 @@ export function Reports() {
                         <Card>
                             <CardHeader>
                                 <CardTitle>Laporan Unduhan</CardTitle>
-                                <CardDescription>Unduh laporan kehadiran dalam format PDF atau CSV.</CardDescription>
+                                <CardDescription>Unduh laporan kehadiran dalam format PDF atau CSV untuk periode yang dipilih.</CardDescription>
                             </CardHeader>
                             <CardContent className="flex gap-2">
-                                <Button variant="outline">Unduh PDF</Button>
-                                <Button variant="outline">Unduh CSV</Button>
+                                <Button variant="outline" onClick={() => handleDownload('pdf')}>
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Unduh PDF
+                                </Button>
+                                <Button variant="outline" onClick={() => handleDownload('csv')}>
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Unduh CSV
+                                </Button>
                             </CardContent>
                         </Card>
                     </div>
