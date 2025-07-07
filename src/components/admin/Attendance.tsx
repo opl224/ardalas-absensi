@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
+import { id as localeId } from 'date-fns/locale';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -168,7 +169,7 @@ export function Attendance() {
                             )}
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {date ? format(date, "PPP", { locale: require('date-fns/locale/id') }) : <span>Pilih tanggal</span>}
+                            {date ? format(date, "PPP", { locale: localeId }) : <span>Pilih tanggal</span>}
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="end">
