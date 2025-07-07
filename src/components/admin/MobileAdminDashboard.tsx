@@ -5,6 +5,8 @@ import { Home, User as UserIcon, Users2, LineChart, CheckSquare } from "lucide-r
 import { UserManagement } from "./UserManagement";
 import { Reports } from "./Reports";
 import { MobileHome } from "./MobileHome";
+import { Profile } from "./Profile";
+import { Attendance } from "./Attendance";
 
 type ActiveView = 'home' | 'profile' | 'users' | 'reports' | 'attendance';
 
@@ -42,9 +44,9 @@ export function MobileAdminDashboard() {
       case 'reports':
         return <Reports />;
       case 'profile':
-        return <div className="p-4 text-center">Profile Page (not implemented)</div>;
+        return <Profile />;
       case 'attendance':
-        return <div className="p-4 text-center">Attendance Page (not implemented)</div>;
+        return <Attendance />;
       default:
         return <MobileHome setActiveView={setActiveView} />;
     }
