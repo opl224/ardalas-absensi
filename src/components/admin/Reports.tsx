@@ -7,9 +7,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, TrendingUp, Clock, Download } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { LottieLoader } from '../ui/lottie-loader';
 import { Button } from '../ui/button';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface ReportStats {
     totalGurus: number;
@@ -18,6 +20,14 @@ interface ReportStats {
     late: number;
     attendanceRate: number;
     rateChange: number;
+}
+
+interface AttendanceReportRecord {
+    name: string;
+    checkInTime: string;
+    checkOutTime: string;
+    status: string;
+    fraudReason: string;
 }
 
 const StatCard = ({ title, value, icon: Icon, color }: { title: string, value: string | number, icon: React.ElementType, color: string }) => (
@@ -72,7 +82,7 @@ const AttendanceRateChart = ({ rate, change }: { rate: number, change: number })
                 </div>
                 <div className="flex-1 text-center sm:text-left">
                     <p className="font-medium">Tingkat kehadiran untuk periode yang dipilih.</p>
-                    <p className={`text-sm font-semibold ${change >= 0 ? 'text-success-foreground' : 'text-destructive'}`}>
+                    <p className={`text-sm font-semibold ${change >= 0 ? 'text-success' : 'text-destructive'}`}>
                         {change >= 0 ? `+${change.toFixed(1)}%` : `${change.toFixed(1)}%`} dari periode sebelumnya
                     </p>
                 </div>
@@ -84,6 +94,7 @@ const AttendanceRateChart = ({ rate, change }: { rate: number, change: number })
 
 export function Reports() {
     const [stats, setStats] = useState<ReportStats | null>(null);
+    const [reportData, setReportData] = useState<AttendanceReportRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('today');
 
@@ -93,7 +104,7 @@ export function Reports() {
             try {
                 const now = new Date();
                 let startDate: Date;
-                const endDate: Date = new Date(); // Today is always the end date
+                const endDate: Date = new Date(); 
 
                 switch (activeTab) {
                     case 'week':
@@ -114,7 +125,6 @@ export function Reports() {
                 startDate.setHours(0, 0, 0, 0);
                 endDate.setHours(23, 59, 59, 999);
                 
-
                 const gurusQuery = query(collection(db, 'users'), where('role', '==', 'guru'));
                 const gurusSnapshot = await getDocs(gurusQuery);
                 const totalGurus = gurusSnapshot.size;
@@ -132,7 +142,6 @@ export function Reports() {
                 const presentCount = presentUserIds.size;
                 const lateCount = attendanceDocs.filter(doc => doc.data().status === 'Terlambat').length;
                 
-                // For "today", absent is total minus present. For other periods, this is an approximation.
                 const absentCount = totalGurus - presentCount;
                 const attendanceRate = totalGurus > 0 ? (presentCount / totalGurus) * 100 : 0;
                 
@@ -146,6 +155,18 @@ export function Reports() {
                     attendanceRate,
                     rateChange,
                 });
+                
+                const detailedData: AttendanceReportRecord[] = attendanceDocs.map(doc => {
+                    const data = doc.data();
+                    return {
+                        name: data.name || 'N/A',
+                        checkInTime: data.checkInTime ? (data.checkInTime as Timestamp).toDate().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '-',
+                        checkOutTime: data.checkOutTime ? (data.checkOutTime as Timestamp).toDate().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '-',
+                        status: data.status || 'N/A',
+                        fraudReason: data.fraudReason || '-',
+                    };
+                });
+                setReportData(detailedData);
 
             } catch (error) {
                 console.error("Error fetching report data: ", error);
@@ -158,9 +179,50 @@ export function Reports() {
     }, [activeTab]);
 
     const handleDownload = (format: 'pdf' | 'csv') => {
-        // This is a placeholder for actual download logic
-        console.log(`Downloading ${activeTab} report as ${format.toUpperCase()}...`);
-        alert(`Fungsionalitas unduh ${format.toUpperCase()} belum diimplementasikan.`);
+        if (loading || reportData.length === 0) {
+            alert('Data tidak tersedia atau sedang dimuat. Silakan coba lagi nanti.');
+            return;
+        }
+
+        const headers = ['Nama', 'Waktu Check-in', 'Waktu Check-out', 'Status', 'Alasan Penipuan'];
+        const data = reportData.map(d => [d.name, d.checkInTime, d.checkOutTime, d.status, d.fraudReason]);
+        
+        const periodMap: { [key: string]: string } = {
+            today: 'Hari Ini',
+            week: 'Minggu Ini',
+            month: 'Bulan Ini',
+            year: 'Tahun Ini'
+        };
+        const period = periodMap[activeTab] || activeTab;
+        const filename = `Laporan_Kehadiran_Guru_${period.replace(' ','_')}_${new Date().toISOString().slice(0, 10)}`;
+
+        if (format === 'csv') {
+            const csvContent = [
+                headers.join(','),
+                ...data.map(row => row.join(','))
+            ].join('\n');
+
+            const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `${filename}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        if (format === 'pdf') {
+            const doc = new jsPDF();
+            doc.text(`Laporan Kehadiran Guru - ${period}`, 14, 16);
+            autoTable(doc, {
+                head: [headers],
+                body: data,
+                startY: 20,
+            });
+            doc.save(`${filename}.pdf`);
+        }
     }
 
     return (
