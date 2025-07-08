@@ -40,14 +40,6 @@ interface User {
 
 const USERS_PER_PAGE = 10;
 
-// Helper function to get today's date with a specific time
-function getTodayAtTime(timeString: string): Date {
-    const today = new Date();
-    const [hours, minutes] = timeString.split(':').map(Number);
-    today.setHours(hours, minutes, 0, 0);
-    return today;
-}
-
 const DetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value?: string }) => {
     if (!value) return null;
     return (
@@ -68,52 +60,50 @@ export function UserManagement() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   useEffect(() => {
-    let unsubscribe: (() => void) | undefined = undefined;
+    setLoading(true);
 
-    const syncUsersAndStatus = async () => {
-        setLoading(true);
-        try {
-            // Fetch settings for determining attendance status
-            const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
-            const settings = settingsDoc.exists() ? settingsDoc.data() : {};
+    const fetchAndCombineUsers = async () => {
+        // 1. Fetch all base users (admins and gurus)
+        const usersQuery = query(collection(db, 'users'), where('role', 'in', ['guru', 'admin']));
+        const usersSnapshot = await getDocs(usersQuery);
 
-            // Fetch all teacher details and put them in a Map for efficient lookup
-            const teachersQuery = query(collection(db, 'teachers'));
-            const teachersSnapshot = await getDocs(teachersQuery);
-            const teacherDetailsMap = new Map(
-                teachersSnapshot.docs.map(doc => [doc.id, doc.data()])
-            );
+        // 2. For each guru, fetch their details from the 'teachers' collection
+        const combinedUsersPromises = usersSnapshot.docs.map(async (userDoc) => {
+            const baseUser = { id: userDoc.id, ...userDoc.data() };
 
-            // Fetch all base users (admins and teachers)
-            const usersQuery = query(collection(db, 'users'), where('role', 'in', ['guru', 'admin']));
-            const usersSnapshot = await getDocs(usersQuery);
-
-            // Combine base user data with teacher details
-            const combinedUsers = usersSnapshot.docs.map(doc => {
-                const baseUser = { id: doc.id, ...doc.data() };
-                
-                // For teachers, merge their details from the map
-                if (baseUser.role === 'guru') {
-                    const details = teacherDetailsMap.get(baseUser.id);
-                    if (details) {
-                        return { ...baseUser, ...details };
-                    }
+            if (baseUser.role === 'guru') {
+                const teacherDocRef = doc(db, 'teachers', userDoc.id);
+                const teacherDocSnap = await getDoc(teacherDocRef);
+                if (teacherDocSnap.exists()) {
+                    // Return a new object with merged data
+                    return { ...baseUser, ...teacherDocSnap.data() };
                 }
-                // For admins or teachers without details, return as is
-                return baseUser;
-            }) as User[];
+            }
+            // Return base user if not a guru or if no details are found
+            return baseUser;
+        });
 
-            // Set up a real-time listener for today's attendance records
-            const todayStart = new Date();
-            todayStart.setHours(0, 0, 0, 0);
-            const todayEnd = new Date();
-            todayEnd.setHours(23, 59, 59, 999);
+        // 3. Wait for all fetching and merging to complete
+        return Promise.all(combinedUsersPromises);
+    };
 
-            const attendanceQuery = query(
-                collection(db, "photo_attendances"),
-                where("checkInTime", ">=", todayStart),
-                where("checkInTime", "<=", todayEnd)
-            );
+    let unsubscribe: (() => void) | undefined;
+
+    fetchAndCombineUsers().then(combinedUsers => {
+        // Now that we have the complete user list, set up the real-time status listener
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
+
+        const attendanceQuery = query(
+            collection(db, "photo_attendances"),
+            where("checkInTime", ">=", todayStart),
+            where("checkInTime", "<=", todayEnd)
+        );
+
+        getDoc(doc(db, "settings", "attendance")).then(settingsDoc => {
+            const settings = settingsDoc.exists() ? settingsDoc.data() : {};
 
             unsubscribe = onSnapshot(attendanceQuery, (attendanceSnapshot) => {
                 const now = new Date();
@@ -136,7 +126,6 @@ export function UserManagement() {
                     }
                 });
 
-                // Map over the combined user data to apply the real-time status
                 const usersWithStatus = combinedUsers.map(user => {
                     let status: User['status'];
                     if (user.role === 'admin') {
@@ -156,28 +145,24 @@ export function UserManagement() {
                     return { ...user, status };
                 });
 
-                // Sort the final list
                 usersWithStatus.sort((a, b) => {
                     if (a.role === 'admin' && b.role !== 'admin') return -1;
                     if (a.role !== 'admin' && b.role === 'admin') return 1;
                     return a.name.localeCompare(b.name);
                 });
 
-                setUsers(usersWithStatus);
+                setUsers(usersWithStatus as User[]);
                 if (loading) setLoading(false);
-
             }, (error) => {
                 console.error("Error in onSnapshot listener: ", error);
                 setLoading(false);
             });
+        });
 
-        } catch (error) {
-            console.error("Error syncing users and status: ", error);
-            setLoading(false);
-        }
-    };
-
-    syncUsersAndStatus();
+    }).catch(error => {
+        console.error("Error fetching and combining user data:", error);
+        setLoading(false);
+    });
 
     return () => {
         if (unsubscribe) {
