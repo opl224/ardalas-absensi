@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
@@ -20,6 +21,7 @@ export interface UserProfile {
     phone?: string;
     religion?: string;
     address?: string;
+    nip?: string;
 }
 
 export interface AuthContextType {

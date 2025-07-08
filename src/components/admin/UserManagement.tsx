@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, Download, Eye, ChevronLeft, ChevronRight, Briefcase, BookCopy, Phone, Home, VenetianMask, BookMarked } from 'lucide-react';
+import { Search, Download, Eye, ChevronLeft, ChevronRight, Briefcase, BookCopy, Phone, Home, VenetianMask, BookMarked, Fingerprint } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -28,6 +28,7 @@ interface User {
   role: 'guru' | 'admin';
   status: 'Hadir' | 'Terlambat' | 'Tidak Hadir' | 'Kecurangan' | 'Libur' | 'Belum Absen' | 'Admin';
   avatar: string;
+  nip?: string;
   subject?: string;
   class?: string;
   gender?: string;
@@ -384,6 +385,7 @@ export function UserManagement() {
             <Separator />
             <div className="space-y-3 text-sm">
                 <h3 className="font-semibold text-md mb-2">Informasi Pribadi</h3>
+                {selectedUser.role === 'guru' && <DetailItem icon={Fingerprint} label="NIP" value={selectedUser.nip} />}
                 <DetailItem icon={VenetianMask} label="Jenis Kelamin" value={selectedUser.gender} />
                 <DetailItem icon={Phone} label="No. Telepon" value={selectedUser.phone} />
                 <DetailItem icon={BookMarked} label="Agama" value={selectedUser.religion} />
@@ -395,7 +397,7 @@ export function UserManagement() {
                     <div className="space-y-3 text-sm mt-4">
                         <h3 className="font-semibold text-md mb-2">Informasi Akademik</h3>
                         <DetailItem icon={BookCopy} label="Mata Pelajaran" value={selectedUser.subject} />
-                        <DetailItem icon={Briefcase} label="Kelas" value={selectedUser.class} />
+                        <DetailItem icon={Briefcase} label="Mengajar Kelas" value={selectedUser.class} />
                     </div>
                 </>
             )}
