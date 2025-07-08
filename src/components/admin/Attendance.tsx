@@ -168,7 +168,7 @@ export function Attendance() {
             d.role,
             d.status !== 'Tidak Hadir' ? d.checkInTime.toDate().toLocaleString('id-ID') : '-',
             d.checkOutTime ? d.checkOutTime.toDate().toLocaleString('id-ID') : '-',
-            d.isFraudulent ? 'Kecurangan' : d.status
+            d.isFraudulent ? `Kecurangan (${d.status})` : d.status
         ]);
         const formattedDate = date ? format(date, "yyyy-MM-dd") : 'tanggal_tidak_dipilih';
         const filename = `Laporan_Kehadiran_${formattedDate}`;
@@ -235,7 +235,6 @@ export function Attendance() {
     }
     
     const getBadgeVariant = (record: AttendanceRecord) => {
-        if (record.isFraudulent) return 'destructive';
         switch (record.status) {
             case 'Hadir': return 'success';
             case 'Terlambat': return 'warning';
@@ -245,7 +244,6 @@ export function Attendance() {
     }
 
     const getBadgeText = (record: AttendanceRecord) => {
-        if (record.isFraudulent) return 'Kecurangan';
         return record.status;
     }
 
@@ -256,8 +254,7 @@ export function Attendance() {
         if (statusFilter === 'Kecurangan') {
             return attendanceData.filter(record => record.isFraudulent);
         }
-        // For other statuses, we only want non-fraudulent records for those specific filters.
-        return attendanceData.filter(record => record.status === statusFilter && !record.isFraudulent);
+        return attendanceData.filter(record => record.status === statusFilter);
     }, [attendanceData, statusFilter]);
 
     const totalPages = Math.ceil(filteredData.length / RECORDS_PER_PAGE);
@@ -383,22 +380,27 @@ export function Attendance() {
                                     className="p-3 flex items-center gap-4 relative cursor-pointer hover:bg-accent/80 transition-colors"
                                     onClick={() => openViewDialog(item)}
                                 >
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="absolute top-1 right-1 h-7 w-7 text-destructive/70 hover:text-destructive hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                                        onClick={(e) => openDeleteDialog(e, item.id)}
-                                        disabled={item.id.startsWith('absent-')}
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                        <span className="sr-only">Hapus Catatan</span>
-                                    </Button>
+                                    <div className="absolute top-2 right-2 flex items-center gap-1.5">
+                                        {item.isFraudulent && (
+                                            <AlertTriangle className="h-5 w-5 text-destructive animate-medium-flash" />
+                                        )}
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7 text-destructive/70 hover:text-destructive hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            onClick={(e) => openDeleteDialog(e, item.id)}
+                                            disabled={item.id.startsWith('absent-')}
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                            <span className="sr-only">Hapus Catatan</span>
+                                        </Button>
+                                    </div>
                                     <Avatar className="h-12 w-12">
                                         <AvatarImage src={item.checkInPhotoUrl} alt={item.name} data-ai-hint="person portrait" />
                                         <AvatarFallback>{item.name.slice(0, 2).toUpperCase()}</AvatarFallback>
                                     </Avatar>
                                     <div className="flex-grow min-w-0">
-                                        <p className="font-semibold text-foreground truncate pr-8">{item.name}</p>
+                                        <p className="font-semibold text-foreground truncate pr-16">{item.name}</p>
                                         <p className="text-sm text-muted-foreground capitalize">{item.role}</p>
                                         <p className="text-xs text-muted-foreground">
                                             {item.status === 'Tidak Hadir'
