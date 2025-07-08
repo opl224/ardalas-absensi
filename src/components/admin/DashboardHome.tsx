@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from "react";
@@ -19,7 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { AttendanceChart } from "@/components/admin/AttendanceChart"
-import { collection, query, orderBy, Timestamp, where, doc, getDoc, onSnapshot } from "firebase/firestore";
+import { collection, query, orderBy, Timestamp, where, doc, getDoc, onSnapshot, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Loader } from "@/components/ui/loader";
 import { Separator } from "../ui/separator";
