@@ -106,21 +106,28 @@ export async function handleCheckin(
     }
     
     // --- TIMEZONE-SAFE TIME LOGIC ---
-    // All comparisons are done using minutes from midnight based on client's local time.
+    // All comparisons are done using minutes from midnight based on the client's local time.
     const checkInEndStr = settings.checkInEnd || '09:00';
-    const gracePeriodMinutes = settings.gracePeriod ?? 60;
+
+    // Defensively parse grace period to ensure it is a valid number.
+    let gracePeriodMinutes = Number(settings.gracePeriod ?? 60);
+    if (isNaN(gracePeriodMinutes)) {
+        gracePeriodMinutes = 60; // Default to 60 if parsing fails to prevent NaN errors.
+    }
     
     const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
     const checkInEndTotalMinutes = endHours * 60 + endMinutes;
 
-    const graceEndTotalMinutes = checkInEndTotalMinutes + gracePeriodMinutes;
+    // This is the absolute deadline. After this, the user is marked 'Tidak Hadir'.
+    const absentDeadlineMinutes = checkInEndTotalMinutes + gracePeriodMinutes;
 
     const [clientHours, clientMinutes] = clientTime.split(':').map(Number);
     const clientTotalMinutes = clientHours * 60 + clientMinutes;
 
 
     // Logic for ABSENT (based on client time)
-    if (clientTotalMinutes > graceEndTotalMinutes) {
+    // If the user tries to check in after the absolute deadline, record them as 'Tidak Hadir' and stop.
+    if (clientTotalMinutes > absentDeadlineMinutes) {
         const absentRecord = {
             userId,
             name: userName,
@@ -177,6 +184,8 @@ export async function handleCheckin(
     }
     
     // Determine status based on time (using client time)
+    // If client time is after the check-in end time, they are late. Otherwise, they are present.
+    // The grace period ONLY determines absence, not lateness.
     const finalStatus = clientTotalMinutes > checkInEndTotalMinutes ? "Terlambat" : "Hadir";
 
     // 3. Save attendance record to Firestore
