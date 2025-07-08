@@ -158,6 +158,11 @@ export function Attendance() {
             });
             return;
         }
+
+        toast({
+            title: "Mempersiapkan Unduhan",
+            description: `Laporan Anda akan segera diunduh sebagai ${formatType.toUpperCase()}.`
+        });
     
         const { default: jsPDF } = await import('jspdf');
         const { default: autoTable } = await import('jspdf-autotable');

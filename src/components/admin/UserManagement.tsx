@@ -21,6 +21,7 @@ import { LottieLoader } from '../ui/lottie-loader';
 import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
+import { useToast } from '@/hooks/use-toast';
 
 interface User {
   id: string;
@@ -58,40 +59,30 @@ export function UserManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const { toast } = useToast();
 
-  useEffect(() => {
+useEffect(() => {
     setLoading(true);
 
-    const fetchAndCombineUsers = async () => {
-        // 1. Fetch all base users (admins and gurus)
-        const usersQuery = query(collection(db, 'users'), where('role', 'in', ['guru', 'admin']));
-        const usersSnapshot = await getDocs(usersQuery);
+    const usersQuery = query(collection(db, 'users'), where('role', 'in', ['guru', 'admin']));
 
-        // 2. For each guru, fetch their details from the 'teachers' collection
-        const combinedUsersPromises = usersSnapshot.docs.map(async (userDoc) => {
-            // Explicitly type baseUser to help TypeScript
-            const baseUser = { id: userDoc.id, ...userDoc.data() } as { id: string; role: 'guru' | 'admin'; [key: string]: any };
+    const unsubscribeUsers = onSnapshot(usersQuery, async (usersSnapshot) => {
+        const baseUsers = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as { id: string, role: 'guru' | 'admin', name: string, [key: string]: any }));
 
-            if (baseUser.role === 'guru') {
-                const teacherDocRef = doc(db, 'teachers', userDoc.id);
-                const teacherDocSnap = await getDoc(teacherDocRef);
-                if (teacherDocSnap.exists()) {
-                    // Return a new object with merged data
-                    return { ...baseUser, ...teacherDocSnap.data() };
-                }
+        const teacherDetailsPromises = baseUsers
+            .filter(user => user.role === 'guru')
+            .map(user => getDoc(doc(db, 'teachers', user.id)));
+        
+        const teacherDetailsDocs = await Promise.all(teacherDetailsPromises);
+        const teachersMap = new Map(teacherDetailsDocs.map(doc => [doc.id, doc.data()]));
+
+        const combinedUsers = baseUsers.map(user => {
+            if (user.role === 'guru' && teachersMap.has(user.id)) {
+                return { ...user, ...teachersMap.get(user.id) };
             }
-            // Return base user if not a guru or if no details are found
-            return baseUser;
+            return user;
         });
 
-        // 3. Wait for all fetching and merging to complete
-        return Promise.all(combinedUsersPromises);
-    };
-
-    let unsubscribe: (() => void) | undefined;
-
-    // Explicitly type combinedUsers to avoid inference issues.
-    fetchAndCombineUsers().then((combinedUsers: { id: string; role: 'guru' | 'admin'; name: string; [key: string]: any }[]) => {
         // Now that we have the complete user list, set up the real-time status listener
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
@@ -104,72 +95,72 @@ export function UserManagement() {
             where("checkInTime", "<=", todayEnd)
         );
 
-        getDoc(doc(db, "settings", "attendance")).then(settingsDoc => {
-            const settings = settingsDoc.exists() ? settingsDoc.data() : {};
+        const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
+        const settings = settingsDoc.exists() ? settingsDoc.data() : {};
+        
+        const unsubscribeAttendance = onSnapshot(attendanceQuery, (attendanceSnapshot) => {
+            const now = new Date();
+            const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
+            const isOffDay = settings.offDays?.includes(todayStr) ?? false;
+            
+            const checkInEndStr = settings.checkInEnd || '09:00';
+            const gracePeriodMinutes = settings.gracePeriod ?? 60;
+            const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
+            const checkInDeadline = new Date();
+            checkInDeadline.setHours(endHours, endMinutes, 0, 0);
+            const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
+            const isPastAbsentDeadline = now > checkInGraceEnd;
 
-            unsubscribe = onSnapshot(attendanceQuery, (attendanceSnapshot) => {
-                const now = new Date();
-                const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
-                const isOffDay = settings.offDays?.includes(todayStr) ?? false;
-                
-                const checkInEndStr = settings.checkInEnd || '09:00';
-                const gracePeriodMinutes = settings.gracePeriod ?? 60;
-                const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
-                const checkInDeadline = new Date();
-                checkInDeadline.setHours(endHours, endMinutes, 0, 0);
-                const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
-                const isPastAbsentDeadline = now > checkInGraceEnd;
-
-                const attendanceStatusMap = new Map<string, string>();
-                attendanceSnapshot.forEach(doc => {
-                    const data = doc.data();
-                    if (data.userId && data.status) {
-                        attendanceStatusMap.set(data.userId, data.status);
-                    }
-                });
-
-                const usersWithStatus = combinedUsers.map(user => {
-                    let status: User['status'];
-                    if (user.role === 'admin') {
-                        status = 'Admin';
-                    } else {
-                        const attendanceStatus = attendanceStatusMap.get(user.id);
-                        if (attendanceStatus) {
-                            status = attendanceStatus as User['status'];
-                        } else if (isOffDay) {
-                            status = 'Libur';
-                        } else if (isPastAbsentDeadline) {
-                            status = 'Tidak Hadir';
-                        } else {
-                            status = 'Belum Absen';
-                        }
-                    }
-                    return { ...user, status };
-                });
-
-                usersWithStatus.sort((a, b) => {
-                    if (a.role === 'admin' && b.role !== 'admin') return -1;
-                    if (a.role !== 'admin' && b.role === 'admin') return 1;
-                    return a.name.localeCompare(b.name);
-                });
-
-                setUsers(usersWithStatus as User[]);
-                if (loading) setLoading(false);
-            }, (error) => {
-                console.error("Error in onSnapshot listener: ", error);
-                setLoading(false);
+            const attendanceStatusMap = new Map<string, string>();
+            attendanceSnapshot.forEach(doc => {
+                const data = doc.data();
+                if (data.userId && data.status) {
+                    attendanceStatusMap.set(data.userId, data.status);
+                }
             });
+
+            const usersWithStatus = combinedUsers.map(user => {
+                let status: User['status'];
+                if (user.role === 'admin') {
+                    status = 'Admin';
+                } else {
+                    const attendanceStatus = attendanceStatusMap.get(user.id);
+                    if (attendanceStatus) {
+                        status = attendanceStatus as User['status'];
+                    } else if (isOffDay) {
+                        status = 'Libur';
+                    } else if (isPastAbsentDeadline) {
+                        status = 'Tidak Hadir';
+                    } else {
+                        status = 'Belum Absen';
+                    }
+                }
+                return { ...user, status };
+            });
+
+            usersWithStatus.sort((a, b) => {
+                if (a.role === 'admin' && b.role !== 'admin') return -1;
+                if (a.role !== 'admin' && b.role === 'admin') return 1;
+                return a.name.localeCompare(b.name);
+            });
+
+            setUsers(usersWithStatus as User[]);
+            if (loading) setLoading(false);
+        }, (error) => {
+            console.error("Error in attendance onSnapshot listener: ", error);
+            setLoading(false);
         });
 
-    }).catch(error => {
-        console.error("Error fetching and combining user data:", error);
+        // This is to make sure we return the attendance unsubscriber
+        return unsubscribeAttendance;
+
+    }, (error) => {
+        console.error("Error in users onSnapshot listener: ", error);
         setLoading(false);
     });
 
     return () => {
-        if (unsubscribe) {
-            unsubscribe();
-        }
+        unsubscribeUsers();
     };
 }, []);
 
@@ -244,6 +235,52 @@ export function UserManagement() {
     }
   }
 
+  const handleDownload = () => {
+    if (loading || filteredUsers.length === 0) {
+        toast({
+            variant: 'destructive',
+            title: 'Gagal Mengunduh',
+            description: 'Tidak ada data pengguna untuk diunduh.',
+        });
+        return;
+    }
+
+    toast({
+        title: 'Mempersiapkan Unduhan',
+        description: 'Daftar pengguna akan segera diunduh sebagai CSV.',
+    });
+
+    const headers = ['ID', 'Nama', 'Email', 'Peran', 'NIP', 'Mata Pelajaran', 'Kelas', 'Jenis Kelamin', 'Telepon', 'Agama', 'Alamat'];
+    const data = filteredUsers.map(user => [
+        user.id,
+        user.name,
+        user.email,
+        user.role,
+        user.nip || '',
+        user.subject || '',
+        user.class || '',
+        user.gender || '',
+        user.phone || '',
+        user.religion || '',
+        user.address || ''
+    ].map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(','));
+
+    const csvContent = [
+        headers.join(','),
+        ...data
+    ].join('\n');
+
+    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'Laporan_Pengguna.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
 
   return (
     <Dialog onOpenChange={(open) => !open && setSelectedUser(null)}>
@@ -263,7 +300,7 @@ export function UserManagement() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
             </div>
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleDownload}>
                 <Download className="mr-2 h-4 w-4" />
                 Unduh
             </Button>

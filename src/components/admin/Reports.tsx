@@ -10,6 +10,7 @@ import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { LottieLoader } from '../ui/lottie-loader';
 import { Button } from '../ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 interface ReportStats {
     totalGurus: number;
@@ -95,6 +96,7 @@ export function Reports() {
     const [reportData, setReportData] = useState<AttendanceReportRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('today');
+    const { toast } = useToast();
 
     useEffect(() => {
         const fetchReportData = async () => {
@@ -176,13 +178,22 @@ export function Reports() {
         fetchReportData();
     }, [activeTab]);
 
-    const handleDownload = async (format: 'pdf' | 'csv') => {
+    const handleDownload = async (formatType: 'pdf' | 'csv') => {
         if (loading || reportData.length === 0) {
-            alert('Data tidak tersedia atau sedang dimuat. Silakan coba lagi nanti.');
+            toast({
+                variant: 'destructive',
+                title: 'Gagal Mengunduh',
+                description: 'Data tidak tersedia atau sedang dimuat. Silakan coba lagi nanti.'
+            });
             return;
         }
 
-        const headers = ['Nama', 'Waktu Absen Masuk', 'Waktu Absen Keluar', 'Status', 'Alasan Penipuan'];
+        toast({
+            title: "Mempersiapkan Unduhan",
+            description: `Laporan Anda akan segera diunduh sebagai ${formatType.toUpperCase()}.`
+        });
+
+        const headers = ['Nama', 'Waktu Absen Masuk', 'Waktu Absen Keluar', 'Status', 'Alasan Kecurangan'];
         const data = reportData.map(d => [d.name, d.checkInTime, d.checkOutTime, d.status, d.fraudReason]);
         
         const periodMap: { [key: string]: string } = {
@@ -194,7 +205,7 @@ export function Reports() {
         const period = periodMap[activeTab] || activeTab;
         const filename = `Laporan_Kehadiran_Guru_${period.replace(' ','_')}_${new Date().toISOString().slice(0, 10)}`;
 
-        if (format === 'csv') {
+        if (formatType === 'csv') {
             const csvContent = [
                 headers.join(','),
                 ...data.map(row => row.join(','))
@@ -211,7 +222,7 @@ export function Reports() {
             document.body.removeChild(link);
         }
 
-        if (format === 'pdf') {
+        if (formatType === 'pdf') {
             const jsPDF = (await import('jspdf')).default;
             const autoTable = (await import('jspdf-autotable')).default;
 
