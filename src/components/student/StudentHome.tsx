@@ -21,20 +21,20 @@ interface StudentHomeProps {
 
 type CheckinStatus = 'not_checked_in' | 'checked_in' | 'checked_out' | 'tidak_hadir' | 'loading';
 
-function CheckoutButton() {
+function CheckoutButton({ disabled }: { disabled: boolean }) {
     const { pending } = useFormStatus();
     return (
-      <Button type="submit" className="w-full" disabled={pending}>
+      <Button type="submit" className="w-full" disabled={pending || disabled}>
         {pending && <LottieLoader size={24} />}
         Absen Keluar
       </Button>
     );
 }
 
-function QuickCheckoutButton() {
+function QuickCheckoutButton({ disabled }: { disabled: boolean }) {
     const { pending } = useFormStatus();
     return (
-        <button type="submit" disabled={pending} className="w-full text-left p-0 rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50">
+        <button type="submit" disabled={pending || disabled} className="w-full text-left p-0 rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50">
             <Card className="w-full h-full p-4 flex flex-col items-center justify-center text-center hover:bg-secondary">
                 {pending ? (
                     <LottieLoader size={32} />
@@ -64,6 +64,7 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
     const [status, setStatus] = useState<CheckinStatus>('loading');
     const [checkinData, setCheckinData] = useState<{ time: string; photo: string; attendanceId: string } | null>(null);
     const [checkoutTime, setCheckoutTime] = useState<string | null>(null);
+    const [isCheckoutAllowed, setIsCheckoutAllowed] = useState(false);
 
     const { userProfile } = useAuth();
     const { toast } = useToast();
@@ -102,35 +103,35 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
         );
 
         const unsubscribe = onSnapshot(q, async (snapshot) => {
-            if (snapshot.empty) {
-                const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
-                if (settingsDoc.exists()) {
-                    const settings = settingsDoc.data();
-                    const now = new Date();
-                    const checkInEnd = getTodayAtTime(settings.checkInEnd || '09:00');
-                    const gracePeriodMinutes = settings.gracePeriod ?? 60;
-                    const checkInGraceEnd = new Date(checkInEnd.getTime() + gracePeriodMinutes * 60 * 1000);
+            const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
+            const settings = settingsDoc.exists() ? settingsDoc.data() : {};
+            const now = new Date();
 
-                    if (now > checkInGraceEnd) {
-                        setStatus('tidak_hadir');
-                    } else {
-                        setStatus('not_checked_in');
-                    }
+            const checkOutStart = getTodayAtTime(settings.checkOutStart || '15:00');
+            setIsCheckoutAllowed(now >= checkOutStart);
+
+            if (snapshot.empty) {
+                const checkInEnd = getTodayAtTime(settings.checkInEnd || '09:00');
+                const gracePeriodMinutes = settings.gracePeriod ?? 60;
+                const checkInGraceEnd = new Date(checkInEnd.getTime() + gracePeriodMinutes * 60 * 1000);
+
+                if (now > checkInGraceEnd) {
+                    setStatus('tidak_hadir');
                 } else {
                     setStatus('not_checked_in');
                 }
                 setCheckinData(null);
                 setCheckoutTime(null);
             } else {
-                const doc = snapshot.docs[0];
-                const data = doc.data();
+                const docSnap = snapshot.docs[0];
+                const data = docSnap.data();
                 
                 const checkInTimestamp = data.checkInTime as Timestamp;
                 
                 setCheckinData({
                     time: checkInTimestamp.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit'}),
                     photo: data.checkInPhotoUrl,
-                    attendanceId: doc.id
+                    attendanceId: docSnap.id
                 });
 
                 if (data.checkOutTime) {
@@ -248,7 +249,7 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
                                     <form action={formAction}>
                                     <input type="hidden" name="userId" value={userProfile.uid} />
                                     <input type="hidden" name="attendanceId" value={checkinData.attendanceId} />
-                                    <CheckoutButton />
+                                    <CheckoutButton disabled={!isCheckoutAllowed} />
                                     </form>
                                 )}
                             </>
@@ -275,7 +276,7 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
                             <form action={formAction}>
                                 <input type="hidden" name="userId" value={userProfile.uid} />
                                 <input type="hidden" name="attendanceId" value={checkinData.attendanceId} />
-                                <QuickCheckoutButton />
+                                <QuickCheckoutButton disabled={!isCheckoutAllowed} />
                             </form>
                         ) : (
                             <button

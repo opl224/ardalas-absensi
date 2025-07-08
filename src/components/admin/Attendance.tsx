@@ -401,13 +401,16 @@ export function Attendance() {
                                         <p className="font-semibold text-foreground truncate pr-8">{item.name}</p>
                                         <p className="text-sm text-muted-foreground capitalize">{item.role}</p>
                                         <p className="text-xs text-muted-foreground">
-                                            {item.status !== 'Tidak Hadir' && `Absen Masuk: ${item.checkInTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`}
-                                            {item.checkOutTime && (
-                                                <>
-                                                    <br />
-                                                    {`Absen Keluar: ${item.checkOutTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`}
-                                                </>
-                                            )}
+                                            {item.status === 'Tidak Hadir'
+                                                ? 'Belum absen masuk'
+                                                : `Absen Masuk: ${item.checkInTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
+                                            }
+                                            <br />
+                                            {'Absen Keluar: '}
+                                            {item.status === 'Tidak Hadir' || !item.checkOutTime
+                                                ? 'Belum absen keluar'
+                                                : item.checkOutTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+                                            }
                                         </p>
                                     </div>
                                     <Badge variant={getBadgeVariant(item)} className="w-24 justify-center shrink-0">{getBadgeText(item)}</Badge>
@@ -507,18 +510,24 @@ export function Attendance() {
                                     <span className="text-muted-foreground">Peran</span>
                                     <span className="font-medium capitalize">{selectedRecord.role}</span>
                                 </div>
-                                {selectedRecord.status !== 'Tidak Hadir' && (
-                                    <>
-                                        <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Waktu Absen Masuk</span>
-                                            <span className="font-medium">{selectedRecord.checkInTime.toDate().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Waktu Absen Keluar</span>
-                                            <span className="font-medium">{selectedRecord.checkOutTime ? selectedRecord.checkOutTime.toDate().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : 'Belum absen keluar'}</span>
-                                        </div>
-                                    </>
-                                )}
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Waktu Absen Masuk</span>
+                                    <span className="font-medium">
+                                        {selectedRecord.status !== 'Tidak Hadir'
+                                            ? selectedRecord.checkInTime.toDate().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
+                                            : 'Belum absen masuk'
+                                        }
+                                    </span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Waktu Absen Keluar</span>
+                                    <span className="font-medium">
+                                        {selectedRecord.checkOutTime
+                                            ? selectedRecord.checkOutTime.toDate().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
+                                            : 'Belum absen keluar'
+                                        }
+                                    </span>
+                                </div>
                                 <div className="flex justify-between items-center">
                                     <span className="text-muted-foreground">Status</span>
                                     <Badge variant={getBadgeVariant(selectedRecord)}>{getBadgeText(selectedRecord)}</Badge>
@@ -568,3 +577,4 @@ export function Attendance() {
         </div>
     )
 }
+
