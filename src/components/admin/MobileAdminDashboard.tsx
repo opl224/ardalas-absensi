@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { Home, User as UserIcon, Users2, LineChart, CheckSquare } from "lucide-react";
 import { UserManagement } from "./UserManagement";
 import { Reports } from "./Reports";
@@ -11,9 +11,22 @@ import { PushNotifications } from "./PushNotifications";
 import { Privacy } from "./Privacy";
 import { motion, AnimatePresence } from "framer-motion";
 
-type ActiveView = 'home' | 'profile' | 'users' | 'reports' | 'attendance' | 'push-notifications' | 'privacy';
+type MainViewID = 'home' | 'users' | 'reports' | 'attendance' | 'profile';
+type SubViewID = 'push-notifications' | 'privacy';
+type ViewID = MainViewID | SubViewID;
 
-const mainViews: ActiveView[] = ['home', 'users', 'reports', 'attendance', 'profile'];
+const mainViews: MainViewID[] = ['home', 'users', 'reports', 'attendance', 'profile'];
+
+const viewComponents: { [key in ViewID]: React.FC<any> } = {
+    home: MobileHome,
+    users: UserManagement,
+    reports: Reports,
+    attendance: Attendance,
+    profile: Profile,
+    'push-notifications': PushNotifications,
+    privacy: Privacy,
+};
+
 
 const variants = {
   enter: (direction: number) => ({
@@ -39,23 +52,23 @@ const transition = {
 
 
 const NavLink = ({
-    activeView,
-    view,
+    activePageIndex,
+    index,
     setView,
     children,
     label
 }: {
-    activeView: ActiveView,
-    view: ActiveView,
-    setView: (view: ActiveView) => void,
+    activePageIndex: number,
+    index: number,
+    setView: (index: number) => void,
     children: React.ReactNode,
     label: string
 }) => {
-    const isActive = activeView === view;
+    const isActive = activePageIndex === index;
     return (
         <button
-            onClick={() => setView(view)}
-            className={`flex flex-col items-center w-1/5 pt-1 ${isActive ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
+            onClick={() => setView(index)}
+            className={`flex flex-col items-center w-1/5 pt-1 transition-colors duration-200 ${isActive ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
         >
             {children}
             <span className="text-xs mt-1 font-medium">{label}</span>
@@ -65,62 +78,53 @@ const NavLink = ({
 
 
 export function MobileAdminDashboard() {
-  const [activeView, setActiveView] = useState<ActiveView>('home');
+  const [view, setView] = useState<number | ViewID>(0);
   const [direction, setDirection] = useState(0);
 
-  const currentIndex = mainViews.indexOf(activeView);
-  const currentIndexRef = useRef(currentIndex);
-  currentIndexRef.current = currentIndex;
+  const viewRef = useRef(view);
+  viewRef.current = view;
 
-  const isSubView = currentIndex === -1;
+  const currentIndex = typeof view === 'number' ? view : mainViews.indexOf(view as MainViewID);
 
-  const changeView = (newView: ActiveView) => {
-    const newIndex = mainViews.indexOf(newView);
-    const oldIndex = mainViews.indexOf(activeView);
+  const changeView = (newView: number | ViewID) => {
+    const oldIndex = typeof viewRef.current === 'number' ? viewRef.current : mainViews.indexOf(viewRef.current as MainViewID);
+    const newIndex = typeof newView === 'number' ? newView : mainViews.indexOf(newView as MainViewID);
 
+    let d = 0;
     if (oldIndex !== -1 && newIndex !== -1) {
-        setDirection(newIndex > oldIndex ? 1 : -1);
+        d = newIndex > oldIndex ? 1 : -1;
     } else {
-        setDirection(1); // sub-views always slide in from the right
+        d = 1;
     }
-    setActiveView(newView);
+    
+    setDirection(d);
+    setView(newView);
+  };
+
+  const handleSwipe = (swipeDirection: number) => {
+    const currentView = viewRef.current;
+    if (typeof currentView !== 'number') return;
+    const newIndex = currentView + swipeDirection;
+    if (newIndex >= 0 && newIndex < mainViews.length) {
+        changeView(newIndex);
+    }
   };
   
-  const handleSwipe = (newDirection: number) => {
-    if (isSubView) return;
-    const newIndex = currentIndexRef.current + newDirection;
-    if (newIndex >= 0 && newIndex < mainViews.length) {
-        changeView(mainViews[newIndex]);
-    }
-  };
+  const viewIdToRender = typeof view === 'number' ? mainViews[view] : view;
+  const ComponentToRender = viewComponents[viewIdToRender];
+  const isSubView = typeof view !== 'number';
 
-  const renderContent = () => {
-    switch (activeView) {
-      case 'home':
-        return <MobileHome setActiveView={changeView} />;
-      case 'users':
-        return <UserManagement />;
-      case 'reports':
-        return <Reports />;
-      case 'profile':
-        return <Profile setActiveView={changeView} />;
-      case 'attendance':
-        return <Attendance />;
-      case 'push-notifications':
-        return <PushNotifications onBack={() => changeView('profile')} />;
-      case 'privacy':
-        return <Privacy onBack={() => changeView('profile')} />;
-      default:
-        return <MobileHome setActiveView={changeView} />;
-    }
-  }
+  const props = {
+      setActiveView: changeView,
+      onBack: () => changeView(mainViews.indexOf('profile')),
+  };
 
   return (
     <div className="bg-gray-50 dark:bg-zinc-900 min-h-screen flex flex-col">
       <main className="flex-grow pb-24 relative overflow-hidden">
         <AnimatePresence initial={false} custom={direction}>
             <motion.div
-                key={activeView}
+                key={view.toString()}
                 className="absolute w-full h-full"
                 custom={direction}
                 variants={variants}
@@ -130,37 +134,37 @@ export function MobileAdminDashboard() {
                 transition={transition}
                 drag={!isSubView ? "x" : false}
                 dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={1}
+                dragElastic={0.2}
                 onDragEnd={(e, { offset, velocity }) => {
                     if (isSubView) return;
-                    const swipeThreshold = 100;
-                    if (offset.x < -swipeThreshold || velocity.x < -500) {
-                        handleSwipe(1); // Swipe left
-                    } else if (offset.x > swipeThreshold || velocity.x > 500) {
-                        handleSwipe(-1); // Swipe right
+                    const swipeThreshold = 50;
+                    if (offset.x < -swipeThreshold || velocity.x < -300) {
+                        handleSwipe(1);
+                    } else if (offset.x > swipeThreshold || velocity.x > 300) {
+                        handleSwipe(-1);
                     }
                 }}
             >
-                {renderContent()}
+                <ComponentToRender {...props} />
             </motion.div>
         </AnimatePresence>
       </main>
 
       {/* Bottom Nav */}
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t p-2 flex justify-around z-10">
-        <NavLink activeView={mainViews[currentIndex]} view="home" setView={changeView} label="Beranda">
+        <NavLink activePageIndex={currentIndex} index={0} setView={changeView} label="Beranda">
           <Home className="h-6 w-6" />
         </NavLink>
-        <NavLink activeView={mainViews[currentIndex]} view="users" setView={changeView} label="Pengguna">
+        <NavLink activePageIndex={currentIndex} index={1} setView={changeView} label="Pengguna">
           <Users2 className="h-6 w-6" />
         </NavLink>
-        <NavLink activeView={mainViews[currentIndex]} view="reports" setView={changeView} label="Laporan">
+        <NavLink activePageIndex={currentIndex} index={2} setView={changeView} label="Laporan">
           <LineChart className="h-6 w-6" />
         </NavLink>
-        <NavLink activeView={mainViews[currentIndex]} view="attendance" setView={changeView} label="Kehadiran">
+        <NavLink activePageIndex={currentIndex} index={3} setView={changeView} label="Kehadiran">
           <CheckSquare className="h-6 w-6" />
         </NavLink>
-        <NavLink activeView={mainViews[currentIndex]} view="profile" setView={changeView} label="Profil">
+        <NavLink activePageIndex={currentIndex} index={4} setView={changeView} label="Profil">
           <UserIcon className="h-6 w-6" />
         </NavLink>
       </nav>
