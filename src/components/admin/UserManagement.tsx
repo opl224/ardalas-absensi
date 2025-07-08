@@ -72,38 +72,37 @@ export function UserManagement() {
     const syncUsersAndStatus = async () => {
         setLoading(true);
         try {
+            // Fetch settings for determining attendance status
             const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
-            if (!settingsDoc.exists()) {
-                console.error("Attendance settings not found!");
-                setUsers([]);
-                setLoading(false);
-                return;
-            }
-            const settings = settingsDoc.data();
+            const settings = settingsDoc.exists() ? settingsDoc.data() : {};
 
-            // Fetch all users (admins and teachers) from the 'users' collection
-            const usersQuery = query(collection(db, 'users'), where('role', 'in', ['guru', 'admin']));
-            const usersSnapshot = await getDocs(usersQuery);
-            const allUsersFromUsersCollection = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-            // Create a map for easy lookup
-            const usersMap = new Map(allUsersFromUsersCollection.map(user => [user.id, user]));
-
-            // Fetch all teacher details from the 'teachers' collection
+            // Fetch all teacher details and put them in a Map for efficient lookup
             const teachersQuery = query(collection(db, 'teachers'));
             const teachersSnapshot = await getDocs(teachersQuery);
-            const allTeachersDetails = teachersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const teacherDetailsMap = new Map(
+                teachersSnapshot.docs.map(doc => [doc.id, doc.data()])
+            );
 
-            // Combine the data
-            const combinedUsers = allUsersFromUsersCollection.map(baseUser => {
+            // Fetch all base users (admins and teachers)
+            const usersQuery = query(collection(db, 'users'), where('role', 'in', ['guru', 'admin']));
+            const usersSnapshot = await getDocs(usersQuery);
+
+            // Combine base user data with teacher details
+            const combinedUsers = usersSnapshot.docs.map(doc => {
+                const baseUser = { id: doc.id, ...doc.data() };
+                
+                // For teachers, merge their details from the map
                 if (baseUser.role === 'guru') {
-                    const teacherDetails = allTeachersDetails.find(t => t.id === baseUser.id);
-                    return { ...baseUser, ...teacherDetails }; // Merge, baseUser info (like role, email) is leading
+                    const details = teacherDetailsMap.get(baseUser.id);
+                    if (details) {
+                        return { ...baseUser, ...details };
+                    }
                 }
-                return baseUser; // It's an admin, return as is
+                // For admins or teachers without details, return as is
+                return baseUser;
             }) as User[];
 
-
+            // Set up a real-time listener for today's attendance records
             const todayStart = new Date();
             todayStart.setHours(0, 0, 0, 0);
             const todayEnd = new Date();
@@ -119,9 +118,13 @@ export function UserManagement() {
                 const now = new Date();
                 const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
                 const isOffDay = settings.offDays?.includes(todayStr) ?? false;
-                const checkInEnd = getTodayAtTime(settings.checkInEnd || '09:00');
+                
+                const checkInEndStr = settings.checkInEnd || '09:00';
                 const gracePeriodMinutes = settings.gracePeriod ?? 60;
-                const checkInGraceEnd = new Date(checkInEnd.getTime() + gracePeriodMinutes * 60 * 1000);
+                const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
+                const checkInDeadline = new Date();
+                checkInDeadline.setHours(endHours, endMinutes, 0, 0);
+                const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
                 const isPastAbsentDeadline = now > checkInGraceEnd;
 
                 const attendanceStatusMap = new Map<string, string>();
@@ -132,7 +135,8 @@ export function UserManagement() {
                     }
                 });
 
-                const fetchedUsers = combinedUsers.map(user => {
+                // Map over the combined user data to apply the real-time status
+                const usersWithStatus = combinedUsers.map(user => {
                     let status: User['status'];
                     if (user.role === 'admin') {
                         status = 'Admin';
@@ -148,17 +152,19 @@ export function UserManagement() {
                             status = 'Belum Absen';
                         }
                     }
-                    return { ...user, status } as User;
+                    return { ...user, status };
                 });
 
-                fetchedUsers.sort((a, b) => {
+                // Sort the final list
+                usersWithStatus.sort((a, b) => {
                     if (a.role === 'admin' && b.role !== 'admin') return -1;
                     if (a.role !== 'admin' && b.role === 'admin') return 1;
                     return a.name.localeCompare(b.name);
                 });
 
-                setUsers(fetchedUsers);
+                setUsers(usersWithStatus);
                 if (loading) setLoading(false);
+
             }, (error) => {
                 console.error("Error in onSnapshot listener: ", error);
                 setLoading(false);
@@ -178,6 +184,7 @@ export function UserManagement() {
         }
     };
 }, []);
+
 
   const filteredUsers = useMemo(() => {
     setCurrentPage(1); // Reset to first page on search
