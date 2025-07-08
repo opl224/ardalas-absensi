@@ -123,7 +123,7 @@ export function UserManagement() {
           ...doc.data(),
         })) as User[];
         
-        const allUsers = [...teacherUsers, ...adminUsers];
+        const allUsers = [...adminUsers, ...teacherUsers];
 
         // 3. Combine user data with today's status
         const fetchedUsers = allUsers.map(user => {
@@ -268,10 +268,14 @@ export function UserManagement() {
                                   <p className="font-semibold text-foreground truncate">{user.name}</p>
                                   <p className="text-sm text-muted-foreground -mt-1 truncate">{user.email}</p>
                                   <div className="flex items-center gap-2 mt-1">
-                                  <Badge variant={getBadgeVariant(user.status)}>
-                                      {user.status}
-                                  </Badge>
-                                  <span className="text-sm text-muted-foreground capitalize">{user.role}</span>
+                                    {user.role === 'Admin' ? (
+                                        <Badge variant="info">Admin</Badge>
+                                    ) : (
+                                        <Badge variant={getBadgeVariant(user.status)}>
+                                            {user.status}
+                                        </Badge>
+                                    )}
+                                    <span className="text-sm text-muted-foreground capitalize">{user.role}</span>
                                   </div>
                               </div>
                               <div className="flex gap-2">
