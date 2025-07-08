@@ -4,7 +4,7 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { CenteredLoader } from '@/components/ui/loader';
@@ -40,52 +40,76 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const router = useRouter();
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                setUser(user);
-                
-                // Fetch base user data from 'users' collection to determine the role
-                const userDocRef = doc(db, 'users', user.uid);
-                const userDocSnap = await getDoc(userDocRef);
+        let profileListenerUnsubscribe: (() => void) | undefined;
 
-                if (userDocSnap.exists()) {
-                    const userData = userDocSnap.data();
-                    
-                    if (userData.role === 'guru') {
-                        // If the user is a teacher, fetch their detailed profile from the 'teachers' collection
-                        const teacherDocRef = doc(db, 'teachers', user.uid);
-                        const teacherDocSnap = await getDoc(teacherDocRef);
-                        
-                        if (teacherDocSnap.exists()) {
-                            // Use teacher-specific data, but ensure the role is set correctly from the 'users' doc.
-                            setUserProfile({ uid: user.uid, ...teacherDocSnap.data(), role: 'guru' } as UserProfile);
-                        } else {
-                            console.warn(`Teacher profile for user ${user.uid} not found in 'teachers' collection. Falling back to basic data from 'users' collection.`);
-                            // Fallback to the user data from 'users' collection if the teacher profile is missing.
-                            // This allows the user to still log in, though with possibly incomplete data.
-                            setUserProfile({ uid: user.uid, ...userData } as UserProfile);
-                        }
-                    } else {
-                        // For admins and students, use the data from the 'users' collection
-                        setUserProfile({ uid: user.uid, ...userData } as UserProfile);
-                    }
-                } else {
-                    console.error(`User document for user ${user.uid} not found in 'users' collection.`);
+        const authStateUnsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+            // Clean up old listener when user auth state changes
+            if (profileListenerUnsubscribe) {
+                profileListenerUnsubscribe();
+            }
+
+            if (firebaseUser) {
+                setUser(firebaseUser);
+
+                // First, determine the role with a one-time fetch.
+                const baseUserDocRef = doc(db, 'users', firebaseUser.uid);
+                const baseUserSnap = await getDoc(baseUserDocRef);
+
+                if (!baseUserSnap.exists()) {
+                    console.error(`User document for user ${firebaseUser.uid} not found in 'users' collection.`);
+                    setUser(null);
                     setUserProfile(null);
-                    router.push('/');
+                    setLoading(false);
+                    return;
                 }
+                
+                const baseUserData = baseUserSnap.data();
+                const userRole = baseUserData.role;
+
+                // Now, set up a real-time listener on the correct collection based on the role.
+                const profileDocRef = userRole === 'guru' 
+                    ? doc(db, 'teachers', firebaseUser.uid) 
+                    : baseUserDocRef;
+
+                profileListenerUnsubscribe = onSnapshot(profileDocRef, (profileSnap) => {
+                    if (profileSnap.exists()) {
+                        // Combine data and ensure the role from 'users' is the source of truth.
+                        setUserProfile({
+                            uid: firebaseUser.uid,
+                            ...profileSnap.data(),
+                            role: userRole, 
+                        } as UserProfile);
+                    } else {
+                        // Fallback if the specific profile (e.g., 'teachers' doc) doesn't exist.
+                        console.warn(`Profile document for user ${firebaseUser.uid} not found in its specific collection. Falling back to base data.`);
+                        setUserProfile({ uid: firebaseUser.uid, ...baseUserData } as UserProfile);
+                    }
+                    setLoading(false);
+                }, (error) => {
+                    console.error("Error listening to user profile:", error);
+                    setUserProfile(null);
+                    setLoading(false);
+                });
+
             } else {
                 setUser(null);
                 setUserProfile(null);
+                setLoading(false);
             }
-            setLoading(false);
         });
 
-        return () => unsubscribe();
-    }, [router]);
+        // Cleanup on unmount
+        return () => {
+            authStateUnsubscribe();
+            if (profileListenerUnsubscribe) {
+                profileListenerUnsubscribe();
+            }
+        };
+    }, []); // Empty dependency array ensures this runs only once.
 
     const logout = async () => {
         await signOut(auth);
+        // The onAuthStateChanged listener will handle state cleanup.
         router.push('/');
     };
 
