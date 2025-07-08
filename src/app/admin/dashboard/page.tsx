@@ -45,6 +45,7 @@ interface AttendanceRecord {
     role: string;
     checkInTime: Timestamp;
     status: 'Hadir' | 'Terlambat' | 'Penipuan' | 'Absen';
+    isFraudulent?: boolean;
 }
 
 interface DashboardStats {
@@ -292,9 +293,10 @@ export default function AdminDashboard() {
                                         <TableCell className="hidden sm:table-cell">{item.checkInTime.toDate().toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'})}</TableCell>
                                         <TableCell>
                                         <Badge variant={
+                                            item.isFraudulent ? 'destructive' :
                                             item.status === 'Hadir' ? 'success' :
                                             item.status === 'Terlambat' ? 'warning' : 'destructive'
-                                        }>{item.status}</Badge>
+                                        }>{item.isFraudulent ? 'Penipuan' : item.status}</Badge>
                                         </TableCell>
                                     </TableRow>
                                     ))

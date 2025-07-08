@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from "react";
@@ -41,7 +42,8 @@ interface StudentAttendanceRecord {
     id: string;
     name: string;
     checkInTime: Timestamp;
-    status: 'Hadir' | 'Terlambat' | 'Penipuan' | 'Absen';
+    status: 'Hadir' | 'Terlambat' | 'Absen';
+    isFraudulent?: boolean;
 }
 
 export default function TeacherDashboard() {
@@ -231,10 +233,11 @@ export default function TeacherDashboard() {
                                         <TableCell className="hidden sm:table-cell">{item.checkInTime.toDate().toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'})}</TableCell>
                                         <TableCell>
                                         <Badge variant={
-                                            item.status === 'Hadir' ? 'default' :
-                                            item.status === 'Terlambat' ? 'secondary' : 
+                                            item.isFraudulent ? 'destructive' :
+                                            item.status === 'Hadir' ? 'success' :
+                                            item.status === 'Terlambat' ? 'warning' : 
                                             item.status === 'Absen' ? 'outline' : 'destructive'
-                                        }>{item.status}</Badge>
+                                        }>{item.isFraudulent ? 'Penipuan' : item.status}</Badge>
                                         </TableCell>
                                     </TableRow>
                                     ))}

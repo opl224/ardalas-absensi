@@ -14,7 +14,8 @@ interface HistoryRecord {
     id: string;
     checkInTime: Timestamp;
     checkOutTime?: Timestamp;
-    status: 'Hadir' | 'Terlambat' | 'Penipuan' | 'Absen';
+    status: 'Hadir' | 'Terlambat' | 'Absen';
+    isFraudulent?: boolean;
 }
 
 export function AttendanceHistory() {
@@ -108,10 +109,11 @@ export function AttendanceHistory() {
                                         </p>
                                     </div>
                                     <Badge variant={
+                                        item.isFraudulent ? 'destructive' :
                                         item.status === 'Hadir' ? 'success' :
                                         item.status === 'Terlambat' ? 'warning' : 
                                         item.status === 'Absen' ? 'outline' : 'destructive'
-                                    } className="w-24 justify-center">{item.status}</Badge>
+                                    } className="w-24 justify-center">{item.isFraudulent ? 'Penipuan' : item.status}</Badge>
                                 </Card>
                             ))
                         )}

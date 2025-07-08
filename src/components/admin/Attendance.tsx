@@ -34,7 +34,7 @@ interface AttendanceRecord {
     role: string;
     checkInTime: Timestamp;
     checkOutTime?: Timestamp;
-    status: 'Hadir' | 'Terlambat' | 'Penipuan' | 'Absen';
+    status: 'Hadir' | 'Terlambat' | 'Absen';
     checkInPhotoUrl?: string;
     isFraudulent?: boolean;
     fraudReason?: string;
@@ -168,7 +168,7 @@ export function Attendance() {
             d.role,
             d.status !== 'Absen' ? d.checkInTime.toDate().toLocaleString('id-ID') : '-',
             d.checkOutTime ? d.checkOutTime.toDate().toLocaleString('id-ID') : '-',
-            d.status
+            d.isFraudulent ? 'Penipuan' : d.status
         ]);
         const formattedDate = date ? format(date, "yyyy-MM-dd") : 'tanggal_tidak_dipilih';
         const filename = `Laporan_Kehadiran_${formattedDate}`;
@@ -234,21 +234,30 @@ export function Attendance() {
         setIsDeleteDialogOpen(true);
     }
     
-    const getBadgeVariant = (status: AttendanceRecord['status']) => {
-        switch (status) {
+    const getBadgeVariant = (record: AttendanceRecord) => {
+        if (record.isFraudulent) return 'destructive';
+        switch (record.status) {
             case 'Hadir': return 'success';
             case 'Terlambat': return 'warning';
-            case 'Penipuan': return 'destructive';
             case 'Absen': return 'destructive';
             default: return 'outline';
         }
+    }
+
+    const getBadgeText = (record: AttendanceRecord) => {
+        if (record.isFraudulent) return 'Penipuan';
+        return record.status;
     }
 
     const filteredData = useMemo(() => {
         if (statusFilter === 'Semua Kehadiran') {
             return attendanceData;
         }
-        return attendanceData.filter(record => record.status === statusFilter);
+        if (statusFilter === 'Penipuan') {
+            return attendanceData.filter(record => record.isFraudulent);
+        }
+        // For other statuses, we only want non-fraudulent records for those specific filters.
+        return attendanceData.filter(record => record.status === statusFilter && !record.isFraudulent);
     }, [attendanceData, statusFilter]);
 
     const totalPages = Math.ceil(filteredData.length / RECORDS_PER_PAGE);
@@ -401,7 +410,7 @@ export function Attendance() {
                                             )}
                                         </p>
                                     </div>
-                                    <Badge variant={getBadgeVariant(item.status)} className="w-24 justify-center shrink-0">{item.status}</Badge>
+                                    <Badge variant={getBadgeVariant(item)} className="w-24 justify-center shrink-0">{getBadgeText(item)}</Badge>
                                 </Card>
                             ))
                         ) : (
@@ -512,7 +521,7 @@ export function Attendance() {
                                 )}
                                 <div className="flex justify-between items-center">
                                     <span className="text-muted-foreground">Status</span>
-                                    <Badge variant={getBadgeVariant(selectedRecord.status)}>{selectedRecord.status}</Badge>
+                                    <Badge variant={getBadgeVariant(selectedRecord)}>{getBadgeText(selectedRecord)}</Badge>
                                 </div>
                             </div>
                             
