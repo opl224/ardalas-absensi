@@ -187,52 +187,44 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
                 </div>
               </div>
 
-              <div>
-                <div className="flex items-start gap-4">
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-full shrink-0 ${photoDataUri ? 'bg-primary/10 text-primary' : 'bg-muted'}`}>
-                    {photoDataUri ? <CheckCircle /> : <Camera />}
-                  </div>
-                  <div className="flex-grow">
-                    <h3 className="font-semibold">Langkah 2: Ambil Foto Selfie</h3>
-                    <p className="text-sm text-muted-foreground">Foto Anda digunakan untuk memvalidasi kehadiran Anda.</p>
-                    
-                    {location && !isCameraOn && !photoDataUri && (
-                       <Button type="button" onClick={startCamera} className="mt-2" disabled={!location}>Mulai Kamera</Button>
-                    )}
-                    {cameraError && <p className="text-sm text-destructive mt-2">{cameraError}</p>}
-                  </div>
+              <div className="flex items-start gap-4">
+                <div className={`flex h-10 w-10 items-center justify-center rounded-full shrink-0 ${photoDataUri ? 'bg-primary/10 text-primary' : 'bg-muted'}`}>
+                  {photoDataUri ? <CheckCircle /> : <Camera />}
                 </div>
-
-                <div className="mt-2 space-y-2">
-                   {/* Video element is always in the DOM to prevent race conditions, but hidden with CSS */}
-                   <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className={cn("w-full aspect-video rounded-md border", {
-                      "hidden": !isCameraOn,
-                    })}
-                  />
+                <div className="flex-grow min-w-0">
+                  <h3 className="font-semibold">Langkah 2: Ambil Foto Selfie</h3>
+                  <p className="text-sm text-muted-foreground">Foto Anda digunakan untuk memvalidasi kehadiran Anda.</p>
                   
-                  {/* Show the taken photo when camera is off */}
-                  {photoDataUri && !isCameraOn && (
-                    <img src={photoDataUri} alt="User selfie" className="w-full aspect-video object-cover rounded-md border" />
+                  {location && !isCameraOn && !photoDataUri && (
+                      <Button type="button" onClick={startCamera} className="mt-2" disabled={!location}>Mulai Kamera</Button>
                   )}
+                  {cameraError && <p className="text-sm text-destructive mt-2">{cameraError}</p>}
+                  
+                  <div className={cn("mt-2 space-y-2", { "hidden": !isCameraOn && !photoDataUri })}>
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className={cn("w-full aspect-video object-cover rounded-md border", {
+                        "hidden": !isCameraOn,
+                      })}
+                    />
+                    
+                    {photoDataUri && !isCameraOn && (
+                      <img src={photoDataUri} alt="User selfie" className="w-full aspect-video object-cover rounded-md border" />
+                    )}
 
-                  {/* Show take photo button only when camera is on */}
-                  {isCameraOn && (
-                    <Button type="button" onClick={takePhoto} className="w-full">Ambil Selfie</Button>
-                  )}
+                    {isCameraOn && (
+                      <Button type="button" onClick={takePhoto} className="w-full">Ambil Selfie</Button>
+                    )}
 
-                  {/* Show retake photo button only after a photo is taken */}
-                  {photoDataUri && !isCameraOn && (
-                    <Button type="button" variant="outline" onClick={startCamera} className="w-full">Ambil Ulang Foto</Button>
-                  )}
+                    {photoDataUri && !isCameraOn && (
+                      <Button type="button" variant="outline" onClick={startCamera} className="w-full">Ambil Ulang Foto</Button>
+                    )}
+                  </div>
                 </div>
               </div>
-
-              <canvas ref={canvasRef} className="hidden" />
             </div>
             
             <CardFooter className="p-0 pt-4">
