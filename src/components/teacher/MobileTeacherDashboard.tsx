@@ -96,7 +96,7 @@ export function MobileTeacherDashboard() {
       >
         <motion.div
           animate={{ scale: isActive ? 1.2 : 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          transition={{ type: "spring", stiffness: 400, damping: 15 }}
         >
           {Icon}
         </motion.div>

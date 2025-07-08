@@ -68,12 +68,19 @@ export function MobileAdminDashboard() {
       label: string
   }) => {
       const isActive = page.index === index;
+      const Icon = children as React.ReactElement;
+      
       return (
           <button
               onClick={() => setView(mainViews[index])}
-              className={`flex flex-col items-center w-1/5 pt-1 transition-colors duration-200 ${isActive ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
+              className={`flex flex-col items-center justify-center w-1/5 pt-2 pb-1 transition-colors duration-200 ${isActive ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
           >
-              {children}
+              <motion.div
+                  animate={{ scale: isActive ? 1.2 : 1 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 15 }}
+              >
+                  {Icon}
+              </motion.div>
               <span className="text-xs mt-1 font-medium">{label}</span>
           </button>
       );
@@ -92,8 +99,7 @@ export function MobileAdminDashboard() {
       } else {
         direction = 1; // for subviews
       }
-
-      // If the new view is a main view, update the index. Otherwise, keep the last main view index.
+      
       const finalIndex = newPageIndex !== -1 ? newPageIndex : prevPage.index;
       return { view: newView, direction, index: finalIndex };
     });
