@@ -4,7 +4,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Camera, MapPin, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
-import { LottieLoader } from "../ui/lottie-loader";
+import { Loader } from "../ui/loader";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +23,7 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" className="w-full" disabled={disabled || pending}>
-      {pending && <LottieLoader size={24} />}
+      {pending && <Loader scale={0.48} />}
       Kirim Absensi
     </Button>
   );
@@ -175,7 +175,7 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
                 <div className={`flex h-10 w-10 items-center justify-center rounded-full shrink-0 ${location ? 'bg-primary/10 text-primary' : 'bg-muted'}`}>
                   {location ? <CheckCircle /> : <MapPin />}
                 </div>
-                <div className="flex-grow">
+                <div>
                   <h3 className="font-semibold">Langkah 1: Akses Lokasi</h3>
                   <p className="text-sm text-muted-foreground">Kami membutuhkan lokasi Anda untuk verifikasi.</p>
                   {!location ? (

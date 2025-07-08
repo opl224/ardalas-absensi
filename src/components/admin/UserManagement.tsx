@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { collection, getDocs, query, where, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { LottieLoader } from '../ui/lottie-loader';
+import { Loader } from '../ui/loader';
 import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
@@ -318,7 +318,7 @@ export function UserManagement() {
 
           {loading ? (
               <div className="flex justify-center items-center h-64">
-                  <LottieLoader size={80} />
+                  <Loader scale={1.6} />
               </div>
           ) : (
               <>

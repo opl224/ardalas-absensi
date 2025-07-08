@@ -8,7 +8,7 @@ import { Users, TrendingUp, Clock, Download } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
-import { LottieLoader } from '../ui/lottie-loader';
+import { Loader } from '../ui/loader';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
 
@@ -254,7 +254,7 @@ export function Reports() {
                 
                 {loading || !stats ? (
                      <div className="flex justify-center items-center h-64">
-                        <LottieLoader size={80} />
+                        <Loader scale={1.6} />
                     </div>
                 ) : (
                     <div className="space-y-4">

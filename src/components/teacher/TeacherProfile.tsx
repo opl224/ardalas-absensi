@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { User, Mail, Book, LogOut, Shield, ChevronRight } from "lucide-react";
 import { LogoutDialog } from "@/components/admin/LogoutDialog";
 import { useAuth } from "@/hooks/useAuth";
-import { CenteredLottieLoader } from "../ui/lottie-loader";
+import { CenteredLoader } from "../ui/loader";
 import { ThemeToggle } from "../ThemeToggle";
 
 const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
@@ -42,7 +42,7 @@ export function TeacherProfile({ setActiveView }: TeacherProfileProps) {
     const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
     if (!userProfile) {
-        return <CenteredLottieLoader />;
+        return <CenteredLoader />;
     }
 
     return (

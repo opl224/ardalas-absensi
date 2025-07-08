@@ -10,7 +10,7 @@ import { updateAttendanceSettings, type SettingsState } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { LottieLoader } from '../ui/lottie-loader';
+import { Loader } from '../ui/loader';
 import { Separator } from '../ui/separator';
 
 const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -99,7 +99,7 @@ export function AttendanceSettingsDialog({ open, onOpenChange }: AttendanceSetti
                 </DialogHeader>
                 {loading || !settings ? (
                     <div className="flex justify-center items-center h-48">
-                        <LottieLoader />
+                        <Loader />
                     </div>
                 ) : (
                     <form action={formAction}>

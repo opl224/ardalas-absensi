@@ -8,7 +8,7 @@ import { AttendanceHistory } from './AttendanceHistory';
 import { StudentProfile } from './StudentProfile';
 import { CheckinCard } from '@/components/check-in/CheckinCard';
 import { useAuth } from '@/hooks/useAuth';
-import { CenteredLottieLoader } from '@/components/ui/lottie-loader';
+import { CenteredLoader } from '@/components/ui/loader';
 import { motion, AnimatePresence } from 'framer-motion';
 
 type MainViewID = 'home' | 'history' | 'profile';
@@ -103,7 +103,7 @@ export function MobileStudentDashboard() {
   };
   
   if (loading) {
-      return <CenteredLottieLoader />;
+      return <CenteredLoader />;
   }
   if (!userProfile) {
       return <div>Data pengguna tidak ditemukan.</div>

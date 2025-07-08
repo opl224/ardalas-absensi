@@ -35,7 +35,7 @@ import { MobileAdminDashboard } from "@/components/admin/MobileAdminDashboard"
 import { useAuth } from "@/hooks/useAuth";
 import { collection, getDocs, query, orderBy, limit, Timestamp, where, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { CenteredLottieLoader, LottieLoader } from "@/components/ui/lottie-loader";
+import { CenteredLoader, Loader } from "@/components/ui/loader";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -139,7 +139,7 @@ export default function AdminDashboard() {
     fetchStats();
   }, []);
   
-  if (!userProfile) return <CenteredLottieLoader />;
+  if (!userProfile) return <CenteredLoader />;
 
   return (
     <>
@@ -282,7 +282,7 @@ export default function AdminDashboard() {
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
-                                    <TableRow><TableCell colSpan={4} className="py-8"><div className="flex justify-center"><LottieLoader size={40}/></div></TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={4} className="py-8"><div className="flex justify-center"><Loader scale={0.8}/></div></TableCell></TableRow>
                                 ) : (
                                     attendanceData.map((item) => (
                                     <TableRow key={item.id}>

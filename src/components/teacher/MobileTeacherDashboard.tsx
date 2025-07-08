@@ -8,7 +8,7 @@ import { AttendanceHistory } from './AttendanceHistory';
 import { TeacherProfile } from './TeacherProfile';
 import { CheckinCard } from '@/components/check-in/CheckinCard';
 import { useAuth } from '@/hooks/useAuth';
-import { CenteredLottieLoader } from '@/components/ui/lottie-loader';
+import { CenteredLoader } from '@/components/ui/loader';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Privacy } from './Privacy';
 
@@ -106,7 +106,7 @@ export function MobileTeacherDashboard() {
   };
 
   if (loading) {
-      return <CenteredLottieLoader />;
+      return <CenteredLoader />;
   }
   if (!userProfile) {
       return <div>Data pengguna tidak ditemukan.</div>

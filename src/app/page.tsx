@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import { LottieLoader } from '@/components/ui/lottie-loader';
+import { Loader } from '@/components/ui/loader';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -141,7 +141,7 @@ export default function LoginPage() {
                   </div>
                 </div>
                 <Button type="submit" className="w-full !mt-6" size="lg" disabled={loading}>
-                  {loading && <LottieLoader size={24} />}
+                  {loading && <Loader scale={0.48} />}
                   Masuk
                 </Button>
               </form>

@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from '@/hooks/useAuth';
 import { collection, query, where, onSnapshot, Timestamp, orderBy, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { LottieLoader } from '../ui/lottie-loader';
+import { Loader } from '../ui/loader';
 
 interface HistoryRecord {
     id: string;
@@ -64,7 +64,7 @@ export function AttendanceHistory() {
             <div className="p-4">
                 {loading ? (
                     <div className="flex justify-center items-center h-64">
-                        <LottieLoader size={80} />
+                        <Loader scale={1.6} />
                     </div>
                 ) : (
                     <div className="space-y-3">

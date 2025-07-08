@@ -35,7 +35,7 @@ import { CheckinCard } from "@/components/check-in/CheckinCard"
 import { useAuth } from "@/hooks/useAuth";
 import { collection, query, where, getDocs, Timestamp, onSnapshot, orderBy, startOfToday, endOfToday } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { CenteredLottieLoader, LottieLoader } from "@/components/ui/lottie-loader";
+import { CenteredLoader, Loader } from "@/components/ui/loader";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface StudentAttendanceRecord {
@@ -88,7 +88,7 @@ export default function TeacherDashboard() {
   }, [userProfile]);
   
   if (!userProfile) {
-      return <CenteredLottieLoader />
+      return <CenteredLoader />
   }
 
   const user = {
@@ -223,7 +223,7 @@ export default function TeacherDashboard() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {loading && <TableRow><TableCell colSpan={3} className="py-8"><div className="flex justify-center"><LottieLoader size={40}/></div></TableCell></TableRow>}
+                                    {loading && <TableRow><TableCell colSpan={3} className="py-8"><div className="flex justify-center"><Loader scale={0.8}/></div></TableCell></TableRow>}
                                     {!loading && studentAttendanceData.length === 0 && <TableRow><TableCell colSpan={3}>Belum ada data absensi hari ini.</TableCell></TableRow>}
                                     {!loading && studentAttendanceData.map((item) => (
                                     <TableRow key={item.id}>

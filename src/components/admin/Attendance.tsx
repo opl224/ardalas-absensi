@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { collection, query, orderBy, Timestamp, getDocs, doc, deleteDoc, where, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { LottieLoader } from '../ui/lottie-loader';
+import { Loader } from '../ui/loader';
 import { Button, buttonVariants } from '../ui/button';
 import { ChevronLeft, ChevronRight, Trash2, Calendar as CalendarIcon, Download, Filter, AlertTriangle, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -373,7 +373,7 @@ export function Attendance() {
                  </div>
                 {loading ? (
                     <div className="flex justify-center items-center h-64">
-                        <LottieLoader size={80} />
+                        <Loader scale={1.6} />
                     </div>
                 ) : (
                     <>

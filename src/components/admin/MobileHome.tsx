@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { CalendarDays, Clock, Users, FileText, Settings } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LottieLoader } from "@/components/ui/lottie-loader";
+import { Loader } from "@/components/ui/loader";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, onSnapshot, Timestamp, doc, getDoc } from "firebase/firestore";
 import { AttendanceSettingsDialog } from "./AttendanceSettingsDialog";
@@ -181,7 +181,7 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
                     {loading ? (
-                        <div className="flex justify-center items-center h-40"><LottieLoader /></div>
+                        <div className="flex justify-center items-center h-40"><Loader /></div>
                     ) : (
                         <>
                             <div className="flex justify-around text-center">

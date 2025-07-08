@@ -11,7 +11,7 @@ import { BarChart2, CalendarDays, Clock, MapPin, CheckCircle, LogOut } from 'luc
 import { useToast } from '@/hooks/use-toast';
 import { useFormStatus } from 'react-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { CenteredLottieLoader, LottieLoader } from '../ui/lottie-loader';
+import { CenteredLoader, Loader } from '../ui/loader';
 import { collection, query, where, onSnapshot, Timestamp, orderBy, limit, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -25,7 +25,7 @@ function CheckoutButton({ disabled }: { disabled: boolean }) {
     const { pending } = useFormStatus();
     return (
       <Button type="submit" className="w-full" disabled={pending || disabled}>
-        {pending && <LottieLoader size={24} />}
+        {pending && <Loader scale={0.48} />}
         Absen Keluar
       </Button>
     );
@@ -37,7 +37,7 @@ function QuickCheckoutButton({ disabled }: { disabled: boolean }) {
         <button type="submit" disabled={pending || disabled} className="w-full text-left p-0 rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50">
             <Card className="w-full h-full p-4 flex flex-col items-center justify-center text-center hover:bg-secondary">
                 {pending ? (
-                    <LottieLoader size={32} />
+                    <Loader scale={0.64} />
                 ) : (
                     <LogOut className="h-8 w-8 text-primary" />
                 )}
@@ -167,7 +167,7 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
     }, [checkoutState, toast]);
 
     if (!userProfile) {
-        return <CenteredLottieLoader />;
+        return <CenteredLoader />;
     }
 
     return (
@@ -209,7 +209,7 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                     <CardContent className="text-center space-y-4">
                         {status === 'loading' && (
                             <div className="flex justify-center items-center h-48">
-                                <LottieLoader />
+                                <Loader />
                             </div>
                         )}
                         {status === 'not_checked_in' && (
