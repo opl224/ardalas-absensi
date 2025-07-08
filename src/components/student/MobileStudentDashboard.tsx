@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Home, History, User as UserIcon, ArrowLeft } from 'lucide-react';
 import { StudentHome } from './StudentHome';
 import { AttendanceHistory } from './AttendanceHistory';
@@ -93,16 +93,8 @@ export function MobileStudentDashboard() {
   const [direction, setDirection] = useState(0);
   const { userProfile, loading } = useAuth();
   
-  const viewIndexRef = useRef(mainViews.indexOf(view as MainViewID));
+  const pageIndexRef = useRef(0);
   const [activePageIndex, setActivePageIndex] = useState(0);
-
-  useEffect(() => {
-    const newIndex = mainViews.indexOf(view as MainViewID);
-    if(newIndex !== -1) {
-      viewIndexRef.current = newIndex;
-      setActivePageIndex(newIndex);
-    }
-  }, [view]);
 
   if (loading) {
       return <CenteredLottieLoader />;
@@ -112,33 +104,33 @@ export function MobileStudentDashboard() {
   }
 
   const changeView = (newView: ViewID) => {
-    const oldIndex = viewIndexRef.current;
     const newIndex = mainViews.indexOf(newView as MainViewID);
+    const oldIndex = pageIndexRef.current;
 
-    if (newIndex !== -1) {
-      let d = newIndex > oldIndex ? 1 : -1;
-      setDirection(d);
-    } else {
-        setDirection(1); // subview
+    if (newIndex !== -1) { // It's a main view
+      if (newIndex !== oldIndex) {
+        setDirection(newIndex > oldIndex ? 1 : -1);
+      }
+      pageIndexRef.current = newIndex;
+      setActivePageIndex(newIndex);
+    } else { // It's a subview
+      setDirection(1);
     }
-
     setView(newView);
   };
   
-  const handleDragEnd = (e: any, { offset, velocity }: { offset: { x: number, y: number }, velocity: { x: number, y: number } }) => {
+  const handleDragEnd = (e: any, { offset }: { offset: { x: number } }) => {
     const swipeThreshold = 50;
-    const swipePower = (offset: number, velocity: number) => {
-      return Math.abs(offset) * velocity;
-    };
+    const currentIndex = pageIndexRef.current;
 
-    if (swipePower(offset.x, velocity.x) < -swipeThreshold * 100) {
-      const newIndex = Math.min(viewIndexRef.current + 1, mainViews.length - 1);
-      if (newIndex !== viewIndexRef.current) {
+    if (offset.x < -swipeThreshold) { // Swiped left
+      const newIndex = Math.min(currentIndex + 1, mainViews.length - 1);
+      if (newIndex !== currentIndex) {
         changeView(mainViews[newIndex]);
       }
-    } else if (swipePower(offset.x, velocity.x) > swipeThreshold * 100) {
-      const newIndex = Math.max(viewIndexRef.current - 1, 0);
-      if (newIndex !== viewIndexRef.current) {
+    } else if (offset.x > swipeThreshold) { // Swiped right
+      const newIndex = Math.max(currentIndex - 1, 0);
+      if (newIndex !== currentIndex) {
         changeView(mainViews[newIndex]);
       }
     }
@@ -158,7 +150,7 @@ export function MobileStudentDashboard() {
 
   return (
     <div className="bg-gray-50 dark:bg-zinc-900 min-h-screen flex flex-col">
-      <main className="flex-grow relative overflow-hidden">
+      <main className="flex-grow relative overflow-y-auto">
         <AnimatePresence initial={false} custom={direction}>
             <motion.div
               key={view}
