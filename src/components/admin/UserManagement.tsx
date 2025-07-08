@@ -66,23 +66,25 @@ export function UserManagement() {
     const fetchUsersAndListenForStatus = async () => {
       setLoading(true);
       try {
+        // Fetch teachers from 'teachers' collection
         const teachersQuery = collection(db, 'teachers');
         const teachersSnapshot = await getDocs(teachersQuery);
         const teacherUsers = teachersSnapshot.docs.map(doc => ({
           id: doc.id,
+          ...doc.data(),
           role: 'Guru',
-          ...doc.data()
         }));
 
+        // Fetch admins from 'users' collection
         const adminsQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
         const adminsSnapshot = await getDocs(adminsQuery);
         const adminUsers = adminsSnapshot.docs.map(doc => ({
           id: doc.id,
+          ...doc.data(),
           role: 'Admin',
-          ...doc.data()
         }));
 
-        const allBaseUsers = [...teacherUsers, ...adminUsers];
+        const allBaseUsers = [...teacherUsers, ...adminUsers] as any[];
 
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
@@ -168,10 +170,10 @@ export function UserManagement() {
       }
     };
 
-    const unsubscribePromise = fetchUsersAndListenForStatus();
+    fetchUsersAndListenForStatus();
     
     return () => {
-      unsubscribePromise.then(unsub => unsub && unsub());
+      // No-op for now, as unsubscribe is handled inside the listener setup
     };
   }, [toast]);
 
