@@ -106,9 +106,10 @@ export function MobileTeacherDashboard() {
   }
   
   const changeView = (newView: ViewID) => {
-    const newIndex = mainViews.indexOf(newView as MainViewID);
-    
     setPage(prevPage => {
+      if (prevPage.view === newView) return prevPage;
+
+      const newIndex = mainViews.indexOf(newView as MainViewID);
       let direction = 0;
       let finalIndex = prevPage.index;
 
@@ -128,19 +129,25 @@ export function MobileTeacherDashboard() {
   
   const handleDragEnd = (e: any, { offset }: { offset: { x: number } }) => {
     const swipeThreshold = 50;
-    const currentIndex = page.index;
+    
+    setPage(currentPage => {
+        const currentIndex = currentPage.index;
+        let newIndex = currentIndex;
 
-    if (offset.x < -swipeThreshold) { // Swiped left
-      const newIndex = Math.min(currentIndex + 1, mainViews.length - 1);
-      if (newIndex !== currentIndex) {
-        changeView(mainViews[newIndex]);
-      }
-    } else if (offset.x > swipeThreshold) { // Swiped right
-      const newIndex = Math.max(currentIndex - 1, 0);
-      if (newIndex !== currentIndex) {
-        changeView(mainViews[newIndex]);
-      }
-    }
+        if (offset.x < -swipeThreshold) { // Swiped left
+            newIndex = Math.min(currentIndex + 1, mainViews.length - 1);
+        } else if (offset.x > swipeThreshold) { // Swiped right
+            newIndex = Math.max(currentIndex - 1, 0);
+        }
+
+        if (newIndex !== currentIndex) {
+            const newView = mainViews[newIndex];
+            const direction = newIndex > currentIndex ? 1 : -1;
+            return { view: newView, index: newIndex, direction };
+        }
+        
+        return currentPage;
+    });
   };
 
 
@@ -159,7 +166,7 @@ export function MobileTeacherDashboard() {
 
   return (
     <div className="bg-gray-50 dark:bg-zinc-900 min-h-screen flex flex-col">
-       <main className="flex-grow relative overflow-y-auto">
+       <main className="flex-grow relative overflow-hidden">
         <AnimatePresence initial={false} custom={page.direction}>
             <motion.div
               key={page.view}
