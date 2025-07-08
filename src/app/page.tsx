@@ -29,6 +29,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showAccessDeniedDialog, setShowAccessDeniedDialog] = useState(false);
+  const [showDesktopAccessDeniedDialog, setShowDesktopAccessDeniedDialog] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -47,6 +48,15 @@ export default function LoginPage() {
       if (userDoc.exists()) {
         const userData = userDoc.data();
         const role = userData.role;
+
+        // Teacher restriction for desktop devices
+        const isDesktop = window.innerWidth >= 768;
+        if (role === 'guru' && isDesktop) {
+          await signOut(auth);
+          setShowDesktopAccessDeniedDialog(true);
+          setLoading(false);
+          return;
+        }
 
         if (role === 'siswa') {
             await signOut(auth);
@@ -160,6 +170,20 @@ export default function LoginPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogAction onClick={() => window.location.reload()}>Kembali</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showDesktopAccessDeniedDialog} onOpenChange={setShowDesktopAccessDeniedDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Akses Ditolak di Perangkat Ini</AlertDialogTitle>
+            <AlertDialogDescription>
+              Untuk keamanan dan validasi lokasi, akun guru hanya dapat diakses melalui perangkat seluler.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowDesktopAccessDeniedDialog(false)}>Mengerti</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
