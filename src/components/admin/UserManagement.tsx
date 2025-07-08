@@ -25,7 +25,7 @@ interface User {
   id: string;
   name: string;
   email: string;
-  role: 'Guru' | 'Admin';
+  role: 'guru' | 'admin';
   status: 'Hadir' | 'Terlambat' | 'Absen' | 'Penipuan' | 'Libur' | 'Belum Absen' | 'Admin';
   avatar: string;
   subject?: string;
@@ -112,7 +112,7 @@ export function UserManagement() {
         const teachersSnapshot = await getDocs(teachersQuery);
         const teacherUsers = teachersSnapshot.docs.map(doc => ({
           id: doc.id,
-          role: 'Guru',
+          role: 'guru',
           ...doc.data(),
         })) as User[];
 
@@ -130,7 +130,7 @@ export function UserManagement() {
           const userId = user.id;
           let status: User['status'];
 
-          if (user.role === 'Admin') {
+          if (user.role === 'admin') {
             status = 'Admin';
           } else {
             const attendanceStatus = attendanceStatusMap.get(userId);
@@ -153,8 +153,8 @@ export function UserManagement() {
 
         // Sort admins to the top
         fetchedUsers.sort((a, b) => {
-            if (a.role === 'Admin' && b.role !== 'Admin') return -1;
-            if (a.role !== 'Admin' && b.role === 'Admin') return 1;
+            if (a.role === 'admin' && b.role !== 'admin') return -1;
+            if (a.role !== 'admin' && b.role === 'admin') return 1;
             return a.name.localeCompare(b.name);
         });
 
@@ -285,7 +285,7 @@ export function UserManagement() {
                                     <Badge variant={getBadgeVariant(user.status)}>
                                       {user.status}
                                     </Badge>
-                                    {user.role !== 'Admin' && <span className="text-sm text-muted-foreground capitalize">{user.role}</span>}
+                                    {user.role !== 'admin' && <span className="text-sm text-muted-foreground capitalize">{user.role}</span>}
                                   </div>
                               </div>
                               <div className="flex gap-2">
@@ -376,7 +376,7 @@ export function UserManagement() {
                 <DetailItem icon={BookMarked} label="Agama" value={selectedUser.religion} />
                 <DetailItem icon={Home} label="Alamat" value={selectedUser.address} />
             </div>
-            {selectedUser.role === 'Guru' && (
+            {selectedUser.role === 'guru' && (
                 <>
                     <Separator />
                     <div className="space-y-3 text-sm mt-4">
