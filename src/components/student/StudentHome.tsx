@@ -62,7 +62,7 @@ function getTodayAtTime(timeString: string): Date {
 export function StudentHome({ setActiveView }: StudentHomeProps) {
     const [dateTime, setDateTime] = useState({ date: '', time: '' });
     const [status, setStatus] = useState<CheckinStatus>('loading');
-    const [checkinData, setCheckinData] = useState<{ time: string; photo: string; attendanceId: string } | null>(null);
+    const [checkinData, setCheckinData] = useState<{ time: string; photo: string; attendanceId: string; status: 'Hadir' | 'Terlambat' } | null>(null);
     const [checkoutTime, setCheckoutTime] = useState<string | null>(null);
     const [isCheckoutAllowed, setIsCheckoutAllowed] = useState(false);
 
@@ -131,7 +131,8 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
                 setCheckinData({
                     time: checkInTimestamp.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit'}),
                     photo: data.checkInPhotoUrl,
-                    attendanceId: docSnap.id
+                    attendanceId: docSnap.id,
+                    status: data.status,
                 });
 
                 if (data.checkOutTime) {
@@ -227,7 +228,9 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
                         )}
                         {(status === 'checked_in' || status === 'checked_out') && checkinData && (
                             <>
-                                <Badge className="bg-green-500 hover:bg-green-600 text-white py-1 px-4 text-base">Hadir</Badge>
+                                <Badge variant={checkinData.status === 'Hadir' ? 'success' : 'warning'} className="py-1 px-4 text-base">
+                                    {checkinData.status}
+                                </Badge>
                                 <p className="text-sm text-muted-foreground">Absen masuk pada {checkinData.time}</p>
                                 <Avatar className="h-28 w-28 mx-auto">
                                     <AvatarImage src={checkinData.photo} alt="Check-in photo" data-ai-hint="person portrait" />
