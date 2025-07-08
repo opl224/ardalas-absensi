@@ -228,14 +228,14 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
                         autoPlay
                         playsInline
                         muted
-                        className={cn("w-full aspect-[4/3] object-cover rounded-md border", {
+                        className={cn("w-full aspect-[3/4] object-cover rounded-md border", {
                             "hidden": !isCameraOn,
                         })}
                     />
                     <canvas ref={canvasRef} className="hidden"></canvas>
                     
                     {photoDataUri && !isCameraOn && (
-                        <img src={photoDataUri} alt="User selfie" className="w-full aspect-[4/3] object-cover rounded-md border" />
+                        <img src={photoDataUri} alt="User selfie" className="w-full aspect-[3/4] object-cover rounded-md border" />
                     )}
 
                     {isCameraOn && (
