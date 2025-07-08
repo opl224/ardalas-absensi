@@ -205,7 +205,7 @@
   }
 
   .button-89 {
-    --b: 3px;   /* border thickness */
+    --b: 2px;   /* border thickness */
     --s: .45em; /* size of the corner */
     --color: hsl(var(--foreground));
     
