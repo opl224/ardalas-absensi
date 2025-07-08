@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -35,19 +36,24 @@ export default function LoginPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // This effect runs only on the client, after the component mounts.
-    // This safely checks the window size without causing server-side errors.
     const checkDeviceSize = () => {
       setIsDesktop(window.innerWidth >= 768);
     };
-    
-    checkDeviceSize(); // Check on initial mount
-    
+    checkDeviceSize();
     window.addEventListener('resize', checkDeviceSize);
-    
-    // Cleanup the event listener when the component unmounts
     return () => window.removeEventListener('resize', checkDeviceSize);
-  }, []); // Empty dependency array ensures this runs only once on mount.
+  }, []);
+
+  useEffect(() => {
+    const logoutMessage = sessionStorage.getItem('logoutMessage');
+    if (logoutMessage) {
+      toast({
+        title: 'Telah Keluar',
+        description: logoutMessage,
+      });
+      sessionStorage.removeItem('logoutMessage');
+    }
+  }, [toast]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +63,6 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Get user role from Firestore
       const userDocRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
 
@@ -65,8 +70,6 @@ export default function LoginPage() {
         const userData = userDoc.data();
         const role = userData.role;
 
-        // Teacher restriction for desktop devices
-        // Use the state variable `isDesktop` which is safely set on the client.
         if (role === 'guru' && isDesktop) {
           await signOut(auth);
           setShowDesktopAccessDeniedDialog(true);
@@ -83,14 +86,12 @@ export default function LoginPage() {
 
         const idToken = await user.getIdToken();
         
-        // Set cookie to manage session
         await fetch('/api/auth/session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ idToken }),
         });
 
-        // Redirect based on role
         if (role === 'admin') {
           router.push('/admin/dashboard');
         } else if (role === 'guru') {
