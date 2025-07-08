@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, Download, Eye, ChevronLeft, ChevronRight, Briefcase, BookCopy, Phone, Home, VenetianMask, BookMarked, Fingerprint } from 'lucide-react';
+import { Search, Download, Eye, ChevronLeft, ChevronRight, Briefcase, BookCopy, Phone, Home, VenetianMask, BookMarked, Fingerprint, AlertTriangle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -28,8 +28,9 @@ interface User {
   name: string;
   email: string;
   role: 'Guru' | 'Admin';
-  status: 'Hadir' | 'Terlambat' | 'Tidak Hadir' | 'Kecurangan' | 'Libur' | 'Belum Absen' | 'Admin';
+  status: 'Hadir' | 'Terlambat' | 'Tidak Hadir' | 'Libur' | 'Belum Absen' | 'Admin';
   avatar: string;
+  isFraudulent?: boolean;
   nip?: string;
   subject?: string;
   class?: string;
@@ -37,7 +38,6 @@ interface User {
   phone?: string;
   religion?: string;
   address?: string;
-  isFraudulent?: boolean;
 }
 
 const USERS_PER_PAGE = 10;
@@ -66,15 +66,12 @@ export function UserManagement() {
     const fetchUsersAndListenForStatus = async () => {
         setLoading(true);
         try {
-            // Step 1: Fetch all 'guru' and 'admin' users from the 'users' collection.
+            // Step 1: Fetch all base user docs for gurus and admins.
             const usersQuery = query(collection(db, 'users'), where('role', 'in', ['guru', 'admin']));
             const usersSnapshot = await getDocs(usersQuery);
-            const baseUsers = usersSnapshot.docs.map(userDoc => ({
-                id: userDoc.id,
-                ...userDoc.data()
-            }));
+            const baseUsers = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
 
-            // Step 2: Fetch details for all teachers in parallel.
+            // Step 2: Fetch detailed profiles for all gurus in parallel.
             const teacherDetailsPromises = baseUsers
                 .filter(user => user.role === 'guru')
                 .map(user => getDoc(doc(db, 'teachers', user.id)));
@@ -88,8 +85,8 @@ export function UserManagement() {
                 }
             });
 
-            // Step 3: Combine base user data with teacher-specific details.
-            const combinedUsers = baseUsers.map(user => {
+            // Step 3: Combine base user data with teacher-specific details to form the initial user list.
+            const initialUsers = baseUsers.map(user => {
                 if (user.role === 'guru' && teachersDataMap.has(user.id)) {
                     return { ...user, ...teachersDataMap.get(user.id) };
                 }
@@ -132,7 +129,7 @@ export function UserManagement() {
                     }
                 });
 
-                let usersWithStatus = combinedUsers.map((user: any) => {
+                let usersWithStatus = initialUsers.map((user: any) => {
                     let status: User['status'];
                     const attendanceInfo = attendanceStatusMap.get(user.id);
                     
@@ -166,6 +163,7 @@ export function UserManagement() {
                 if (loading) setLoading(false);
             }, (error) => {
                 console.error("Error in attendance onSnapshot listener: ", error);
+                setUsers([]); // Clear users on error
                 setLoading(false);
             });
 
@@ -174,23 +172,18 @@ export function UserManagement() {
 
         } catch (error) {
             console.error("Error fetching users:", error);
+            setUsers([]); // Clear users on error
             setLoading(false);
             return () => {}; // Return an empty function for cleanup
         }
     };
 
-    let unsubscribe: (() => void) | undefined;
-    const run = async () => {
-        unsubscribe = await fetchUsersAndListenForStatus();
-    }
-    run();
-
+    let unsubscribePromise = fetchUsersAndListenForStatus();
+    
     return () => {
-        if (unsubscribe) {
-            unsubscribe();
-        }
+        unsubscribePromise.then(unsub => unsub && unsub());
     };
-}, []);
+}, []); // Empty dependency array ensures this runs only once on mount.
 
 
   const filteredUsers = useMemo(() => {
@@ -247,13 +240,19 @@ export function UserManagement() {
     }
   }, [totalPages, currentPage]);
   
-  const getBadgeVariant = (status: User['status']) => {
+  const getBadgeVariant = (status: User['status'], isFraudulent?: boolean) => {
+    if (isFraudulent) {
+        // Even if fraudulent, show original status color
+        switch (status) {
+            case 'Hadir': return 'success';
+            case 'Terlambat': return 'warning';
+            default: return 'destructive';
+        }
+    }
     switch (status) {
         case 'Hadir': return 'success';
         case 'Terlambat': return 'warning';
-        case 'Tidak Hadir':
-        case 'Kecurangan':
-            return 'destructive';
+        case 'Tidak Hadir': return 'destructive';
         case 'Libur':
         case 'Belum Absen':
             return 'secondary';
@@ -356,7 +355,8 @@ export function UserManagement() {
                                     {user.role === 'Admin' ? (
                                       <div className="glowing-admin-badge">Admin</div>
                                     ) : (
-                                      <Badge variant={getBadgeVariant(user.status)}>
+                                      <Badge variant={getBadgeVariant(user.status, user.isFraudulent)}>
+                                        {user.isFraudulent && <AlertTriangle className="h-3 w-3 mr-1.5 animate-medium-flash" />}
                                         {user.status}
                                       </Badge>
                                     )}
