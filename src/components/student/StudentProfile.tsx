@@ -7,6 +7,7 @@ import { User, Mail, GraduationCap, LogOut } from "lucide-react";
 import { LogoutDialog } from "@/components/admin/LogoutDialog"; 
 import { useAuth } from "@/hooks/useAuth";
 import { CenteredLottieLoader } from "../ui/lottie-loader";
+import { ThemeToggle } from "../ThemeToggle";
 
 const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
     <div className="flex items-center gap-4 py-3">
@@ -29,8 +30,9 @@ export function StudentProfile() {
     return (
         <>
             <div className="bg-gray-50 dark:bg-zinc-900">
-                <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <h1 className="text-xl font-bold text-foreground">Profil</h1>
+                    <ThemeToggle />
                 </header>
                 <div className="p-4">
                     <div className="flex items-center gap-4 mb-6">

@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, Mail, Book, LogOut } from "lucide-react";
+import { User, Mail, Book, LogOut, Shield, ChevronRight } from "lucide-react";
 import { LogoutDialog } from "@/components/admin/LogoutDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { CenteredLottieLoader } from "../ui/lottie-loader";
+import { ThemeToggle } from "../ThemeToggle";
 
 const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
     <div className="flex items-center gap-4 py-3">
@@ -18,7 +19,25 @@ const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label:
     </div>
 );
 
-export function TeacherProfile() {
+const ClickableRow = ({ icon: Icon, label, onClick }: { icon: React.ElementType, label: string, onClick?: () => void }) => (
+    <button
+        onClick={onClick}
+        className="flex items-center justify-between py-3 w-full text-left disabled:opacity-50"
+        disabled={!onClick}
+    >
+        <div className="flex items-center gap-4">
+            <Icon className="h-6 w-6 text-muted-foreground" />
+            <span className="font-medium text-foreground">{label}</span>
+        </div>
+        {onClick && <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+    </button>
+);
+
+interface TeacherProfileProps {
+  setActiveView?: (view: 'privacy') => void;
+}
+
+export function TeacherProfile({ setActiveView }: TeacherProfileProps) {
     const { userProfile, logout } = useAuth();
     const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
@@ -29,8 +48,9 @@ export function TeacherProfile() {
     return (
         <>
             <div className="bg-gray-50 dark:bg-zinc-900">
-                <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <h1 className="text-xl font-bold text-foreground">Profil</h1>
+                    <ThemeToggle />
                 </header>
 
                 <div className="p-4">
@@ -61,6 +81,7 @@ export function TeacherProfile() {
                             <CardTitle className="text-lg">Pengaturan</CardTitle>
                         </CardHeader>
                         <CardContent className="divide-y divide-border pt-0">
+                            <ClickableRow icon={Shield} label="Privasi" onClick={() => setActiveView?.('privacy')} />
                             <button
                                 onClick={() => setShowLogoutDialog(true)}
                                 className="flex items-center justify-between py-3 w-full text-left"

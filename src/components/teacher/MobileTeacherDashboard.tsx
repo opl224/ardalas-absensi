@@ -9,9 +9,10 @@ import { CheckinCard } from '@/components/check-in/CheckinCard';
 import { useAuth } from '@/hooks/useAuth';
 import { CenteredLottieLoader } from '@/components/ui/lottie-loader';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Privacy } from './Privacy';
 
 type MainViewID = 'home' | 'history' | 'profile';
-type SubViewID = 'checkin';
+type SubViewID = 'checkin' | 'privacy';
 type ViewID = MainViewID | SubViewID;
 
 const mainViews: MainViewID[] = ['home', 'history', 'profile'];
@@ -21,6 +22,7 @@ const viewComponents: { [key in ViewID]: React.FC<any> } = {
   history: AttendanceHistory,
   profile: TeacherProfile,
   checkin: CheckinCard,
+  privacy: Privacy,
 };
 
 
@@ -160,7 +162,7 @@ export function MobileTeacherDashboard() {
       props = { onBack: () => changeView('home'), onSuccess: () => changeView('home') };
   } else {
       ComponentToRender = viewComponents[page.view];
-      props = { setActiveView: changeView };
+      props = { setActiveView: changeView, onBack: () => changeView('profile') };
   }
 
 

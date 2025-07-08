@@ -10,6 +10,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList } from "@/co
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { CenteredLottieLoader } from "@/components/ui/lottie-loader";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function StudentDashboard() {
   const { userProfile } = useAuth();
@@ -76,6 +77,7 @@ export default function StudentDashboard() {
                     className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
                   />
                 </div>
+                <ThemeToggle />
                 <UserNav />
               </header>
               <main className="flex flex-1 flex-col items-center justify-center p-4 md:p-8">

@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, Mail, Building2, Bell, Shield, LogOut, ChevronRight } from "lucide-react";
+import { User, Mail, Building2, Shield, LogOut, ChevronRight } from "lucide-react";
 import { LogoutDialog } from "./LogoutDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { CenteredLottieLoader } from "../ui/lottie-loader";
+import { ThemeToggle } from "../ThemeToggle";
 
 const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
     <div className="flex items-center gap-4 py-3">
@@ -44,8 +45,9 @@ export function Profile({ setActiveView }: { setActiveView: (view: string) => vo
     return (
         <>
             <div className="bg-gray-50 dark:bg-zinc-900">
-                <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <h1 className="text-xl font-bold text-foreground">Profil</h1>
+                    <ThemeToggle />
                 </header>
 
                 <div className="p-4">
@@ -76,7 +78,6 @@ export function Profile({ setActiveView }: { setActiveView: (view: string) => vo
                             <CardTitle className="text-lg">Pengaturan</CardTitle>
                         </CardHeader>
                         <CardContent className="divide-y divide-border pt-0">
-                            <ClickableRow icon={Bell} label="Notifikasi Push" onClick={() => setActiveView('push-notifications')} />
                             <ClickableRow icon={Shield} label="Privasi" onClick={() => setActiveView('privacy')} />
                             <button
                                 onClick={() => setShowLogoutDialog(true)}

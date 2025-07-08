@@ -35,6 +35,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { collection, query, where, getDocs, Timestamp, onSnapshot, orderBy, startOfToday, endOfToday } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { CenteredLottieLoader, LottieLoader } from "@/components/ui/lottie-loader";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface StudentAttendanceRecord {
     id: string;
@@ -154,6 +155,7 @@ export default function TeacherDashboard() {
                         className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
                     />
                     </div>
+                    <ThemeToggle />
                     <UserNav />
                 </header>
                 <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">

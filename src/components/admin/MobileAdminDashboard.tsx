@@ -7,12 +7,11 @@ import { Reports } from "./Reports";
 import { MobileHome } from "./MobileHome";
 import { Profile } from "./Profile";
 import { Attendance } from "./Attendance";
-import { PushNotifications } from "./PushNotifications";
 import { Privacy } from "./Privacy";
 import { motion, AnimatePresence } from "framer-motion";
 
 type MainViewID = 'home' | 'users' | 'reports' | 'attendance' | 'profile';
-type SubViewID = 'push-notifications' | 'privacy';
+type SubViewID = 'privacy';
 type ViewID = MainViewID | SubViewID;
 
 const mainViews: MainViewID[] = ['home', 'users', 'reports', 'attendance', 'profile'];
@@ -23,7 +22,6 @@ const viewComponents: { [key in ViewID]: React.FC<any> } = {
     reports: Reports,
     attendance: Attendance,
     profile: Profile,
-    'push-notifications': PushNotifications,
     privacy: Privacy,
 };
 
