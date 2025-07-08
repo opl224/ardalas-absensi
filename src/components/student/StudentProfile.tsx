@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useState, useActionState, useRef, useEffect } from "react";
+import { useState, useActionState, useRef, useEffect, useTransition } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { User, Mail, GraduationCap, LogOut, Camera } from "lucide-react";
@@ -28,7 +28,7 @@ export function StudentProfile() {
     const { userProfile, logout } = useAuth();
     const [showLogoutDialog, setShowLogoutDialog] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [uploading, setUploading] = useState(false);
+    const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
     const router = useRouter();
 
@@ -36,7 +36,7 @@ export function StudentProfile() {
     const [state, formAction] = useActionState(updateAvatar, initialState);
     
     const handleAvatarClick = () => {
-        if (uploading) return;
+        if (isPending) return;
         fileInputRef.current?.click();
     };
 
@@ -53,15 +53,16 @@ export function StudentProfile() {
             formData.append('userId', userProfile.uid);
             formData.append('userRole', userProfile.role);
             
-            setUploading(true);
-            formAction(formData);
+            startTransition(() => {
+                formAction(formData);
+            });
         };
         event.target.value = '';
     };
 
     useEffect(() => {
         if (!state) return;
-        setUploading(false);
+
         if (state.success) {
             toast({ title: 'Berhasil', description: 'Avatar berhasil diperbarui.' });
             router.refresh(); 
@@ -87,7 +88,7 @@ export function StudentProfile() {
                         <div className="relative">
                             <form className="hidden"><input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} /></form>
                             <Avatar className="h-16 w-16 cursor-pointer" onClick={handleAvatarClick}>
-                                <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait" />
+                                <AvatarImage src={state.newAvatarUrl || userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait" />
                                 <AvatarFallback>{userProfile.name.slice(0,2).toUpperCase()}</AvatarFallback>
                             </Avatar>
                              <Button
@@ -95,9 +96,9 @@ export function StudentProfile() {
                                 variant="outline"
                                 className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-background"
                                 onClick={handleAvatarClick}
-                                disabled={uploading}
+                                disabled={isPending}
                             >
-                                {uploading ? <Loader scale={0.4} /> : <Camera className="h-4 w-4" />}
+                                {isPending ? <Loader scale={0.4} /> : <Camera className="h-4 w-4" />}
                                 <span className="sr-only">Ubah Avatar</span>
                             </Button>
                         </div>

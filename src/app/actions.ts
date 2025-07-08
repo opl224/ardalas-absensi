@@ -243,7 +243,7 @@ export async function handleCheckout(prevState: CheckoutState, formData: FormDat
     } catch (e) {
         console.error(e);
         const errorMessage = e instanceof Error ? e.message : "Terjadi kesalahan yang tidak terduga.";
-        return { error: `Kesalahan server: ${errorMessage}. Silakan coba lagi.` };
+        return { error: `Kesalahan server: ${errorMessage}.` };
     }
 }
 
@@ -337,7 +337,15 @@ export async function updateAvatar(prevState: AvatarUpdateState, formData: FormD
         }
         const publicUrl = urlData.publicUrl;
         
-        const collectionName = userRole === 'guru' ? 'teachers' : 'users';
+        let collectionName = '';
+        if (userRole === 'guru') {
+            collectionName = 'teachers';
+        } else if (userRole === 'admin' || userRole === 'siswa') {
+            collectionName = 'users';
+        } else {
+             return { error: 'Peran pengguna tidak valid.' };
+        }
+
         const userDocRef = doc(db, collectionName, userId);
 
         await updateDoc(userDocRef, {
