@@ -160,8 +160,8 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
     <>
       <Card className="w-full max-w-lg shadow-lg">
         <CardHeader>
-          <div className="font-headline text-2xl">
-              <span>Hai, </span>
+          <div className="flex items-baseline font-headline text-2xl">
+              <span>Hai,&nbsp;</span>
               <SplitText
                   text={`${userProfile.name}!`}
                   delay={120}
