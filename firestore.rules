@@ -3,80 +3,62 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // --- Fungsi Bantuan ---
-    // Apakah pengguna sudah terautentikasi?
-    function isAuth() {
-      return request.auth != null;
-    }
-
-    // Apakah ID pengguna yang meminta cocok dengan userId yang diberikan?
-    function isUser(userId) {
-      return isAuth() && request.auth.uid == userId;
-    }
     
-    // Apakah pengguna adalah admin?
-    // Fungsi ini membaca peran pengguna dari dokumen mereka di koleksi 'users'.
-    function isAdmin() {
-      return isAuth() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-    
-    // Apakah pengguna adalah guru?
-    function isTeacher() {
-      return isAuth() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'guru';
+    // Check if a user is an admin
+    function isAdmin(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId)) &&
+             get(/databases/$(database)/documents/users/$(userId)).data.role == 'admin';
     }
 
-    // --- Aturan Koleksi ---
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
 
-    // Pengguna dapat membaca profil mereka sendiri. Admin dapat membaca/menulis profil apa pun.
-    // Penulisan dibatasi untuk mencegah pengguna mengubah peran mereka sendiri.
+    // --- Users Collection Rules ---
     match /users/{userId} {
-      allow read: if isUser(userId) || isAdmin();
-      // Izinkan pengguna untuk memperbarui data mereka sendiri, tetapi bukan peran mereka.
-      // Admin dapat memperbarui apa pun.
-      allow update: if (isUser(userId) && !("role" in request.resource.data)) || isAdmin();
-      // Hanya admin yang dapat membuat atau menghapus dokumen pengguna secara langsung.
-      allow create, delete: if isAdmin();
+      // Anyone can read a user's profile (e.g., to get name/avatar)
+      allow read: if request.auth != null;
+      // Users can only create their own document
+      allow create: if request.auth.uid == userId;
+      // Users can update their own document, but CANNOT change their role.
+      // Admins can update any user document.
+      allow update: if (request.auth.uid == userId && !('role' in request.resource.data.diff(resource.data).affectedKeys())) || isAdmin(request.auth.uid);
+      // Only Admins can delete users
+      allow delete: if isAdmin(request.auth.uid);
     }
     
-    // Guru memiliki profil terpisah yang lebih detail.
-    // Aturan serupa dengan koleksi /users.
-    match /teachers/{userId} {
-        allow read: if isUser(userId) || isAdmin();
-        // Hanya admin yang dapat mengubah data guru demi integritas.
-        allow write: if isAdmin(); 
+    // --- Teachers Collection Rules ---
+    match /teachers/{teacherId} {
+      // Any authenticated user can read a teacher's profile
+      allow read: if request.auth != null;
+      // A teacher can update their own profile. Admins can update any teacher.
+      allow update: if request.auth.uid == teacherId || isAdmin(request.auth.uid);
+      // Only Admins can create or delete teacher profiles
+      allow create, delete: if isAdmin(request.auth.uid);
     }
 
-    // Catatan kehadiran.
+    // --- Attendance Records Rules ---
     match /photo_attendances/{attendanceId} {
-      // BACA (READ):
-      // - Pengguna dapat membaca catatan mereka sendiri.
-      // - Guru dapat membaca catatan siswa.
-      // - Admin dapat membaca semua catatan.
-      allow read: if isUser(resource.data.userId) || 
-                   (isTeacher() && resource.data.role == 'siswa') || 
-                   isAdmin();
-
-      // BUAT (CREATE):
-      // - Setiap pengguna yang terautentikasi dapat membuat catatan kehadiran MEREKA SENDIRI.
-      // - Kita harus memvalidasi userId dalam dokumen cocok dengan ID pembuatnya.
-      allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
-
-      // PERBARUI (UPDATE):
-      // - Pengguna dapat memperbarui waktu absen keluar MEREKA SENDIRI.
-      // - Mencegah mereka mengubah status, pengguna, atau tanda kecurangan.
-      // - Admin dapat memperbarui bidang apa pun.
-      allow update: if (isUser(resource.data.userId) && !("status" in request.resource.data) && !("isFraudulent" in request.resource.data) && !("userId" in request.resource.data)) || isAdmin();
-      
-      // HAPUS (DELETE):
-      // - Hanya admin yang dapat menghapus catatan kehadiran.
-      allow delete: if isAdmin();
+      // Users can only create their own attendance records.
+      allow create: if request.auth.uid == request.resource.data.userId;
+      // Users can read their own records.
+      // Teachers and Admins can read all records.
+      allow read: if request.auth.uid == resource.data.userId 
+                  || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'guru'
+                  || isAdmin(request.auth.uid);
+      // Users can update their own records (e.g., checkout). Admins can update any.
+      allow update: if request.auth.uid == resource.data.userId || isAdmin(request.auth.uid);
+      // Only Admins can delete attendance records
+      allow delete: if isAdmin(request.auth.uid);
     }
-
-    // Pengaturan dapat dibaca oleh setiap pengguna yang terautentikasi, tetapi hanya ditulis oleh admin.
-    match /settings/{setting} {
-      allow read: if isAuth();
-      allow write: if isAdmin();
+    
+    // --- Settings Rules ---
+    match /settings/attendance {
+      // All authenticated users can read settings
+      allow read: if request.auth.uid != null;
+      // Only admins can update settings
+      allow write: if isAdmin(request.auth.uid);
     }
   }
 }
