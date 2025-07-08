@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
@@ -166,6 +167,7 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
             <input type="hidden" name="userId" value={userProfile.uid || ""} />
             <input type="hidden" name="userName" value={userProfile.name || ""} />
             <input type="hidden" name="userRole" value={userProfile.role || ""} />
+            <input type="hidden" name="clientTime" value={new Date().toTimeString().substring(0, 5)} />
             
             <div className="space-y-4">
               <div className="flex items-center gap-4">

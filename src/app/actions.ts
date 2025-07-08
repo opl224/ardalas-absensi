@@ -13,6 +13,7 @@ const checkinSchema = z.object({
   userId: z.string(),
   userName: z.string(),
   userRole: z.string(),
+  clientTime: z.string().regex(/^\d{2}:\d{2}$/), // "HH:mm"
 });
 
 export type CheckinState = {
@@ -33,7 +34,7 @@ function dataURItoBlob(dataURI: string) {
     return new Blob([buffer], { type: mimeString });
 }
 
-// Helper function to get today's date with a specific time
+// This function is still used by other components (e.g., Attendance.tsx)
 function getTodayAtTime(timeString: string): Date {
     const today = new Date();
     const [hours, minutes] = timeString.split(':').map(Number);
@@ -70,6 +71,7 @@ export async function handleCheckin(
       userId: formData.get("userId"),
       userName: formData.get("userName"),
       userRole: formData.get("userRole"),
+      clientTime: formData.get("clientTime"),
     });
 
     if (!validatedFields.success) {
@@ -77,7 +79,8 @@ export async function handleCheckin(
       return { error: "Data masukan tidak valid. Silakan coba lagi." };
     }
 
-    const { photoDataUri, latitude, longitude, userId, userName, userRole } = validatedFields.data;
+    const { photoDataUri, latitude, longitude, userId, userName, userRole, clientTime } = validatedFields.data;
+    const now = new Date(); // Official timestamp from server (UTC)
 
     // Get attendance settings
     const settingsRef = doc(db, "settings", "attendance");
@@ -102,14 +105,22 @@ export async function handleCheckin(
         settings = { ...settings, schoolLatitude, schoolLongitude, schoolRadius, gracePeriod: 60 };
     }
     
-    // Check timing logic
-    const now = new Date();
-    const checkInEnd = getTodayAtTime(settings.checkInEnd);
+    // --- TIMEZONE-SAFE TIME LOGIC ---
+    // All comparisons are done using minutes from midnight based on client's local time.
+    const checkInEndStr = settings.checkInEnd || '09:00';
     const gracePeriodMinutes = settings.gracePeriod ?? 60;
-    const checkInGraceEnd = new Date(checkInEnd.getTime() + gracePeriodMinutes * 60 * 1000);
+    
+    const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
+    const checkInEndTotalMinutes = endHours * 60 + endMinutes;
 
-    // Logic for ABSENT
-    if (now > checkInGraceEnd) {
+    const graceEndTotalMinutes = checkInEndTotalMinutes + gracePeriodMinutes;
+
+    const [clientHours, clientMinutes] = clientTime.split(':').map(Number);
+    const clientTotalMinutes = clientHours * 60 + clientMinutes;
+
+
+    // Logic for ABSENT (based on client time)
+    if (clientTotalMinutes > graceEndTotalMinutes) {
         const absentRecord = {
             userId,
             name: userName,
@@ -165,15 +176,15 @@ export async function handleCheckin(
         fraudReason = `Anda berada ${Math.round(distance)} meter dari lokasi sekolah, yang berada di luar radius ${settings.schoolRadius} meter yang diizinkan.`;
     }
     
-    // Determine status based on time
-    const finalStatus = now > checkInEnd ? "Terlambat" : "Hadir";
+    // Determine status based on time (using client time)
+    const finalStatus = clientTotalMinutes > checkInEndTotalMinutes ? "Terlambat" : "Hadir";
 
     // 3. Save attendance record to Firestore
     const attendanceRecord = {
       userId,
       name: userName,
       role: userRole,
-      checkInTime: now,
+      checkInTime: now, // The official timestamp is always the server's UTC time
       checkInLocation: { latitude, longitude },
       checkInPhotoUrl: publicUrl,
       isFraudulent,
