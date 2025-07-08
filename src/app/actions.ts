@@ -287,3 +287,68 @@ export async function updateAttendanceSettings(prevState: SettingsState, formDat
     return { success: false, error: `Kesalahan server: ${errorMessage}` };
   }
 }
+
+const avatarUpdateSchema = z.object({
+  userId: z.string().min(1),
+  userRole: z.enum(['admin', 'guru', 'siswa']),
+  photoDataUri: z.string().startsWith('data:image/'),
+});
+
+export type AvatarUpdateState = {
+    success?: boolean;
+    error?: string;
+    newAvatarUrl?: string;
+};
+
+export async function updateAvatar(prevState: AvatarUpdateState, formData: FormData): Promise<AvatarUpdateState> {
+    const validatedFields = avatarUpdateSchema.safeParse({
+        userId: formData.get('userId'),
+        userRole: formData.get('userRole'),
+        photoDataUri: formData.get('photoDataUri'),
+    });
+
+    if (!validatedFields.success) {
+        console.error("Validation Error:", validatedFields.error.flatten().fieldErrors);
+        return { error: "Data masukan tidak valid." };
+    }
+
+    const { userId, userRole, photoDataUri } = validatedFields.data;
+
+    try {
+        const photoBlob = dataURItoBlob(photoDataUri);
+        const fileExtension = photoBlob.type.split('/')[1] || 'jpg';
+        const photoPath = `avatars/${userId}/${Date.now()}.${fileExtension}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('selfies')
+          .upload(photoPath, photoBlob, {
+            cacheControl: '3600',
+            upsert: true,
+          });
+
+        if (uploadError) {
+            console.error('Supabase Upload Error:', uploadError);
+            return { error: `Gagal mengunggah avatar: ${uploadError.message}.` };
+        }
+
+        const { data: urlData } = supabase.storage.from('selfies').getPublicUrl(photoPath);
+        if (!urlData || !urlData.publicUrl) {
+            return { error: 'Gagal mendapatkan URL publik untuk avatar.' };
+        }
+        const publicUrl = urlData.publicUrl;
+        
+        const collectionName = userRole === 'guru' ? 'teachers' : 'users';
+        const userDocRef = doc(db, collectionName, userId);
+
+        await updateDoc(userDocRef, {
+            avatar: publicUrl,
+        });
+
+        return { success: true, newAvatarUrl: publicUrl };
+
+    } catch (e) {
+        console.error('An error occurred during avatar update:', e);
+        const errorMessage = e instanceof Error ? e.message : "Terjadi kesalahan yang tidak terduga.";
+        return { error: `Kesalahan server: ${errorMessage}.` };
+    }
+}

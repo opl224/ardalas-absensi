@@ -1,13 +1,18 @@
+
 'use client'
 
-import { useState } from "react";
+import { useState, useActionState, useRef, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, Mail, GraduationCap, LogOut } from "lucide-react";
+import { User, Mail, GraduationCap, LogOut, Camera } from "lucide-react";
 import { LogoutDialog } from "@/components/admin/LogoutDialog"; 
 import { useAuth } from "@/hooks/useAuth";
-import { CenteredLoader } from "../ui/loader";
+import { CenteredLoader, Loader } from "../ui/loader";
 import { ThemeToggle } from "../ThemeToggle";
+import { Button } from "../ui/button";
+import { updateAvatar, type AvatarUpdateState } from "@/app/actions";
+import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
 
 const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
     <div className="flex items-center gap-4 py-3">
@@ -22,6 +27,49 @@ const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label:
 export function StudentProfile() {
     const { userProfile, logout } = useAuth();
     const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [uploading, setUploading] = useState(false);
+    const { toast } = useToast();
+    const router = useRouter();
+
+    const initialState: AvatarUpdateState = {};
+    const [state, formAction] = useActionState(updateAvatar, initialState);
+    
+    const handleAvatarClick = () => {
+        if (uploading) return;
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !userProfile) return;
+
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+            const dataUri = reader.result as string;
+            const formData = new FormData();
+            formData.append('photoDataUri', dataUri);
+            formData.append('userId', userProfile.uid);
+            formData.append('userRole', userProfile.role);
+            
+            setUploading(true);
+            formAction(formData);
+        };
+        event.target.value = '';
+    };
+
+    useEffect(() => {
+        if (!state) return;
+        setUploading(false);
+        if (state.success) {
+            toast({ title: 'Berhasil', description: 'Avatar berhasil diperbarui.' });
+            router.refresh(); 
+        }
+        if (state.error) {
+            toast({ variant: 'destructive', title: 'Gagal', description: state.error });
+        }
+    }, [state, toast, router]);
     
     if (!userProfile) {
         return <CenteredLoader />;
@@ -36,10 +84,23 @@ export function StudentProfile() {
                 </header>
                 <div className="p-4">
                     <div className="flex items-center gap-4 mb-6">
-                        <Avatar className="h-16 w-16">
-                            <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait" />
-                            <AvatarFallback>{userProfile.name.slice(0,2).toUpperCase()}</AvatarFallback>
-                        </Avatar>
+                        <div className="relative">
+                            <form className="hidden"><input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} /></form>
+                            <Avatar className="h-16 w-16 cursor-pointer" onClick={handleAvatarClick}>
+                                <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait" />
+                                <AvatarFallback>{userProfile.name.slice(0,2).toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                             <Button
+                                size="icon"
+                                variant="outline"
+                                className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-background"
+                                onClick={handleAvatarClick}
+                                disabled={uploading}
+                            >
+                                {uploading ? <Loader scale={0.4} /> : <Camera className="h-4 w-4" />}
+                                <span className="sr-only">Ubah Avatar</span>
+                            </Button>
+                        </div>
                         <div>
                             <p className="text-xl font-bold text-foreground">{userProfile.name}</p>
                             <p className="text-sm text-muted-foreground capitalize">{userProfile.role}</p>
