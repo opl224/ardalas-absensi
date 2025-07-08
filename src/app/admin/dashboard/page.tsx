@@ -211,8 +211,8 @@ export default function AdminDashboard() {
                                         <TableCell className="hidden sm:table-cell">{item.checkInTime.toDate().toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'})}</TableCell>
                                         <TableCell>
                                         <Badge variant={
-                                            item.status === 'Hadir' ? 'default' :
-                                            item.status === 'Terlambat' ? 'secondary' : 'destructive'
+                                            item.status === 'Hadir' ? 'success' :
+                                            item.status === 'Terlambat' ? 'warning' : 'destructive'
                                         }>{item.status}</Badge>
                                         </TableCell>
                                     </TableRow>

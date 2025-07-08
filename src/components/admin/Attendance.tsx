@@ -183,8 +183,8 @@ export function Attendance() {
     
     const getBadgeVariant = (status: AttendanceRecord['status']) => {
         switch (status) {
-            case 'Hadir': return 'default';
-            case 'Terlambat': return 'secondary';
+            case 'Hadir': return 'success';
+            case 'Terlambat': return 'warning';
             case 'Penipuan': return 'destructive';
             case 'Absen': return 'destructive';
             default: return 'outline';

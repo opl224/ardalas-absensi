@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from "react";
@@ -216,7 +217,7 @@ export default function TeacherDashboard() {
                                 <TableHeader>
                                     <TableRow>
                                     <TableHead>Siswa</TableHead>
-                                    <TableHead className="hidden sm:table-cell">Waktu Check-in</TableHead>
+                                    <TableHead className="hidden sm:table-cell">Waktu Absen Masuk</TableHead>
                                     <TableHead>Status</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -231,8 +232,8 @@ export default function TeacherDashboard() {
                                         <TableCell className="hidden sm:table-cell">{item.checkInTime.toDate().toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'})}</TableCell>
                                         <TableCell>
                                         <Badge variant={
-                                            item.status === 'Hadir' ? 'default' :
-                                            item.status === 'Terlambat' ? 'secondary' : 
+                                            item.status === 'Hadir' ? 'success' :
+                                            item.status === 'Terlambat' ? 'warning' : 
                                             item.status === 'Absen' ? 'outline' : 'destructive'
                                         }>{item.status}</Badge>
                                         </TableCell>

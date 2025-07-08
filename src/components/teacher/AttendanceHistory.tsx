@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useState, useEffect, useMemo } from 'react';
@@ -231,8 +232,8 @@ export function AttendanceHistory() {
                                     </p>
                                 </div>
                                 <Badge variant={
-                                    item.status === 'Hadir' ? 'default' :
-                                    item.status === 'Terlambat' ? 'secondary' :
+                                    item.status === 'Hadir' ? 'success' :
+                                    item.status === 'Terlambat' ? 'warning' :
                                     item.status === 'Absen' ? 'outline' : 'destructive'
                                 } className="w-24 justify-center">{item.status}</Badge>
                             </Card>
