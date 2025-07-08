@@ -1,0 +1,13 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Aturan default: Izinkan akses baca/tulis hanya untuk pengguna yang terautentikasi.
+    // Ini adalah langkah keamanan dasar. Anda harus menyempurnakan aturan ini
+    // agar lebih spesifik tentang pengguna mana yang dapat mengakses data apa.
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
