@@ -26,7 +26,7 @@ interface User {
   name: string;
   email: string;
   role: 'Guru' | 'Admin';
-  status: 'Hadir' | 'Terlambat' | 'Absen' | 'Penipuan' | 'Libur' | 'Belum Absen';
+  status: 'Hadir' | 'Terlambat' | 'Absen' | 'Penipuan' | 'Libur' | 'Belum Absen' | 'Admin';
   avatar: string;
   subject?: string;
   class?: string;
@@ -128,10 +128,15 @@ export function UserManagement() {
         // 3. Combine user data with today's status
         const fetchedUsers = allUsers.map(user => {
           const userId = user.id;
-          let status = attendanceStatusMap.get(userId);
+          let status: User['status'];
 
-          if (!status) { // If no attendance record found
-            if(isOffDay) {
+          if (user.role === 'Admin') {
+            status = 'Admin';
+          } else {
+            const attendanceStatus = attendanceStatusMap.get(userId);
+            if (attendanceStatus) {
+                status = attendanceStatus as User['status'];
+            } else if (isOffDay) {
                 status = 'Libur';
             } else if (isPastAbsentDeadline) {
                 status = 'Absen';
@@ -144,6 +149,13 @@ export function UserManagement() {
             ...user,
             status: status,
           } as User;
+        });
+
+        // Sort admins to the top
+        fetchedUsers.sort((a, b) => {
+            if (a.role === 'Admin' && b.role !== 'Admin') return -1;
+            if (a.role !== 'Admin' && b.role === 'Admin') return 1;
+            return a.name.localeCompare(b.name);
         });
 
         setUsers(fetchedUsers);
@@ -220,6 +232,8 @@ export function UserManagement() {
         case 'Libur':
         case 'Belum Absen':
             return 'secondary';
+        case 'Admin':
+            return 'info';
         default: return 'outline';
     }
   }
@@ -268,14 +282,10 @@ export function UserManagement() {
                                   <p className="font-semibold text-foreground truncate">{user.name}</p>
                                   <p className="text-sm text-muted-foreground -mt-1 truncate">{user.email}</p>
                                   <div className="flex items-center gap-2 mt-1">
-                                    {user.role === 'Admin' ? (
-                                        <Badge variant="info">Admin</Badge>
-                                    ) : (
-                                        <Badge variant={getBadgeVariant(user.status)}>
-                                            {user.status}
-                                        </Badge>
-                                    )}
-                                    <span className="text-sm text-muted-foreground capitalize">{user.role}</span>
+                                    <Badge variant={getBadgeVariant(user.status)}>
+                                      {user.status}
+                                    </Badge>
+                                    {user.role !== 'Admin' && <span className="text-sm text-muted-foreground capitalize">{user.role}</span>}
                                   </div>
                               </div>
                               <div className="flex gap-2">
