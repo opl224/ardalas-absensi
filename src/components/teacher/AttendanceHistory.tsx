@@ -1,13 +1,23 @@
 'use client'
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
-import { collection, query, where, onSnapshot, Timestamp, orderBy, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, orderBy, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { LottieLoader } from '../ui/lottie-loader';
+import { format } from 'date-fns';
+import { id as localeId } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '../ui/button';
+import { CalendarIcon, Download, Filter } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Calendar } from '../ui/calendar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { cn } from '@/lib/utils';
+
 
 interface HistoryRecord {
     id: string;
@@ -16,10 +26,15 @@ interface HistoryRecord {
     status: 'Hadir' | 'Terlambat' | 'Penipuan' | 'Absen';
 }
 
+const filterOptions = ['Semua Kehadiran', 'Hadir', 'Terlambat', 'Absen', 'Penipuan'];
+
 export function AttendanceHistory() {
   const { userProfile } = useAuth();
+  const { toast } = useToast();
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [statusFilter, setStatusFilter] = useState('Semua Kehadiran');
 
   useEffect(() => {
     if (!userProfile?.uid) {
@@ -27,91 +42,205 @@ export function AttendanceHistory() {
         return;
     };
 
-    const q = query(
-        collection(db, "photo_attendances"),
-        where("userId", "==", userProfile.uid),
-        orderBy("checkInTime", "desc")
-    );
-
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
+    const fetchAttendance = async () => {
+        if (!date) return;
         setLoading(true);
-        const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
-        const settings = settingsDoc.exists() ? settingsDoc.data() : { checkOutEnd: '17:00' };
+        try {
+            const startOfDay = new Date(date);
+            startOfDay.setHours(0, 0, 0, 0);
 
-        const now = new Date();
-        const [hours, minutes] = settings.checkOutEnd.split(':').map(Number);
-        const checkOutDeadline = new Date();
-        checkOutDeadline.setHours(hours, minutes, 0, 0);
-        
-        const historyData = snapshot.docs.map(doc => {
-            const data = doc.data();
-            const record = { id: doc.id, ...data } as HistoryRecord;
+            const endOfDay = new Date(date);
+            endOfDay.setHours(23, 59, 59, 999);
 
-            const checkInDate = record.checkInTime.toDate();
-            const isToday = now.toDateString() === checkInDate.toDateString();
+            const q = query(
+                collection(db, "photo_attendances"),
+                where("userId", "==", userProfile.uid),
+                where("checkInTime", ">=", startOfDay),
+                where("checkInTime", "<=", endOfDay),
+                orderBy("checkInTime", "desc")
+            );
 
-            // If it's today, no checkout time exists, and it's past the checkout deadline
-            // and the status was 'Hadir', update status to 'Terlambat' for display.
-            if (isToday && !record.checkOutTime && now > checkOutDeadline && record.status === 'Hadir') {
-                return { ...record, status: 'Terlambat' };
-            }
-            return record;
-        }) as HistoryRecord[];
+            const querySnapshot = await getDocs(q);
+            const historyData = querySnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+            })) as HistoryRecord[];
 
-        setHistory(historyData);
-        setLoading(false);
-    }, (error) => {
-        console.error("Error fetching attendance history: ", error);
-        setLoading(false);
-    });
+            setHistory(historyData);
+        } catch (error) {
+            console.error("Error fetching attendance history: ", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat riwayat kehadiran.' });
+        } finally {
+            setLoading(false);
+        }
+    };
 
-    return () => unsubscribe();
-  }, [userProfile]);
+    fetchAttendance();
+  }, [userProfile, date, toast]);
+
+  const filteredHistory = useMemo(() => {
+    if (statusFilter === 'Semua Kehadiran') {
+      return history;
+    }
+    return history.filter(record => record.status === statusFilter);
+  }, [history, statusFilter]);
+
+  const handleDownload = async (format: 'pdf' | 'csv') => {
+    if (loading || filteredHistory.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'Gagal Mengunduh',
+        description: 'Tidak ada data untuk diunduh.',
+      });
+      return;
+    }
+
+    const { default: jsPDF } = await import('jspdf');
+    const { default: autoTable } = await import('jspdf-autotable');
+
+    const headers = ['Nama', 'Tanggal', 'Waktu Masuk', 'Waktu Keluar', 'Status'];
+    const data = filteredHistory.map(d => [
+        userProfile?.name || '-',
+        d.checkInTime.toDate().toLocaleDateString('id-ID'),
+        d.checkInTime.toDate().toLocaleTimeString('id-ID'),
+        d.checkOutTime ? d.checkOutTime.toDate().toLocaleTimeString('id-ID') : '-',
+        d.status
+    ]);
+    const formattedDate = date ? format(date, "yyyy-MM-dd") : 'tanggal-tidak-dipilih';
+    const filename = `Laporan_Kehadiran_${userProfile?.name?.replace(' ', '_')}_${formattedDate}`;
+
+    if (format === 'csv') {
+      const csvContent = [
+        headers.join(','),
+        ...data.map(row => row.join(','))
+      ].join('\n');
+      const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${filename}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    if (format === 'pdf') {
+      const doc = new jsPDF();
+      doc.text(`Laporan Kehadiran - ${userProfile?.name}`, 14, 10);
+      doc.text(`Tanggal: ${date ? format(date, "PPP", { locale: localeId }) : 'Semua'}`, 14, 16);
+      autoTable(doc, {
+        head: [headers],
+        body: data,
+        startY: 22,
+      });
+      doc.save(`${filename}.pdf`);
+    }
+  };
+
 
   if (!userProfile) {
     return <div className="p-4 text-center">Memuat data pengguna...</div>
   }
 
-    return (
-        <div className="bg-gray-50 dark:bg-zinc-900">
-            <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                <h1 className="text-xl font-bold text-foreground">Riwayat Kehadiran</h1>
-            </header>
+  return (
+    <div className="bg-gray-50 dark:bg-zinc-900">
+        <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <h1 className="text-xl font-bold text-foreground">Riwayat Kehadiran</h1>
+        </header>
 
-            <div className="p-4">
-                {loading ? (
-                    <div className="flex justify-center items-center h-64">
-                        <LottieLoader size={80} />
-                    </div>
-                ) : (
-                    <div className="space-y-3">
-                        {history.length === 0 ? (
-                            <p className="text-muted-foreground text-center py-8">Belum ada riwayat kehadiran.</p>
-                        ) : (
-                            history.map((item) => (
-                                <Card key={item.id} className="p-3 flex items-center gap-4">
-                                    <Avatar className="h-12 w-12">
-                                        <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait" />
-                                        <AvatarFallback>{userProfile.name.slice(0,2).toUpperCase()}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex-grow">
-                                        <p className="font-semibold text-foreground">{item.checkInTime.toDate().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-                                        <p className="text-sm text-muted-foreground">
-                                            Masuk: {item.checkInTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                                            {item.checkOutTime ? ` | Keluar: ${item.checkOutTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : ''}
-                                        </p>
-                                    </div>
-                                    <Badge variant={
-                                        item.status === 'Hadir' ? 'default' :
-                                        item.status === 'Terlambat' ? 'secondary' : 
-                                        item.status === 'Absen' ? 'outline' : 'destructive'
-                                    } className="w-24 justify-center">{item.status}</Badge>
-                                </Card>
-                            ))
-                        )}
-                    </div>
-                )}
+        <div className="p-4 space-y-4">
+            <div className="flex items-center gap-2">
+                <div className="flex-grow">
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className={cn(
+                                    "w-full justify-start text-left font-normal",
+                                    !date && "text-muted-foreground"
+                                )}
+                            >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {date ? format(date, "PPP", { locale: localeId }) : <span>Pilih tanggal</span>}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                mode="single"
+                                selected={date}
+                                onSelect={setDate}
+                                initialFocus
+                                disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                            />
+                        </PopoverContent>
+                    </Popover>
+                </div>
+                <div className="w-1/3 shrink-0">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="w-full justify-start">
+                                <Filter className="mr-2 h-4 w-4" />
+                                <span className="truncate">{statusFilter}</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            {filterOptions.map(option => (
+                                <DropdownMenuItem key={option} onSelect={() => setStatusFilter(option)}>
+                                    {option}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
             </div>
+
+            <div>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-full">
+                            <Download className="mr-2 h-4 w-4" />
+                            Unduh Laporan
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-[--radix-dropdown-menu-trigger-width]]">
+                        <DropdownMenuItem onSelect={() => handleDownload('pdf')}>Unduh sebagai PDF</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleDownload('csv')}>Unduh sebagai CSV</DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+
+            {loading ? (
+                <div className="flex justify-center items-center h-64">
+                    <LottieLoader size={80} />
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {filteredHistory.length === 0 ? (
+                        <p className="text-muted-foreground text-center py-8">Tidak ada riwayat untuk filter yang dipilih.</p>
+                    ) : (
+                        filteredHistory.map((item) => (
+                            <Card key={item.id} className="p-3 flex items-center gap-4">
+                                <Avatar className="h-12 w-12">
+                                    <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait" />
+                                    <AvatarFallback>{userProfile.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex-grow">
+                                    <p className="font-semibold text-foreground">{format(item.checkInTime.toDate(), "eeee, d MMMM", { locale: localeId })}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        Masuk: {item.checkInTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                                        {item.checkOutTime ? ` | Keluar: ${item.checkOutTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : ''}
+                                    </p>
+                                </div>
+                                <Badge variant={
+                                    item.status === 'Hadir' ? 'default' :
+                                    item.status === 'Terlambat' ? 'secondary' :
+                                    item.status === 'Absen' ? 'outline' : 'destructive'
+                                } className="w-24 justify-center">{item.status}</Badge>
+                            </Card>
+                        ))
+                    )}
+                </div>
+            )}
         </div>
-    );
+    </div>
+  );
 }
