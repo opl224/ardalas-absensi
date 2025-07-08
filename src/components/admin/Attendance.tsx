@@ -7,7 +7,7 @@ import { id as localeId } from 'date-fns/locale';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { collection, query, orderBy, Timestamp, getDocs, doc, deleteDoc, where } from 'firebase/firestore';
+import { collection, query, orderBy, Timestamp, getDocs, doc, deleteDoc, where, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { LottieLoader } from '../ui/lottie-loader';
 import { Button, buttonVariants } from '../ui/button';
