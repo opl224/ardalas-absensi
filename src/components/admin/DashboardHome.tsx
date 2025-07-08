@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from "react";
@@ -47,21 +48,31 @@ export function DashboardHome() {
     const [stats, setStats] = useState<Stats>({ present: 0, absent: 0, late: 0, total: 0, rate: 0 });
     const [loading, setLoading] = useState(true);
     const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+    const [settings, setSettings] = useState<any | null>(null);
 
+    // Effect to listen for settings changes
     useEffect(() => {
-        setLoading(true);
-        const usersQuery = query(collection(db, 'users'), where('role', '==', 'guru'));
-        
-        const processAttendance = async () => {
-            const usersSnapshot = await getDocs(usersQuery);
-            const totalUserCount = usersSnapshot.size;
-
-            const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
-            const settings = settingsDoc.exists() ? settingsDoc.data() : {
+        const settingsRef = doc(db, "settings", "attendance");
+        const unsubscribe = onSnapshot(settingsRef, (docSnap) => {
+            setSettings(docSnap.exists() ? docSnap.data() : {
                 checkInEnd: '09:00',
                 offDays: ['Saturday', 'Sunday'],
                 gracePeriod: 60,
-            };
+            });
+        });
+        return () => unsubscribe();
+    }, []);
+
+    // Effect to fetch data and listen for attendance, re-runs when settings change
+    useEffect(() => {
+        if (!settings) return; // Wait for settings to load
+
+        setLoading(true);
+        const usersQuery = query(collection(db, 'users'), where('role', '==', 'guru'));
+        
+        const setupListeners = async () => {
+            const usersSnapshot = await getDocs(usersQuery);
+            const totalUserCount = usersSnapshot.size;
 
             const now = new Date();
             const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
@@ -125,12 +136,12 @@ export function DashboardHome() {
             return unsubscribe;
         };
 
-        const unsubscribePromise = processAttendance();
+        const unsubscribePromise = setupListeners();
 
         return () => {
             unsubscribePromise.then(unsub => unsub && unsub());
         };
-    }, []);
+    }, [settings]);
 
     return (
         <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">

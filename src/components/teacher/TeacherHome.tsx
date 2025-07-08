@@ -68,6 +68,9 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
     const [checkinData, setCheckinData] = useState<{ time: string; photo: string; attendanceId: string; status: 'Hadir' | 'Terlambat' } | null>(null);
     const [checkoutTime, setCheckoutTime] = useState<string | null>(null);
     const [isCheckoutAllowed, setIsCheckoutAllowed] = useState(false);
+    const [settings, setSettings] = useState<any | null>(null);
+    const [todaysAttendance, setTodaysAttendance] = useState<any | 'empty' | 'loading'>('loading');
+
 
     const { userProfile } = useAuth();
     const { toast } = useToast();
@@ -88,10 +91,20 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
         return () => clearInterval(interval);
     }, []);
 
+    // Effect 1: Listen for settings changes
+    useEffect(() => {
+        const settingsRef = doc(db, "settings", "attendance");
+        const unsubscribe = onSnapshot(settingsRef, (docSnap) => {
+            setSettings(docSnap.exists() ? docSnap.data() : { checkOutStart: '15:00', checkInEnd: '09:00', gracePeriod: 60 });
+        });
+        return () => unsubscribe();
+    }, []);
+
+    // Effect 2: Listen for today's attendance changes
     useEffect(() => {
         if (!userProfile?.uid) return;
 
-        setStatus('loading');
+        setTodaysAttendance('loading');
         const today = new Date();
         const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
@@ -105,47 +118,12 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
             limit(1)
         );
 
-        const unsubscribe = onSnapshot(q, async (snapshot) => {
-            const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
-            const settings = settingsDoc.exists() ? settingsDoc.data() : {};
-            const now = new Date();
-
-            const checkOutStart = getTodayAtTime(settings.checkOutStart || '15:00');
-            setIsCheckoutAllowed(now >= checkOutStart);
-
+        const unsubscribe = onSnapshot(q, (snapshot) => {
             if (snapshot.empty) {
-                const checkInEnd = getTodayAtTime(settings.checkInEnd || '09:00');
-                const gracePeriodMinutes = settings.gracePeriod ?? 60;
-                const checkInGraceEnd = new Date(checkInEnd.getTime() + gracePeriodMinutes * 60 * 1000); 
-
-                if (now > checkInGraceEnd) {
-                    setStatus('tidak_hadir');
-                } else {
-                    setStatus('not_checked_in');
-                }
-                setCheckinData(null);
-                setCheckoutTime(null);
+                setTodaysAttendance('empty');
             } else {
                 const docSnap = snapshot.docs[0];
-                const data = docSnap.data();
-                
-                const checkInTimestamp = data.checkInTime as Timestamp;
-                
-                setCheckinData({
-                    time: checkInTimestamp.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-                    photo: data.checkInPhotoUrl,
-                    attendanceId: docSnap.id,
-                    status: data.status,
-                });
-
-                if (data.checkOutTime) {
-                    const checkOutTimestamp = data.checkOutTime as Timestamp;
-                    setStatus('checked_out');
-                    setCheckoutTime(checkOutTimestamp.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
-                } else {
-                    setStatus('checked_in');
-                    setCheckoutTime(null);
-                }
+                setTodaysAttendance({ id: docSnap.id, ...docSnap.data() });
             }
         }, (error) => {
             console.error("Error fetching attendance status: ", error);
@@ -154,11 +132,56 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                 title: 'Gagal memuat status',
                 description: 'Tidak dapat mengambil status kehadiran terbaru.',
             });
-            setStatus('not_checked_in');
+            setTodaysAttendance('empty');
         });
 
         return () => unsubscribe();
     }, [userProfile, toast]);
+
+    // Effect 3: Evaluate status whenever settings or attendance change
+    useEffect(() => {
+        if (todaysAttendance === 'loading' || !settings) {
+            setStatus('loading');
+            return;
+        }
+
+        const now = new Date();
+        setIsCheckoutAllowed(now >= getTodayAtTime(settings.checkOutStart || '15:00'));
+
+        if (todaysAttendance === 'empty') {
+            const checkInEnd = getTodayAtTime(settings.checkInEnd || '09:00');
+            const gracePeriodMinutes = settings.gracePeriod ?? 60;
+            const checkInGraceEnd = new Date(checkInEnd.getTime() + gracePeriodMinutes * 60 * 1000); 
+
+            if (now > checkInGraceEnd) {
+                setStatus('tidak_hadir');
+            } else {
+                setStatus('not_checked_in');
+            }
+            setCheckinData(null);
+            setCheckoutTime(null);
+        } else {
+            const data = todaysAttendance;
+            const checkInTimestamp = data.checkInTime as Timestamp;
+            
+            setCheckinData({
+                time: checkInTimestamp.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+                photo: data.checkInPhotoUrl,
+                attendanceId: data.id,
+                status: data.status,
+            });
+
+            if (data.checkOutTime) {
+                const checkOutTimestamp = data.checkOutTime as Timestamp;
+                setStatus('checked_out');
+                setCheckoutTime(checkOutTimestamp.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit'}));
+            } else {
+                setStatus('checked_in');
+                setCheckoutTime(null);
+            }
+        }
+    }, [settings, todaysAttendance]);
+
 
     useEffect(() => {
         if (checkoutState.success) {

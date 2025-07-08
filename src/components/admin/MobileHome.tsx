@@ -33,6 +33,7 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
     const [stats, setStats] = useState<Stats>({ present: 0, absent: 0, late: 0, total: 0, rate: 0 });
     const [loading, setLoading] = useState(true);
     const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+    const [settings, setSettings] = useState<any | null>(null);
 
     useEffect(() => {
         const updateDateTime = () => {
@@ -48,22 +49,26 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
         return () => clearInterval(interval);
     }, []);
 
+    // Listener for settings changes
     useEffect(() => {
+        const settingsRef = doc(db, "settings", "attendance");
+        const unsubscribe = onSnapshot(settingsRef, (docSnap) => {
+            setSettings(docSnap.exists() ? docSnap.data() : {
+                checkInEnd: '09:00',
+                offDays: ['Saturday', 'Sunday'],
+                gracePeriod: 60,
+            });
+        });
+        return () => unsubscribe();
+    }, []);
+
+    // Main logic effect, re-runs when settings change
+    useEffect(() => {
+        if (!settings) return; // Wait for settings to load
+
+        setLoading(true);
         const fetchStats = async () => {
-            setLoading(true);
             try {
-                // Fetch settings first
-                const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
-                const settings = settingsDoc.exists() ? settingsDoc.data() : {
-                    checkInEnd: '09:00',
-                    offDays: ['Saturday', 'Sunday'],
-                    gracePeriod: 60,
-                };
-
-                const now = new Date();
-                const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
-
-                // Get total teachers only
                 const usersQuery = query(collection(db, 'users'), where('role', '==', 'guru'));
                 const usersSnapshot = await getDocs(usersQuery);
                 const totalUserCount = usersSnapshot.size;
@@ -71,14 +76,16 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
                 if (totalUserCount === 0) {
                     setStats({ present: 0, absent: 0, late: 0, total: 0, rate: 0 });
                     setLoading(false);
-                    return;
+                    return () => {};
                 }
                 
-                // If it's an off day, no one is absent, everyone is... well, off.
+                const now = new Date();
+                const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
+                
                 if (settings.offDays.includes(todayStr)) {
                      setStats({ present: 0, absent: 0, late: 0, total: totalUserCount, rate: 100 });
                      setLoading(false);
-                     return;
+                     return () => {};
                 }
                 
                 const today = new Date();
@@ -104,7 +111,6 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
                     const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
 
                     let absentCount = 0;
-                    // Only count as absent if the check-in time has passed
                     if (new Date() > checkInGraceEnd) {
                         absentCount = totalUserCount - presentCount;
                     }
@@ -124,16 +130,21 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
                     setLoading(false);
                 });
 
-                return () => unsubscribe();
+                return unsubscribe;
 
             } catch (error) {
                 console.error("Error fetching total users: ", error);
                 setLoading(false);
+                return () => {};
             }
         };
 
-        fetchStats();
-    }, []);
+        const unsubscribePromise = fetchStats();
+        
+        return () => {
+            unsubscribePromise.then(unsub => unsub && unsub());
+        };
+    }, [settings]);
 
     if (!userProfile) {
         return null;

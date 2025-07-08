@@ -7,7 +7,7 @@ import { id as localeId } from 'date-fns/locale';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { collection, query, orderBy, Timestamp, getDocs, doc, deleteDoc, where, getDoc } from 'firebase/firestore';
+import { collection, query, orderBy, Timestamp, getDocs, doc, deleteDoc, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader } from '../ui/loader';
 import { Button, buttonVariants } from '../ui/button';
@@ -55,94 +55,100 @@ export function Attendance() {
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
     const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null);
     const { toast } = useToast();
+    const [settings, setSettings] = useState<any>(null);
 
+    // Listener for settings changes
     useEffect(() => {
-        const fetchAttendance = async () => {
-            if (!date) return;
-            setLoading(true);
-            try {
-                // Get settings and determine deadlines
-                const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
-                const settings = settingsDoc.exists() ? settingsDoc.data() : { checkInEnd: '09:00', offDays: [], gracePeriod: 60 };
-                const selectedDateStr = date.toLocaleDateString('en-US', { weekday: 'long' });
-                const isOffDay = settings.offDays.includes(selectedDateStr);
+        const settingsRef = doc(db, "settings", "attendance");
+        const unsubscribe = onSnapshot(settingsRef, (docSnap) => {
+            setSettings(docSnap.exists() ? docSnap.data() : { checkInEnd: '09:00', offDays: [], gracePeriod: 60 });
+        });
+        return () => unsubscribe();
+    }, []);
 
-                const now = new Date();
-                const checkInEndStr = settings.checkInEnd || '09:00';
-                const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
-                const checkInDeadline = new Date(date);
-                checkInDeadline.setHours(endHours, endMinutes, 0, 0);
-                const gracePeriodMinutes = settings.gracePeriod ?? 60;
-                const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
+    // Main logic effect, depends on date and settings
+    useEffect(() => {
+        if (!date || !settings) return;
+        setLoading(true);
+
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+        
+        const q = query(
+            collection(db, "photo_attendances"),
+            where("role", "==", "guru"),
+            where("checkInTime", ">=", startOfDay),
+            where("checkInTime", "<=", endOfDay),
+            orderBy("checkInTime", "desc")
+        );
+        
+        // This listener will react to new/deleted attendance records for the selected day.
+        const unsubscribeAttendance = onSnapshot(q, async (querySnapshot) => {
+            const fetchedRecords: AttendanceRecord[] = querySnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+            })) as AttendanceRecord[];
+            
+            let finalRecords = [...fetchedRecords];
+
+            // Now, recalculate absentees using the latest settings
+            const now = new Date();
+            const selectedDateStr = date.toLocaleDateString('en-US', { weekday: 'long' });
+            const isOffDay = settings.offDays.includes(selectedDateStr);
+
+            const checkInEndStr = settings.checkInEnd || '09:00';
+            const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
+            const checkInDeadline = new Date(date);
+            checkInDeadline.setHours(endHours, endMinutes, 0, 0);
+            const gracePeriodMinutes = settings.gracePeriod ?? 60;
+            const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
+            
+            const isToday = now.toDateString() === date.toDateString();
+            const canDetermineAbsent = !isOffDay && (date < new Date(new Date().setHours(0, 0, 0, 0)) || (isToday && now > checkInGraceEnd));
+
+            if (canDetermineAbsent) {
+                const usersQuery = query(collection(db, 'users'), where('role', '==', 'guru'));
+                const usersSnapshot = await getDocs(usersQuery);
+                const allUsers = usersSnapshot.docs.map(userDoc => ({ id: userDoc.id, ...userDoc.data() }));
+
+                const presentUserIds = new Set(fetchedRecords.map(r => r.userId));
+                const absentUsers = allUsers.filter(user => !presentUserIds.has(user.id));
                 
-                const isToday = now.toDateString() === date.toDateString();
-                const canDetermineAbsent = !isOffDay && (date < new Date(new Date().setHours(0, 0, 0, 0)) || (isToday && now > checkInGraceEnd));
-
-                const startOfDay = new Date(date);
-                startOfDay.setHours(0, 0, 0, 0);
-                const endOfDay = new Date(date);
-                endOfDay.setHours(23, 59, 59, 999);
-
-                // 1. Fetch existing attendance records for teachers
-                const q = query(
-                    collection(db, "photo_attendances"),
-                    where("role", "==", "guru"),
-                    where("checkInTime", ">=", startOfDay),
-                    where("checkInTime", "<=", endOfDay),
-                    orderBy("checkInTime", "desc")
-                );
+                const absentRecords: AttendanceRecord[] = absentUsers.map(user => ({
+                    id: `absent-${user.id}-${date.getTime()}`,
+                    userId: user.id,
+                    name: user.name,
+                    role: user.role,
+                    checkInTime: Timestamp.fromDate(startOfDay), // Will appear at the bottom of desc list
+                    status: 'Tidak Hadir',
+                    checkInPhotoUrl: user.avatar || '', // Use avatar for photo
+                    isFraudulent: false,
+                }));
                 
-                const querySnapshot = await getDocs(q);
-                const fetchedRecords: AttendanceRecord[] = querySnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data(),
-                })) as AttendanceRecord[];
-                
-                let finalRecords = [...fetchedRecords];
-
-                if (canDetermineAbsent) {
-                    // 2. Fetch all teachers who should attend
-                    const usersQuery = query(collection(db, 'users'), where('role', '==', 'guru'));
-                    const usersSnapshot = await getDocs(usersQuery);
-                    const allUsers = usersSnapshot.docs.map(userDoc => ({ id: userDoc.id, ...userDoc.data() }));
-
-                    // 3. Find which teachers are absent
-                    const presentUserIds = new Set(fetchedRecords.map(r => r.userId));
-                    const absentUsers = allUsers.filter(user => !presentUserIds.has(user.id));
-                    
-                    // 4. Create placeholder records for them
-                    const absentRecords: AttendanceRecord[] = absentUsers.map(user => ({
-                        id: `absent-${user.id}-${date.getTime()}`,
-                        userId: user.id,
-                        name: user.name,
-                        role: user.role,
-                        checkInTime: Timestamp.fromDate(startOfDay), // Will appear at the bottom of desc list
-                        status: 'Tidak Hadir',
-                        checkInPhotoUrl: user.avatar || '', // Use avatar for photo
-                        isFraudulent: false,
-                    }));
-                    
-                    finalRecords = [...fetchedRecords, ...absentRecords];
-                    finalRecords.sort((a, b) => b.checkInTime.toMillis() - a.checkInTime.toMillis());
-                }
-
-                setAttendanceData(finalRecords);
-                setCurrentPage(1); // Reset page on new data
-                setStatusFilter('Semua Kehadiran'); // Reset filter on new data
-            } catch (error) {
-                console.error("Error fetching attendance data: ", error);
-                toast({
-                    variant: 'destructive',
-                    title: 'Gagal Memuat Data',
-                    description: 'Terjadi kesalahan saat mengambil data kehadiran.'
-                });
-            } finally {
-                setLoading(false);
+                finalRecords = [...fetchedRecords, ...absentRecords];
+                finalRecords.sort((a, b) => b.checkInTime.toMillis() - a.checkInTime.toMillis());
             }
-        };
 
-        fetchAttendance();
-    }, [date, toast]);
+            setAttendanceData(finalRecords);
+            setCurrentPage(1); // Reset page on new data
+            setStatusFilter('Semua Kehadiran'); // Reset filter on new data
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching attendance data: ", error);
+            toast({
+                variant: 'destructive',
+                title: 'Gagal Memuat Data',
+                description: 'Terjadi kesalahan saat mengambil data kehadiran.'
+            });
+            setLoading(false);
+        });
+
+        return () => {
+            unsubscribeAttendance();
+        };
+    }, [date, settings, toast]);
 
     const handleFilterChange = (filter: string) => {
         setStatusFilter(filter);
