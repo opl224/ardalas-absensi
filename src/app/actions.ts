@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { z } from "zod";
 import { doc, setDoc, collection, serverTimestamp, updateDoc, getDoc } from "firebase/firestore"; 
 import { db } from "@/lib/firebase";
-// import { validateAttendance } from "@/ai/flows/attendance-validator";
+import { validateAttendance } from "@/ai/flows/attendance-validator";
 
 const checkinSchema = z.object({
   photoDataUri: z.string(),
@@ -107,8 +107,25 @@ export async function handleCheckin(
     }
     const publicUrl = urlData.publicUrl;
 
-    // 2. AI Validator is disabled.
-    const result = { isFraudulent: false, reason: 'Validasi AI dilewati.' };
+    // 2. AI Validation
+    if (
+        settings.schoolLatitude === undefined ||
+        settings.schoolLongitude === undefined ||
+        settings.schoolRadius === undefined
+    ) {
+        return { error: "Pengaturan lokasi sekolah belum lengkap. Silakan hubungi admin." };
+    }
+      
+    const result = await validateAttendance({
+        photoDataUri,
+        latitude,
+        longitude,
+        expectedLocation: {
+            latitude: settings.schoolLatitude,
+            longitude: settings.schoolLongitude,
+            radius: settings.schoolRadius,
+        },
+    });
     
     // 3. Determine final status and save attendance record to Firestore
     const finalStatus = result.isFraudulent ? "Penipuan" : status;
