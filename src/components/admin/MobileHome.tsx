@@ -10,6 +10,7 @@ import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, onSnapshot, Timestamp, doc, getDoc } from "firebase/firestore";
 import { AttendanceSettingsDialog } from "./AttendanceSettingsDialog";
 import { Button } from "../ui/button";
+import { useAuth } from "@/hooks/useAuth";
 
 type ActiveView = 'home' | 'profile' | 'users' | 'reports' | 'attendance';
 
@@ -22,6 +23,7 @@ interface Stats {
 }
 
 export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView) => void }) {
+    const { userProfile } = useAuth();
     const [dateTime, setDateTime] = useState({ date: '', time: '' });
     const [stats, setStats] = useState<Stats>({ present: 0, absent: 0, late: 0, total: 0, rate: 0 });
     const [loading, setLoading] = useState(true);
@@ -124,6 +126,10 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
         fetchStats();
     }, []);
 
+    if (!userProfile) {
+        return null;
+    }
+
     return (
         <div className="p-4">
             <header className="sticky top-0 z-10 border-b bg-background/95 p-4 -mx-4 -mt-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -134,12 +140,12 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
             <div className="flex items-center justify-between mt-6">
                 <div>
                     <p className="text-sm text-muted-foreground">Selamat datang kembali,</p>
-                    <p className="text-2xl font-bold text-foreground">Admin User</p>
+                    <p className="text-2xl font-bold text-foreground">{userProfile.name}</p>
                     <p className="text-sm text-muted-foreground">Administrator Sistem</p>
                 </div>
                 <Avatar className="h-14 w-14">
-                    <AvatarImage src="https://placehold.co/100x100.png" alt="Admin User" data-ai-hint="person portrait" />
-                    <AvatarFallback>AU</AvatarFallback>
+                    <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait" />
+                    <AvatarFallback>{userProfile.name.slice(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
             </div>
 
