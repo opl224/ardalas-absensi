@@ -17,6 +17,9 @@ import { db } from '@/lib/firebase';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 
@@ -197,6 +200,10 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
                             </Avatar>
                         </DialogTrigger>
                         <DialogContent className="p-0 border-0 bg-transparent shadow-none w-auto max-w-lg">
+                            <DialogHeader className="sr-only">
+                                <DialogTitle>Avatar {userProfile.name}</DialogTitle>
+                                <DialogDescription>Gambar avatar ukuran penuh.</DialogDescription>
+                            </DialogHeader>
                              <img src={userProfile.avatar} alt={userProfile.name} className="w-full h-auto rounded-lg" data-ai-hint="person portrait" />
                         </DialogContent>
                     </Dialog>
