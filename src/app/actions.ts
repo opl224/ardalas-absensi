@@ -100,12 +100,33 @@ export async function handleCheckin(
         // For teachers, bypass time and location checks, always mark as 'Hadir'
         finalStatus = 'Hadir';
     } else {
-        // Existing logic for students and other non-teacher roles
-        const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
+        // Logic for students
+        const settingsRef = doc(db, "settings", "attendance");
+        const settingsDoc = await getDoc(settingsRef);
         if (!settingsDoc.exists()) {
             return { error: "Pengaturan absensi belum dikonfigurasi. Silakan hubungi admin." };
         }
-        const settings = settingsDoc.data();
+        
+        let settings = settingsDoc.data();
+        const schoolLatitude = -6.241169;
+        const schoolLongitude = 107.037800;
+        const schoolRadius = 100; // in meters
+
+        // Check and set default school location if not present
+        if (
+            settings.schoolLatitude === undefined ||
+            settings.schoolLongitude === undefined ||
+            settings.schoolRadius === undefined
+        ) {
+            await setDoc(settingsRef, {
+                schoolLatitude,
+                schoolLongitude,
+                schoolRadius,
+            }, { merge: true });
+            
+            // Re-assign settings with the new values
+            settings = { ...settings, schoolLatitude, schoolLongitude, schoolRadius };
+        }
         
         const now = new Date();
         const checkInEnd = getTodayAtTime(settings.checkInEnd);
@@ -118,14 +139,6 @@ export async function handleCheckin(
         const statusBasedOnTime = now > checkInEnd ? "Terlambat" : "Hadir";
 
         // AI Validation
-        if (
-            settings.schoolLatitude === undefined ||
-            settings.schoolLongitude === undefined ||
-            settings.schoolRadius === undefined
-        ) {
-            return { error: "Pengaturan lokasi sekolah belum lengkap. Silakan hubungi admin." };
-        }
-          
         const result = await validateAttendance({
             photoDataUri,
             latitude,
@@ -139,7 +152,10 @@ export async function handleCheckin(
         
         isFraudulent = result.isFraudulent;
         fraudReason = result.reason;
-        finalStatus = isFraudulent ? "Penipuan" : statusBasedOnTime;
+        
+        // The final status is based on time, not on fraud detection.
+        // If it's fraudulent, it's just a flag, the user is still marked as present/late.
+        finalStatus = statusBasedOnTime;
     }
 
     // 3. Save attendance record to Firestore
@@ -159,7 +175,7 @@ export async function handleCheckin(
     await setDoc(attendanceRef, attendanceRecord);
 
     if (isFraudulent) {
-      return { isFraudulent: true, reason: fraudReason };
+      return { isFraudulent: true, reason: fraudReason, success: true };
     }
 
     return { success: true, reason: `Absensi berhasil ditandai sebagai ${finalStatus}!` };
