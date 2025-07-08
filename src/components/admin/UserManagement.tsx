@@ -66,34 +66,26 @@ export function UserManagement() {
     const fetchUsersAndListenForStatus = async () => {
         setLoading(true);
         try {
-            // Step 1: Fetch all base user docs for gurus and admins.
-            const usersQuery = query(collection(db, 'users'), where('role', 'in', ['guru', 'admin']));
-            const usersSnapshot = await getDocs(usersQuery);
-            const baseUsers = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+            // Step 1: Fetch all base user docs from their primary collections.
+            const teachersQuery = collection(db, 'teachers');
+            const teachersSnapshot = await getDocs(teachersQuery);
+            const teacherUsers = teachersSnapshot.docs.map(doc => ({
+                id: doc.id,
+                role: 'Guru',
+                ...doc.data()
+            }));
 
-            // Step 2: Fetch detailed profiles for all gurus in parallel.
-            const teacherDetailsPromises = baseUsers
-                .filter(user => user.role === 'guru')
-                .map(user => getDoc(doc(db, 'teachers', user.id)));
-            
-            const teacherDetailsSnapshots = await Promise.all(teacherDetailsPromises);
-            
-            const teachersDataMap = new Map();
-            teacherDetailsSnapshots.forEach(docSnap => {
-                if (docSnap.exists()) {
-                    teachersDataMap.set(docSnap.id, docSnap.data());
-                }
-            });
+            const adminsQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
+            const adminsSnapshot = await getDocs(adminsQuery);
+            const adminUsers = adminsSnapshot.docs.map(doc => ({
+                id: doc.id,
+                role: 'Admin',
+                ...doc.data()
+            }));
 
-            // Step 3: Combine base user data with teacher-specific details to form the initial user list.
-            const initialUsers = baseUsers.map(user => {
-                if (user.role === 'guru' && teachersDataMap.has(user.id)) {
-                    return { ...user, ...teachersDataMap.get(user.id) };
-                }
-                return user;
-            });
+            const allBaseUsers = [...teacherUsers, ...adminUsers];
 
-            // Step 4: Set up the real-time listener for attendance status.
+            // Step 2: Set up the real-time listener for attendance status.
             const todayStart = new Date();
             todayStart.setHours(0, 0, 0, 0);
             const todayEnd = new Date();
@@ -129,11 +121,11 @@ export function UserManagement() {
                     }
                 });
 
-                let usersWithStatus = initialUsers.map((user: any) => {
+                let usersWithStatus = allBaseUsers.map((user: any) => {
                     let status: User['status'];
                     const attendanceInfo = attendanceStatusMap.get(user.id);
                     
-                    if (user.role === 'admin') {
+                    if (user.role === 'Admin') {
                         status = 'Admin';
                     } else if (attendanceInfo) {
                         status = attendanceInfo.status;
@@ -148,7 +140,6 @@ export function UserManagement() {
                     return {
                         ...user,
                         status,
-                        role: user.role.charAt(0).toUpperCase() + user.role.slice(1), // Capitalize role for display
                         isFraudulent: attendanceInfo?.isFraudulent ?? false,
                     };
                 });
@@ -183,7 +174,7 @@ export function UserManagement() {
     return () => {
         unsubscribePromise.then(unsub => unsub && unsub());
     };
-}, []); // Empty dependency array ensures this runs only once on mount.
+}, []);
 
 
   const filteredUsers = useMemo(() => {
@@ -240,15 +231,7 @@ export function UserManagement() {
     }
   }, [totalPages, currentPage]);
   
-  const getBadgeVariant = (status: User['status'], isFraudulent?: boolean) => {
-    if (isFraudulent) {
-        // Even if fraudulent, show original status color
-        switch (status) {
-            case 'Hadir': return 'success';
-            case 'Terlambat': return 'warning';
-            default: return 'destructive';
-        }
-    }
+  const getBadgeVariant = (status: User['status']) => {
     switch (status) {
         case 'Hadir': return 'success';
         case 'Terlambat': return 'warning';
@@ -355,7 +338,7 @@ export function UserManagement() {
                                     {user.role === 'Admin' ? (
                                       <div className="glowing-admin-badge">Admin</div>
                                     ) : (
-                                      <Badge variant={getBadgeVariant(user.status, user.isFraudulent)}>
+                                      <Badge variant={getBadgeVariant(user.status)}>
                                         {user.isFraudulent && <AlertTriangle className="h-3 w-3 mr-1.5 animate-medium-flash" />}
                                         {user.status}
                                       </Badge>
