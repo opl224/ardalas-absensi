@@ -97,10 +97,22 @@ export default function LoginPage() {
         } else if (role === 'guru') {
           router.push('/teacher/dashboard');
         } else {
-          throw new Error('Peran pengguna tidak dikenali.');
+          await signOut(auth);
+          toast({
+            variant: 'destructive',
+            title: 'Akses Ditolak',
+            description: 'Peran pengguna Anda tidak dikenali atau tidak diizinkan mengakses halaman ini.',
+          });
+          setLoading(false);
         }
       } else {
-        throw new Error('Data pengguna tidak ditemukan.');
+        await signOut(auth);
+        toast({
+            variant: 'destructive',
+            title: 'Gagal Masuk',
+            description: 'Data pengguna tidak ditemukan.',
+        });
+        setLoading(false);
       }
 
     } catch (error: any) {
@@ -108,7 +120,7 @@ export default function LoginPage() {
       toast({
         variant: 'destructive',
         title: 'Gagal Masuk',
-        description: 'Email atau kata sandi salah',
+        description: 'Email atau kata sandi salah.',
       });
       setLoading(false);
     }
