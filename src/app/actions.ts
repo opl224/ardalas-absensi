@@ -96,67 +96,61 @@ export async function handleCheckin(
     let fraudReason = '';
 
     // 2. Conditional logic based on user role
-    if (userRole === 'guru') {
-        // For teachers, bypass time and location checks, always mark as 'Hadir'
-        finalStatus = 'Hadir';
-    } else {
-        // Logic for students
-        const settingsRef = doc(db, "settings", "attendance");
-        const settingsDoc = await getDoc(settingsRef);
-        if (!settingsDoc.exists()) {
-            return { error: "Pengaturan absensi belum dikonfigurasi. Silakan hubungi admin." };
-        }
-        
-        let settings = settingsDoc.data();
-        const schoolLatitude = -6.241169;
-        const schoolLongitude = 107.037800;
-        const schoolRadius = 100; // in meters
-
-        // Check and set default school location if not present
-        if (
-            settings.schoolLatitude === undefined ||
-            settings.schoolLongitude === undefined ||
-            settings.schoolRadius === undefined
-        ) {
-            await setDoc(settingsRef, {
-                schoolLatitude,
-                schoolLongitude,
-                schoolRadius,
-            }, { merge: true });
-            
-            // Re-assign settings with the new values
-            settings = { ...settings, schoolLatitude, schoolLongitude, schoolRadius };
-        }
-        
-        const now = new Date();
-        const checkInEnd = getTodayAtTime(settings.checkInEnd);
-        const checkInGraceEnd = new Date(checkInEnd.getTime() + 60 * 60 * 1000); // 1 hour grace period
-
-        if (now > checkInGraceEnd) {
-            return { error: "Waktu absen masuk telah berakhir. Anda ditandai sebagai absen." };
-        }
-        
-        const statusBasedOnTime = now > checkInEnd ? "Terlambat" : "Hadir";
-
-        // AI Validation
-        const result = await validateAttendance({
-            photoDataUri,
-            latitude,
-            longitude,
-            expectedLocation: {
-                latitude: settings.schoolLatitude,
-                longitude: settings.schoolLongitude,
-                radius: settings.schoolRadius,
-            },
-        });
-        
-        isFraudulent = result.isFraudulent;
-        fraudReason = result.reason;
-        
-        // The final status is based on time, not on fraud detection.
-        // If it's fraudulent, it's just a flag, the user is still marked as present/late.
-        finalStatus = statusBasedOnTime;
+    const settingsRef = doc(db, "settings", "attendance");
+    const settingsDoc = await getDoc(settingsRef);
+    if (!settingsDoc.exists()) {
+        return { error: "Pengaturan absensi belum dikonfigurasi. Silakan hubungi admin." };
     }
+    
+    let settings = settingsDoc.data();
+    const schoolLatitude = -6.241169;
+    const schoolLongitude = 107.037800;
+    const schoolRadius = 100; // in meters
+
+    // Check and set default school location if not present
+    if (
+        settings.schoolLatitude === undefined ||
+        settings.schoolLongitude === undefined ||
+        settings.schoolRadius === undefined
+    ) {
+        await setDoc(settingsRef, {
+            schoolLatitude,
+            schoolLongitude,
+            schoolRadius,
+        }, { merge: true });
+        
+        // Re-assign settings with the new values
+        settings = { ...settings, schoolLatitude, schoolLongitude, schoolRadius };
+    }
+    
+    const now = new Date();
+    const checkInEnd = getTodayAtTime(settings.checkInEnd);
+    const checkInGraceEnd = new Date(checkInEnd.getTime() + 60 * 60 * 1000); // 1 hour grace period
+
+    if (now > checkInGraceEnd) {
+        return { error: "Waktu absen masuk telah berakhir. Anda ditandai sebagai absen." };
+    }
+    
+    const statusBasedOnTime = now > checkInEnd ? "Terlambat" : "Hadir";
+
+    // AI Validation
+    const result = await validateAttendance({
+        photoDataUri,
+        latitude,
+        longitude,
+        expectedLocation: {
+            latitude: settings.schoolLatitude,
+            longitude: settings.schoolLongitude,
+            radius: settings.schoolRadius,
+        },
+    });
+    
+    isFraudulent = result.isFraudulent;
+    fraudReason = result.reason;
+    
+    // The final status is based on time, not on fraud detection.
+    // If it's fraudulent, it's just a flag, the user is still marked as present/late.
+    finalStatus = statusBasedOnTime;
 
     // 3. Save attendance record to Firestore
     const attendanceRecord = {
