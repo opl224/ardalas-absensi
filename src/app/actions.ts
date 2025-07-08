@@ -4,7 +4,6 @@ import { supabase } from "@/lib/supabase";
 import { z } from "zod";
 import { doc, setDoc, collection, updateDoc, getDoc } from "firebase/firestore"; 
 import { db } from "@/lib/firebase";
-import { validateAttendance } from "@/ai/flows/attendance-validator";
 
 const checkinSchema = z.object({
   photoDataUri: z.string(),
@@ -39,6 +38,22 @@ function getTodayAtTime(timeString: string): Date {
     const [hours, minutes] = timeString.split(':').map(Number);
     today.setHours(hours, minutes, 0, 0);
     return today;
+}
+
+// Helper function to calculate distance between two lat/lon points in meters (Haversine formula)
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371e3; // Earth's radius in meters
+    const phi1 = lat1 * Math.PI / 180;
+    const phi2 = lat2 * Math.PI / 180;
+    const deltaPhi = (lat2 - lat1) * Math.PI / 180;
+    const deltaLambda = (lon2 - lon1) * Math.PI / 180;
+
+    const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+              Math.cos(phi1) * Math.cos(phi2) *
+              Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
 }
 
 
@@ -138,20 +153,16 @@ export async function handleCheckin(
     }
     const publicUrl = urlData.publicUrl;
 
-    // 2. AI Validation
-    const result = await validateAttendance({
-        photoDataUri,
-        latitude,
-        longitude,
-        expectedLocation: {
-            latitude: settings.schoolLatitude,
-            longitude: settings.schoolLongitude,
-            radius: settings.schoolRadius,
-        },
-    });
+    // 2. Location Validation (No AI)
+    const distance = calculateDistance(latitude, longitude, settings.schoolLatitude, settings.schoolLongitude);
     
-    const isFraudulent = result.isFraudulent;
-    const fraudReason = result.reason;
+    let isFraudulent = false;
+    let fraudReason = '';
+
+    if (distance > settings.schoolRadius) {
+        isFraudulent = true;
+        fraudReason = `Anda berada ${Math.round(distance)} meter dari lokasi sekolah, yang berada di luar radius ${settings.schoolRadius} meter yang diizinkan.`;
+    }
     
     // Determine status based on time
     const finalStatus = now > checkInEnd ? "Terlambat" : "Hadir";
