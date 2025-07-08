@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { Home, LineChart, Search, GraduationCap, BookOpen, Users } from "lucide-react"
+import { Home, LineChart, Search, GraduationCap, BookOpen, Users, UserCheck, UserX, Clock } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -33,10 +33,11 @@ import { Logo } from "@/components/Logo"
 import { MobileTeacherDashboard } from "@/components/teacher/MobileTeacherDashboard"
 import { CheckinCard } from "@/components/check-in/CheckinCard"
 import { useAuth } from "@/hooks/useAuth";
-import { collection, query, where, getDocs, Timestamp, onSnapshot, orderBy, startOfToday, endOfToday } from "firebase/firestore";
+import { collection, query, where, getDocs, Timestamp, onSnapshot, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { CenteredLottieLoader, LottieLoader } from "@/components/ui/lottie-loader";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface StudentAttendanceRecord {
     id: string;
@@ -46,45 +47,89 @@ interface StudentAttendanceRecord {
     isFraudulent?: boolean;
 }
 
+interface Stats {
+    total: number;
+    present: number;
+    late: number;
+    absent: number;
+}
+
 export default function TeacherDashboard() {
   const { userProfile } = useAuth();
   const [studentAttendanceData, setStudentAttendanceData] = useState<StudentAttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<Stats>({ total: 0, present: 0, late: 0, absent: 0 });
+  const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
     if (!userProfile || !userProfile.subject) return;
 
-    setLoading(true);
-    // TODO: This query assumes students have a `class` field that matches the teacher's subject.
-    // This might need adjustment based on your actual data structure.
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
+    setStatsLoading(true);
+    
+    const setupListeners = async () => {
+        let totalStudentCount = 0;
+        try {
+            // Assume teacher's subject is the class name for students
+            const studentsQuery = query(collection(db, "users"), where("role", "==", "siswa"), where("class", "==", userProfile.subject));
+            const studentsSnapshot = await getDocs(studentsQuery);
+            totalStudentCount = studentsSnapshot.size;
+        } catch (error) {
+            console.error("Error fetching total students:", error);
+        }
 
-    const q = query(
-      collection(db, "photo_attendances"),
-      where("role", "==", "siswa"),
-      // where("className", "==", userProfile.subject), // Assuming teacher's subject matches a class name
-      where("checkInTime", ">=", todayStart),
-      where("checkInTime", "<=", todayEnd),
-      orderBy("checkInTime", "desc")
-    );
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const data = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          checkInTime: doc.data().checkInTime,
-      })) as StudentAttendanceRecord[];
-      setStudentAttendanceData(data);
-      setLoading(false);
-    }, (error) => {
-        console.error("Error fetching student attendance: ", error);
-        setLoading(false);
-    });
+        // This query fetches all students' attendance for today.
+        // It's assumed teachers can see all students. For per-class filtering,
+        // a 'className' field would be needed in the 'photo_attendances' collection.
+        const q = query(
+          collection(db, "photo_attendances"),
+          where("role", "==", "siswa"),
+          where("checkInTime", ">=", todayStart),
+          where("checkInTime", "<=", todayEnd),
+          orderBy("checkInTime", "desc")
+        );
 
-    return () => unsubscribe();
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+          const data = querySnapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data(),
+              checkInTime: doc.data().checkInTime,
+          })) as StudentAttendanceRecord[];
+          
+          setStudentAttendanceData(data);
+          
+          // Calculate stats
+          const presentCount = data.filter(s => s.status === 'Hadir').length;
+          const lateCount = data.filter(s => s.status === 'Terlambat').length;
+          const presentAndLateCount = presentCount + lateCount;
+          const absentCount = totalStudentCount - presentAndLateCount;
+
+          setStats({
+              total: totalStudentCount,
+              present: presentAndLateCount,
+              late: lateCount,
+              absent: absentCount >= 0 ? absentCount : 0,
+          });
+
+          setLoading(false);
+          setStatsLoading(false);
+        }, (error) => {
+            console.error("Error fetching student attendance: ", error);
+            setLoading(false);
+            setStatsLoading(false);
+        });
+        
+        return unsubscribe;
+    }
+
+    const unsubscribePromise = setupListeners();
+    return () => {
+        unsubscribePromise.then(unsub => unsub && unsub());
+    };
   }, [userProfile]);
   
   if (!userProfile) {
@@ -168,40 +213,54 @@ export default function TeacherDashboard() {
                                 <Users className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
-                                {/* TODO: Fetch data from Firestore */}
-                                <div className="text-2xl font-bold">45</div>
-                                <p className="text-xs text-muted-foreground">di kelas Anda</p>
+                                {statsLoading ? <Skeleton className="h-8 w-1/2" /> : (
+                                    <>
+                                        <div className="text-2xl font-bold">{stats.total}</div>
+                                        <p className="text-xs text-muted-foreground">di kelas Anda</p>
+                                    </>
+                                )}
                             </CardContent>
                         </Card>
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">Hadir Hari Ini</CardTitle>
-                                <GraduationCap className="h-4 w-4 text-primary" />
+                                <UserCheck className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold text-primary">{studentAttendanceData.filter(s => s.status === 'Hadir').length}</div>
-                                <p className="text-xs text-muted-foreground">di kelas Anda saat ini</p>
+                                {statsLoading ? <Skeleton className="h-8 w-1/2" /> : (
+                                    <>
+                                        <div className="text-2xl font-bold text-primary">{stats.present}</div>
+                                        <p className="text-xs text-muted-foreground">Total siswa yang sudah absen</p>
+                                    </>
+                                )}
+                            </CardContent>
+                        </Card>
+                         <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Terlambat Hari Ini</CardTitle>
+                                <Clock className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                {statsLoading ? <Skeleton className="h-8 w-1/2" /> : (
+                                    <>
+                                        <div className="text-2xl font-bold text-warning">{stats.late}</div>
+                                        <p className="text-xs text-muted-foreground">Dari siswa yang hadir</p>
+                                    </>
+                                )}
                             </CardContent>
                         </Card>
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">Tidak Hadir Hari Ini</CardTitle>
-                                <GraduationCap className="h-4 w-4 text-destructive" />
+                                <UserX className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
-                                 {/* TODO: This needs to be calculated based on total students */}
-                                <div className="text-2xl font-bold text-destructive">5</div>
-                                <p className="text-xs text-muted-foreground">termasuk {studentAttendanceData.filter(s => s.status === 'Terlambat').length} terlambat</p>
-                            </CardContent>
-                        </Card>
-                         <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Jadwal Anda</CardTitle>
-                            <BookOpen className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                            <div className="text-2xl font-bold">10:00 AM</div>
-                            <p className="text-xs text-muted-foreground">Kelas berikutnya: Matematika 10B</p>
+                                {statsLoading ? <Skeleton className="h-8 w-1/2" /> : (
+                                    <>
+                                        <div className="text-2xl font-bold text-destructive">{stats.absent}</div>
+                                        <p className="text-xs text-muted-foreground">Siswa yang belum absen</p>
+                                    </>
+                                )}
                             </CardContent>
                         </Card>
                     </div>
