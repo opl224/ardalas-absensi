@@ -67,24 +67,7 @@ export async function handleCheckin(
         return { error: 'Data gambar tidak valid. Silakan ambil ulang foto selfie Anda.' };
     }
 
-    // Fetch attendance settings
-    const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
-    if (!settingsDoc.exists()) {
-        return { error: "Pengaturan absensi belum dikonfigurasi. Silakan hubungi admin." };
-    }
-    const settings = settingsDoc.data();
-    
-    const now = new Date();
-    const checkInEnd = getTodayAtTime(settings.checkInEnd);
-    const checkInGraceEnd = new Date(checkInEnd.getTime() + 60 * 60 * 1000); // 1 hour grace period
-
-    if (now > checkInGraceEnd) {
-        return { error: "Waktu check-in telah berakhir. Anda ditandai sebagai absen." };
-    }
-    
-    const status = now > checkInEnd ? "Terlambat" : "Hadir";
-
-    // 1. Upload selfie to Supabase
+    // 1. Upload selfie to Supabase (common for all roles)
     const photoBlob = dataURItoBlob(photoDataUri);
     const photoPath = `${userId}/${new Date().toISOString()}.jpg`;
     
@@ -107,29 +90,59 @@ export async function handleCheckin(
     }
     const publicUrl = urlData.publicUrl;
 
-    // 2. AI Validation
-    if (
-        settings.schoolLatitude === undefined ||
-        settings.schoolLongitude === undefined ||
-        settings.schoolRadius === undefined
-    ) {
-        return { error: "Pengaturan lokasi sekolah belum lengkap. Silakan hubungi admin." };
-    }
-      
-    const result = await validateAttendance({
-        photoDataUri,
-        latitude,
-        longitude,
-        expectedLocation: {
-            latitude: settings.schoolLatitude,
-            longitude: settings.schoolLongitude,
-            radius: settings.schoolRadius,
-        },
-    });
-    
-    // 3. Determine final status and save attendance record to Firestore
-    const finalStatus = result.isFraudulent ? "Penipuan" : status;
+    // Initialize variables for the attendance record
+    let finalStatus: string;
+    let isFraudulent = false;
+    let fraudReason = '';
 
+    // 2. Conditional logic based on user role
+    if (userRole === 'guru') {
+        // For teachers, bypass time and location checks, always mark as 'Hadir'
+        finalStatus = 'Hadir';
+    } else {
+        // Existing logic for students and other non-teacher roles
+        const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
+        if (!settingsDoc.exists()) {
+            return { error: "Pengaturan absensi belum dikonfigurasi. Silakan hubungi admin." };
+        }
+        const settings = settingsDoc.data();
+        
+        const now = new Date();
+        const checkInEnd = getTodayAtTime(settings.checkInEnd);
+        const checkInGraceEnd = new Date(checkInEnd.getTime() + 60 * 60 * 1000); // 1 hour grace period
+
+        if (now > checkInGraceEnd) {
+            return { error: "Waktu check-in telah berakhir. Anda ditandai sebagai absen." };
+        }
+        
+        const statusBasedOnTime = now > checkInEnd ? "Terlambat" : "Hadir";
+
+        // AI Validation
+        if (
+            settings.schoolLatitude === undefined ||
+            settings.schoolLongitude === undefined ||
+            settings.schoolRadius === undefined
+        ) {
+            return { error: "Pengaturan lokasi sekolah belum lengkap. Silakan hubungi admin." };
+        }
+          
+        const result = await validateAttendance({
+            photoDataUri,
+            latitude,
+            longitude,
+            expectedLocation: {
+                latitude: settings.schoolLatitude,
+                longitude: settings.schoolLongitude,
+                radius: settings.schoolRadius,
+            },
+        });
+        
+        isFraudulent = result.isFraudulent;
+        fraudReason = result.reason;
+        finalStatus = isFraudulent ? "Penipuan" : statusBasedOnTime;
+    }
+
+    // 3. Save attendance record to Firestore
     const attendanceRecord = {
       userId,
       name: userName,
@@ -137,16 +150,16 @@ export async function handleCheckin(
       checkInTime: serverTimestamp(),
       checkInLocation: { latitude, longitude },
       checkInPhotoUrl: publicUrl,
-      isFraudulent: result.isFraudulent,
-      fraudReason: result.reason,
+      isFraudulent,
+      fraudReason,
       status: finalStatus,
     };
 
     const attendanceRef = doc(collection(db, "photo_attendances"));
     await setDoc(attendanceRef, attendanceRecord);
 
-    if (result.isFraudulent) {
-      return { isFraudulent: true, reason: result.reason };
+    if (isFraudulent) {
+      return { isFraudulent: true, reason: fraudReason };
     }
 
     return { success: true, reason: `Absensi berhasil ditandai sebagai ${finalStatus}!` };

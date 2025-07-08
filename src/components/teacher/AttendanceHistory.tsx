@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from '@/hooks/useAuth';
 import { collection, query, where, getDocs, Timestamp, orderBy, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { LottieLoader } from '../ui/lottie-loader';
@@ -26,7 +26,7 @@ interface HistoryRecord {
     status: 'Hadir' | 'Terlambat' | 'Penipuan' | 'Absen';
 }
 
-const filterOptions = ['Semua Kehadiran', 'Hadir', 'Terlambat', 'Absen', 'Penipuan'];
+const filterOptions = ['Semua Kehadiran', 'Hadir', 'Terlambat', 'Absen'];
 
 export function AttendanceHistory() {
   const { userProfile } = useAuth();
