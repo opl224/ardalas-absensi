@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { LottieLoader } from '../ui/lottie-loader';
 import { cn } from '@/lib/utils';
@@ -66,107 +66,104 @@ export function UserManagement() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   useEffect(() => {
-    const fetchUsersAndStatus = async () => {
-      setLoading(true);
-      try {
-        // Fetch settings
-        const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
-        if (!settingsDoc.exists()) {
-            console.error("Attendance settings not found!");
-            setUsers([]);
+    let unsubscribe: () => void;
+
+    const syncUsersAndStatus = async () => {
+        setLoading(true);
+        try {
+            // Fetch settings once
+            const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
+            if (!settingsDoc.exists()) {
+                console.error("Attendance settings not found!");
+                setUsers([]);
+                setLoading(false);
+                return;
+            }
+            const settings = settingsDoc.data();
+
+            // Fetch users once
+            const teachersQuery = collection(db, 'teachers');
+            const teachersSnapshot = await getDocs(teachersQuery);
+            const teacherUsers = teachersSnapshot.docs.map(doc => ({ id: doc.id, role: 'guru', ...doc.data() })) as User[];
+
+            const adminsQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
+            const adminsSnapshot = await getDocs(adminsQuery);
+            const adminUsers = adminsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as User[];
+            
+            const allUsers = [...adminUsers, ...teacherUsers];
+
+            // Set up real-time listener for today's attendance
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            const todayEnd = new Date();
+            todayEnd.setHours(23, 59, 59, 999);
+
+            const attendanceQuery = query(
+                collection(db, "photo_attendances"),
+                where("checkInTime", ">=", todayStart),
+                where("checkInTime", "<=", todayEnd)
+            );
+
+            unsubscribe = onSnapshot(attendanceQuery, (attendanceSnapshot) => {
+                const now = new Date();
+                const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
+                const isOffDay = settings.offDays.includes(todayStr);
+                const checkInEnd = getTodayAtTime(settings.checkInEnd);
+                const checkInGraceEnd = new Date(checkInEnd.getTime() + 60 * 60 * 1000);
+                const isPastAbsentDeadline = now > checkInGraceEnd;
+
+                const attendanceStatusMap = new Map<string, string>();
+                attendanceSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.userId && data.status) {
+                        attendanceStatusMap.set(data.userId, data.status);
+                    }
+                });
+
+                const fetchedUsers = allUsers.map(user => {
+                    let status: User['status'];
+                    if (user.role === 'admin') {
+                        status = 'Admin';
+                    } else {
+                        const attendanceStatus = attendanceStatusMap.get(user.id);
+                        if (attendanceStatus) {
+                            status = attendanceStatus as User['status'];
+                        } else if (isOffDay) {
+                            status = 'Libur';
+                        } else if (isPastAbsentDeadline) {
+                            status = 'Absen';
+                        } else {
+                            status = 'Belum Absen';
+                        }
+                    }
+                    return { ...user, status } as User;
+                });
+
+                fetchedUsers.sort((a, b) => {
+                    if (a.role === 'admin' && b.role !== 'admin') return -1;
+                    if (a.role !== 'admin' && b.role === 'admin') return 1;
+                    return a.name.localeCompare(b.name);
+                });
+
+                setUsers(fetchedUsers);
+                setLoading(false); // Set loading to false after first data fetch
+            });
+
+        } catch (error) {
+            console.error("Error syncing users and status: ", error);
             setLoading(false);
-            return;
         }
-        const settings = settingsDoc.data();
-
-        const now = new Date();
-        const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
-        const isOffDay = settings.offDays.includes(todayStr);
-
-        const checkInEnd = getTodayAtTime(settings.checkInEnd);
-        const checkInGraceEnd = new Date(checkInEnd.getTime() + 60 * 60 * 1000); // 1 hour grace period
-        const isPastAbsentDeadline = now > checkInGraceEnd;
-
-        // 1. Fetch today's attendance records to determine status for all users
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        const todayEnd = new Date();
-        todayEnd.setHours(23, 59, 59, 999);
-
-        const attendanceQuery = query(
-          collection(db, "photo_attendances"),
-          where("checkInTime", ">=", todayStart),
-          where("checkInTime", "<=", todayEnd)
-        );
-        const attendanceSnapshot = await getDocs(attendanceQuery);
-        const attendanceStatusMap = new Map<string, string>();
-        attendanceSnapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.userId && data.status) {
-                attendanceStatusMap.set(data.userId, data.status);
-            }
-        });
-
-        // 2. Fetch users from their respective collections
-        const teachersQuery = collection(db, 'teachers');
-        const teachersSnapshot = await getDocs(teachersQuery);
-        const teacherUsers = teachersSnapshot.docs.map(doc => ({
-          id: doc.id,
-          role: 'guru',
-          ...doc.data(),
-        })) as User[];
-
-        const adminsQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
-        const adminsSnapshot = await getDocs(adminsQuery);
-        const adminUsers = adminsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as User[];
-        
-        const allUsers = [...adminUsers, ...teacherUsers];
-
-        // 3. Combine user data with today's status
-        const fetchedUsers = allUsers.map(user => {
-          const userId = user.id;
-          let status: User['status'];
-
-          if (user.role === 'admin') {
-            status = 'Admin';
-          } else {
-            const attendanceStatus = attendanceStatusMap.get(userId);
-            if (attendanceStatus) {
-                status = attendanceStatus as User['status'];
-            } else if (isOffDay) {
-                status = 'Libur';
-            } else if (isPastAbsentDeadline) {
-                status = 'Absen';
-            } else {
-                status = 'Belum Absen';
-            }
-          }
-
-          return {
-            ...user,
-            status: status,
-          } as User;
-        });
-
-        // Sort admins to the top
-        fetchedUsers.sort((a, b) => {
-            if (a.role === 'admin' && b.role !== 'admin') return -1;
-            if (a.role !== 'admin' && b.role === 'admin') return 1;
-            return a.name.localeCompare(b.name);
-        });
-
-        setUsers(fetchedUsers);
-      } catch (error) {
-        console.error("Error fetching users and status: ", error);
-      } finally {
-        setLoading(false);
-      }
     };
-    fetchUsersAndStatus();
-  }, []);
+
+    syncUsersAndStatus();
+
+    // Cleanup listener on component unmount
+    return () => {
+        if (unsubscribe) {
+            unsubscribe();
+        }
+    };
+}, []);
 
   const filteredUsers = useMemo(() => {
     setCurrentPage(1); // Reset to first page on search
@@ -285,12 +282,9 @@ export function UserManagement() {
                                     {user.role === 'admin' ? (
                                       <div className="glowing-admin-badge">Admin</div>
                                     ) : (
-                                      <>
-                                        <Badge variant={getBadgeVariant(user.status)}>
-                                          {user.status}
-                                        </Badge>
-                                        <span className="text-sm text-muted-foreground capitalize">{user.role}</span>
-                                      </>
+                                      <Badge variant={getBadgeVariant(user.status)}>
+                                        {user.status}
+                                      </Badge>
                                     )}
                                   </div>
                               </div>
