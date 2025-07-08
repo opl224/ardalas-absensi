@@ -11,14 +11,14 @@ import { useToast } from '@/hooks/use-toast';
 import { useFormStatus } from 'react-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { CenteredLottieLoader, LottieLoader } from '../ui/lottie-loader';
-import { collection, query, where, onSnapshot, Timestamp, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, Timestamp, orderBy, limit, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface StudentHomeProps {
   setActiveView: (view: 'home' | 'history' | 'profile' | 'checkin') => void;
 }
 
-type CheckinStatus = 'not_checked_in' | 'checked_in' | 'checked_out' | 'loading';
+type CheckinStatus = 'not_checked_in' | 'checked_in' | 'checked_out' | 'absent' | 'loading';
 
 function CheckoutButton() {
     const { pending } = useFormStatus();
@@ -44,6 +44,17 @@ function QuickCheckoutButton() {
             </Card>
         </button>
     )
+}
+
+function getTodayAtTime(timeString: string): Date {
+    const today = new Date();
+    if (!timeString || !timeString.includes(':')) {
+        today.setHours(9, 0, 0, 0); // Default to 09:00
+        return today;
+    }
+    const [hours, minutes] = timeString.split(':').map(Number);
+    today.setHours(hours, minutes, 0, 0);
+    return today;
 }
 
 
@@ -89,9 +100,23 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
             limit(1)
         );
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
+        const unsubscribe = onSnapshot(q, async (snapshot) => {
             if (snapshot.empty) {
-                setStatus('not_checked_in');
+                const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
+                if (settingsDoc.exists()) {
+                    const settings = settingsDoc.data();
+                    const now = new Date();
+                    const checkInEnd = getTodayAtTime(settings.checkInEnd || '09:00');
+                    const checkInGraceEnd = new Date(checkInEnd.getTime() + 60 * 60 * 1000);
+
+                    if (now > checkInGraceEnd) {
+                        setStatus('absent');
+                    } else {
+                        setStatus('not_checked_in');
+                    }
+                } else {
+                    setStatus('not_checked_in');
+                }
                 setCheckinData(null);
                 setCheckoutTime(null);
             } else {
@@ -188,6 +213,13 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
                             <div className='space-y-4'>
                                 <p className="text-muted-foreground">Anda belum absen masuk hari ini.</p>
                                 <Button className="w-full" onClick={() => setActiveView('checkin')}>Absen Masuk</Button>
+                            </div>
+                        )}
+                         {status === 'absent' && (
+                            <div className='space-y-4'>
+                                 <Badge variant="destructive" className="py-1 px-4 text-base">Absen</Badge>
+                                <p className="text-muted-foreground">Waktu absen masuk hari ini telah berakhir.</p>
+                                <Button className="w-full" disabled>Absen Masuk</Button>
                             </div>
                         )}
                         {(status === 'checked_in' || status === 'checked_out') && checkinData && (
