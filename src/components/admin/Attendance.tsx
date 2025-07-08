@@ -149,7 +149,7 @@ export function Attendance() {
         setCurrentPage(1);
     };
 
-    const handleDownload = async (format: 'pdf' | 'csv') => {
+    const handleDownload = async (formatType: 'pdf' | 'csv') => {
         if (loading || attendanceData.length === 0) {
             toast({
                 variant: 'destructive',
@@ -173,7 +173,7 @@ export function Attendance() {
         const formattedDate = date ? format(date, "yyyy-MM-dd") : 'tanggal_tidak_dipilih';
         const filename = `Laporan_Kehadiran_${formattedDate}`;
     
-        if (format === 'csv') {
+        if (formatType === 'csv') {
             const csvContent = [
                 headers.join(','),
                 ...data.map(row => row.join(','))
@@ -190,7 +190,7 @@ export function Attendance() {
             document.body.removeChild(link);
         }
     
-        if (format === 'pdf') {
+        if (formatType === 'pdf') {
             const doc = new jsPDF();
             doc.text(`Laporan Kehadiran - ${date ? format(date, "PPP", { locale: localeId }) : 'Semua'}`, 14, 16);
             autoTable(doc, {
@@ -580,3 +580,5 @@ export function Attendance() {
     )
 }
 
+
+    

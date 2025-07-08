@@ -86,7 +86,7 @@ export function AttendanceHistory() {
     return history.filter(record => record.status === statusFilter);
   }, [history, statusFilter]);
 
-  const handleDownload = async (format: 'pdf' | 'csv') => {
+  const handleDownload = async (formatType: 'pdf' | 'csv') => {
     if (loading || filteredHistory.length === 0) {
       toast({
         variant: 'destructive',
@@ -110,7 +110,7 @@ export function AttendanceHistory() {
     const formattedDate = date ? format(date, "yyyy-MM-dd") : 'tanggal-tidak-dipilih';
     const filename = `Laporan_Kehadiran_${userProfile?.name?.replace(' ', '_')}_${formattedDate}`;
 
-    if (format === 'csv') {
+    if (formatType === 'csv') {
       const csvContent = [
         headers.join(','),
         ...data.map(row => row.join(','))
@@ -124,7 +124,7 @@ export function AttendanceHistory() {
       document.body.removeChild(link);
     }
 
-    if (format === 'pdf') {
+    if (formatType === 'pdf') {
       const doc = new jsPDF();
       doc.text(`Laporan Kehadiran - ${userProfile?.name}`, 14, 10);
       doc.text(`Tanggal: ${date ? format(date, "PPP", { locale: localeId }) : 'Semua'}`, 14, 16);
@@ -250,3 +250,5 @@ export function AttendanceHistory() {
     </div>
   );
 }
+
+    
