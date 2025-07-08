@@ -172,7 +172,7 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
             {/* Today's Overview */}
             <Card className="mt-6">
                 <CardHeader className="p-4">
-                    <CardTitle className="text-lg">Gambaran Hari Ini</CardTitle>
+                    <CardTitle className="text-lg">Kehadiran Hari Ini</CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
                     {loading ? (
