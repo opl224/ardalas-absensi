@@ -282,10 +282,16 @@ export function UserManagement() {
                                   <p className="font-semibold text-foreground truncate">{user.name}</p>
                                   <p className="text-sm text-muted-foreground -mt-1 truncate">{user.email}</p>
                                   <div className="flex items-center gap-2 mt-1">
-                                    <Badge variant={getBadgeVariant(user.status)}>
-                                      {user.status}
-                                    </Badge>
-                                    {user.role !== 'admin' && <span className="text-sm text-muted-foreground capitalize">{user.role}</span>}
+                                    {user.role === 'admin' ? (
+                                      <div className="glowing-admin-badge">Admin</div>
+                                    ) : (
+                                      <>
+                                        <Badge variant={getBadgeVariant(user.status)}>
+                                          {user.status}
+                                        </Badge>
+                                        <span className="text-sm text-muted-foreground capitalize">{user.role}</span>
+                                      </>
+                                    )}
                                   </div>
                               </div>
                               <div className="flex gap-2">
