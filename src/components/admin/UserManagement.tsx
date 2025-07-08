@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { collection, getDocs, query, where, doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, getDoc, onSnapshot, documentId } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { LottieLoader } from '../ui/lottie-loader';
 import { cn } from '@/lib/utils';
@@ -61,106 +61,116 @@ export function UserManagement() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const { toast } = useToast();
 
-useEffect(() => {
+  useEffect(() => {
     setLoading(true);
 
-    const usersQuery = query(collection(db, 'users'), where('role', 'in', ['guru', 'admin']));
+    let unsubscribeAttendance: (() => void) | null = null;
 
-    const unsubscribeUsers = onSnapshot(usersQuery, async (usersSnapshot) => {
-        const baseUsers = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as { id: string, role: 'guru' | 'admin', name: string, [key: string]: any }));
+    const fetchAndListen = async () => {
+        try {
+            // Step 1: Fetch all 'guru' and 'admin' users from the 'users' collection.
+            const usersQuery = query(collection(db, 'users'), where('role', 'in', ['guru', 'admin']));
+            const usersSnapshot = await getDocs(usersQuery);
+            const baseUsersFromUsers = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        const teacherDetailsPromises = baseUsers
-            .filter(user => user.role === 'guru')
-            .map(user => getDoc(doc(db, 'teachers', user.id)));
-        
-        const teacherDetailsDocs = await Promise.all(teacherDetailsPromises);
-        const teachersMap = new Map(teacherDetailsDocs.map(doc => [doc.id, doc.data()]));
-
-        const combinedUsers = baseUsers.map(user => {
-            if (user.role === 'guru' && teachersMap.has(user.id)) {
-                return { ...user, ...teachersMap.get(user.id) };
+            // Step 2: Fetch details for all teachers from the 'teachers' collection.
+            const teacherIds = baseUsersFromUsers.filter(u => u.role === 'guru').map(u => u.id);
+            const teachersDataMap = new Map();
+            if (teacherIds.length > 0) {
+                const teachersQuery = query(collection(db, 'teachers'), where(documentId(), 'in', teacherIds));
+                const teachersSnapshot = await getDocs(teachersQuery);
+                teachersSnapshot.forEach(doc => {
+                    teachersDataMap.set(doc.id, doc.data());
+                });
             }
-            return user;
-        });
-
-        // Now that we have the complete user list, set up the real-time status listener
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        const todayEnd = new Date();
-        todayEnd.setHours(23, 59, 59, 999);
-
-        const attendanceQuery = query(
-            collection(db, "photo_attendances"),
-            where("checkInTime", ">=", todayStart),
-            where("checkInTime", "<=", todayEnd)
-        );
-
-        const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
-        const settings = settingsDoc.exists() ? settingsDoc.data() : {};
-        
-        const unsubscribeAttendance = onSnapshot(attendanceQuery, (attendanceSnapshot) => {
-            const now = new Date();
-            const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
-            const isOffDay = settings.offDays?.includes(todayStr) ?? false;
             
-            const checkInEndStr = settings.checkInEnd || '09:00';
-            const gracePeriodMinutes = settings.gracePeriod ?? 60;
-            const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
-            const checkInDeadline = new Date();
-            checkInDeadline.setHours(endHours, endMinutes, 0, 0);
-            const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
-            const isPastAbsentDeadline = now > checkInGraceEnd;
-
-            const attendanceStatusMap = new Map<string, string>();
-            attendanceSnapshot.forEach(doc => {
-                const data = doc.data();
-                if (data.userId && data.status) {
-                    attendanceStatusMap.set(data.userId, data.status);
+            // Step 3: Merge teacher details into the base user list.
+            const combinedUsers = baseUsersFromUsers.map(user => {
+                if (user.role === 'guru' && teachersDataMap.has(user.id)) {
+                    return { ...user, ...teachersDataMap.get(user.id) };
                 }
+                return user;
             });
+            
+            // Step 4: Set up the real-time listener for attendance.
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            const todayEnd = new Date();
+            todayEnd.setHours(23, 59, 59, 999);
 
-            const usersWithStatus = combinedUsers.map(user => {
-                let status: User['status'];
-                if (user.role === 'admin') {
-                    status = 'Admin';
-                } else {
-                    const attendanceStatus = attendanceStatusMap.get(user.id);
-                    if (attendanceStatus) {
-                        status = attendanceStatus as User['status'];
-                    } else if (isOffDay) {
-                        status = 'Libur';
-                    } else if (isPastAbsentDeadline) {
-                        status = 'Tidak Hadir';
-                    } else {
-                        status = 'Belum Absen';
+            const attendanceQuery = query(
+                collection(db, "photo_attendances"),
+                where("checkInTime", ">=", todayStart),
+                where("checkInTime", "<=", todayEnd)
+            );
+
+            const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
+            const settings = settingsDoc.exists() ? settingsDoc.data() : {};
+            
+            unsubscribeAttendance = onSnapshot(attendanceQuery, (attendanceSnapshot) => {
+                const now = new Date();
+                const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
+                const isOffDay = settings.offDays?.includes(todayStr) ?? false;
+                
+                const checkInEndStr = settings.checkInEnd || '09:00';
+                const gracePeriodMinutes = settings.gracePeriod ?? 60;
+                const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
+                const checkInDeadline = new Date();
+                checkInDeadline.setHours(endHours, endMinutes, 0, 0);
+                const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
+                const isPastAbsentDeadline = now > checkInGraceEnd;
+
+                const attendanceStatusMap = new Map<string, string>();
+                attendanceSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.userId && data.status) {
+                        attendanceStatusMap.set(data.userId, data.status);
                     }
-                }
-                return { ...user, status };
-            });
+                });
 
-            usersWithStatus.sort((a, b) => {
-                if (a.role === 'admin' && b.role !== 'admin') return -1;
-                if (a.role !== 'admin' && b.role === 'admin') return 1;
-                return a.name.localeCompare(b.name);
-            });
+                let usersWithStatus = combinedUsers.map(user => {
+                    let status: User['status'];
+                    if (user.role === 'admin') {
+                        status = 'Admin';
+                    } else {
+                        const attendanceStatus = attendanceStatusMap.get(user.id);
+                        if (attendanceStatus) {
+                            status = attendanceStatus as User['status'];
+                        } else if (isOffDay) {
+                            status = 'Libur';
+                        } else if (isPastAbsentDeadline) {
+                            status = 'Tidak Hadir';
+                        } else {
+                            status = 'Belum Absen';
+                        }
+                    }
+                    return { ...user, status };
+                });
 
-            setUsers(usersWithStatus as User[]);
-            if (loading) setLoading(false);
-        }, (error) => {
-            console.error("Error in attendance onSnapshot listener: ", error);
+                usersWithStatus.sort((a, b) => {
+                    if (a.role === 'admin' && b.role !== 'admin') return -1;
+                    if (a.role !== 'admin' && b.role === 'admin') return 1;
+                    return a.name.localeCompare(b.name);
+                });
+
+                setUsers(usersWithStatus as User[]);
+                if (loading) setLoading(false);
+            }, (error) => {
+                console.error("Error in attendance onSnapshot listener: ", error);
+                setLoading(false);
+            });
+        } catch (error) {
+            console.error("Error fetching users:", error);
             setLoading(false);
-        });
+        }
+    };
 
-        // This is to make sure we return the attendance unsubscriber
-        return unsubscribeAttendance;
-
-    }, (error) => {
-        console.error("Error in users onSnapshot listener: ", error);
-        setLoading(false);
-    });
+    fetchAndListen();
 
     return () => {
-        unsubscribeUsers();
+        if (unsubscribeAttendance) {
+            unsubscribeAttendance();
+        }
     };
 }, []);
 
