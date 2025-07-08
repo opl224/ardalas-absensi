@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Home, History, User as UserIcon, ArrowLeft } from 'lucide-react';
 import { StudentHome } from './StudentHome';
 import { AttendanceHistory } from './AttendanceHistory';
@@ -55,14 +55,14 @@ const NavLink = ({
 }: {
   activePageIndex: number,
   index: number,
-  setView: (index: number) => void,
+  setView: (viewId: ViewID) => void,
   children: React.ReactNode,
   label: string,
 }) => {
   const isActive = activePageIndex === index;
   return (
     <button
-      onClick={() => setView(index)}
+      onClick={() => setView(mainViews[index])}
       className={`flex flex-col items-center justify-center w-1/3 pt-2 pb-1 transition-colors duration-200 ${
         isActive ? 'text-primary' : 'text-muted-foreground hover:text-primary'
       }`}
@@ -89,12 +89,19 @@ const CheckinWrapper = ({ onBack, onSuccess }: { onBack: () => void, onSuccess: 
 
 
 export function MobileStudentDashboard() {
-  const [view, setView] = useState<number | ViewID>(0);
+  const [view, setView] = useState<ViewID>('home');
   const [direction, setDirection] = useState(0);
   const { userProfile, loading } = useAuth();
   
-  const viewRef = useRef(view);
-  viewRef.current = view;
+  const viewIndexRef = useRef(mainViews.indexOf(view as MainViewID));
+  const [activePageIndex, setActivePageIndex] = useState(0);
+
+  useEffect(() => {
+    const newIndex = mainViews.indexOf(view as MainViewID);
+    if(newIndex !== -1) {
+      setActivePageIndex(newIndex);
+    }
+  }, [view]);
 
   if (loading) {
       return <CenteredLottieLoader />;
@@ -103,53 +110,59 @@ export function MobileStudentDashboard() {
       return <div>Data pengguna tidak ditemukan.</div>
   }
 
-  const currentIndex = typeof view === 'number' ? view : mainViews.indexOf(view as MainViewID);
+  const changeView = (newView: ViewID) => {
+    const oldIndex = viewIndexRef.current;
+    const newIndex = mainViews.indexOf(newView as MainViewID);
 
-  const changeView = (newView: number | ViewID) => {
-    const oldIndex = typeof viewRef.current === 'number' ? viewRef.current : mainViews.indexOf(viewRef.current as MainViewID);
-    const newIndex = typeof newView === 'number' ? newView : mainViews.indexOf(newView as MainViewID);
-
-    let d = 0;
-    if (oldIndex !== -1 && newIndex !== -1) {
-        d = newIndex > oldIndex ? 1 : -1;
+    if (newIndex !== -1) {
+      let d = newIndex > oldIndex ? 1 : -1;
+      setDirection(d);
+      viewIndexRef.current = newIndex;
     } else {
-        d = 1;
+        setDirection(1); // subview
     }
-    
-    setDirection(d);
+
     setView(newView);
   };
   
-  const handleSwipe = (swipeDirection: number) => {
-    const currentView = viewRef.current;
-    if (typeof currentView !== 'number') return;
-    const newIndex = currentView + swipeDirection;
-    if (newIndex >= 0 && newIndex < mainViews.length) {
-        changeView(newIndex);
+  const handleDragEnd = (e: any, { offset, velocity }: { offset: { x: number, y: number }, velocity: { x: number, y: number } }) => {
+    const swipeThreshold = 50;
+    const swipePower = (offset: number, velocity: number) => {
+      return Math.abs(offset) * velocity;
+    };
+
+    if (swipePower(offset.x, velocity.x) < -swipeThreshold * 100) {
+      const newIndex = Math.min(viewIndexRef.current + 1, mainViews.length - 1);
+      if (newIndex !== viewIndexRef.current) {
+        changeView(mainViews[newIndex]);
+      }
+    } else if (swipePower(offset.x, velocity.x) > swipeThreshold * 100) {
+      const newIndex = Math.max(viewIndexRef.current - 1, 0);
+      if (newIndex !== viewIndexRef.current) {
+        changeView(mainViews[newIndex]);
+      }
     }
   };
 
-  const viewIdToRender = typeof view === 'number' ? mainViews[view] : view;
-  const isSubView = typeof view !== 'number';
-
+  const isSubView = !mainViews.includes(view);
   let ComponentToRender: React.FC<any>;
-  let props: any;
+  let props: any = { setActiveView: changeView };
 
-  if(viewIdToRender === 'checkin') {
+  if (view === 'checkin') {
       ComponentToRender = CheckinWrapper;
-      props = { onBack: () => changeView(0), onSuccess: () => changeView(0) };
+      props = { onBack: () => changeView('home'), onSuccess: () => changeView('home') };
   } else {
-      ComponentToRender = viewComponents[viewIdToRender];
-      props = { setActiveView: changeView };
+      ComponentToRender = viewComponents[view];
   }
+
 
   return (
     <div className="bg-gray-50 dark:bg-zinc-900 min-h-screen flex flex-col">
-      <main className={`flex-grow relative overflow-hidden ${view !== 'checkin' ? 'pb-20' : ''}`}>
+      <main className={`flex-grow relative overflow-hidden ${view !== 'checkin' ? '' : ''}`}>
         <AnimatePresence initial={false} custom={direction}>
             <motion.div
-              key={view.toString()}
-              className="absolute w-full h-full"
+              key={view}
+              className="absolute w-full h-full overflow-y-auto pb-20"
               custom={direction}
               variants={variants}
               initial="enter"
@@ -158,16 +171,8 @@ export function MobileStudentDashboard() {
               transition={transition}
               drag={!isSubView ? "x" : false}
               dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={0.2}
-              onDragEnd={(e, { offset, velocity }) => {
-                  if (isSubView) return;
-                  const swipeThreshold = 50;
-                  if (offset.x < -swipeThreshold || velocity.x < -300) {
-                      handleSwipe(1);
-                  } else if (offset.x > swipeThreshold || velocity.x > 300) {
-                      handleSwipe(-1);
-                  }
-              }}
+              dragElastic={0.1}
+              onDragEnd={handleDragEnd}
             >
               <ComponentToRender {...props} />
             </motion.div>
@@ -176,13 +181,13 @@ export function MobileStudentDashboard() {
 
       {view !== 'checkin' && (
         <nav className="fixed bottom-0 left-0 right-0 bg-card border-t p-1 flex justify-around z-10">
-          <NavLink activePageIndex={currentIndex} index={0} setView={changeView} label="Beranda">
+          <NavLink activePageIndex={activePageIndex} index={0} setView={changeView} label="Beranda">
             <Home className="h-6 w-6" />
           </NavLink>
-          <NavLink activePageIndex={currentIndex} index={1} setView={changeView} label="Riwayat">
+          <NavLink activePageIndex={activePageIndex} index={1} setView={changeView} label="Riwayat">
             <History className="h-6 w-6" />
           </NavLink>
-          <NavLink activePageIndex={currentIndex} index={2} setView={changeView} label="Profil">
+          <NavLink activePageIndex={activePageIndex} index={2} setView={changeView} label="Profil">
             <UserIcon className="h-6 w-6" />
           </NavLink>
         </nav>
