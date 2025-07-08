@@ -11,19 +11,19 @@ import { collection, query, orderBy, Timestamp, getDocs, doc, deleteDoc, where }
 import { db } from '@/lib/firebase';
 import { LottieLoader } from '../ui/lottie-loader';
 import { Button, buttonVariants } from '../ui/button';
-import { ChevronLeft, ChevronRight, Trash2, Calendar as CalendarIcon, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash2, Calendar as CalendarIcon, Download, Filter, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Calendar } from '../ui/calendar';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
 
 interface AttendanceRecord {
@@ -34,15 +34,19 @@ interface AttendanceRecord {
     checkOutTime?: Timestamp;
     status: 'Hadir' | 'Terlambat' | 'Penipuan' | 'Absen';
     checkInPhotoUrl?: string;
+    isFraudulent?: boolean;
+    fraudReason?: string;
 }
 
 const RECORDS_PER_PAGE = 10;
+const filterOptions = ['Semua Kehadiran', 'Hadir', 'Terlambat', 'Penipuan', 'Absen'];
 
 export function Attendance() {
     const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     const [date, setDate] = useState<Date | undefined>(new Date());
+    const [statusFilter, setStatusFilter] = useState('Semua Kehadiran');
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
@@ -74,6 +78,7 @@ export function Attendance() {
                 })) as AttendanceRecord[];
                  setAttendanceData(data);
                  setCurrentPage(1); // Reset page on new date
+                 setStatusFilter('Semua Kehadiran'); // Reset filter on new date
             } catch (error) {
                 console.error("Error fetching attendance data: ", error);
             } finally {
@@ -83,6 +88,11 @@ export function Attendance() {
 
         fetchAttendance();
     }, [date]);
+
+    const handleFilterChange = (filter: string) => {
+        setStatusFilter(filter);
+        setCurrentPage(1);
+    };
 
     const handleDownload = async (format: 'pdf' | 'csv') => {
         if (loading || attendanceData.length === 0) {
@@ -168,12 +178,29 @@ export function Attendance() {
         setSelectedRecordId(id);
         setIsDeleteDialogOpen(true);
     }
+    
+    const getBadgeVariant = (status: AttendanceRecord['status']) => {
+        switch (status) {
+            case 'Hadir': return 'default';
+            case 'Terlambat': return 'secondary';
+            case 'Penipuan': return 'destructive';
+            case 'Absen': return 'destructive';
+            default: return 'outline';
+        }
+    }
 
-    const totalPages = Math.ceil(attendanceData.length / RECORDS_PER_PAGE);
+    const filteredData = useMemo(() => {
+        if (statusFilter === 'Semua Kehadiran') {
+            return attendanceData;
+        }
+        return attendanceData.filter(record => record.status === statusFilter);
+    }, [attendanceData, statusFilter]);
+
+    const totalPages = Math.ceil(filteredData.length / RECORDS_PER_PAGE);
     const paginatedRecords = useMemo(() => {
         const startIndex = (currentPage - 1) * RECORDS_PER_PAGE;
-        return attendanceData.slice(startIndex, startIndex + RECORDS_PER_PAGE);
-    }, [attendanceData, currentPage]);
+        return filteredData.slice(startIndex, startIndex + RECORDS_PER_PAGE);
+    }, [filteredData, currentPage]);
 
     const paginationRange = useMemo(() => {
         const siblingCount = 1;
@@ -248,9 +275,24 @@ export function Attendance() {
                     </div>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="w-auto shrink-0">
+                                <Filter className="mr-2 h-4 w-4" />
+                                <span className="truncate hidden sm:inline">{statusFilter}</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            {filterOptions.map(option => (
+                                <DropdownMenuItem key={option} onSelect={() => handleFilterChange(option)}>
+                                    {option}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
                             <Button variant="outline" className="shrink-0">
-                                <Download className="mr-2 h-4 w-4" />
-                                Unduh
+                                <Download className="h-4 w-4 sm:mr-2" />
+                                <span className="hidden sm:inline">Unduh</span>
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -292,20 +334,17 @@ export function Attendance() {
                                     </Avatar>
                                     <div className="flex-grow min-w-0">
                                         <p className="font-semibold text-foreground truncate pr-8">{item.name}</p>
-                                        <p className="text-sm text-muted-foreground">{item.role}</p>
+                                        <p className="text-sm text-muted-foreground capitalize">{item.role}</p>
                                         <p className="text-xs text-muted-foreground">
                                             {`Masuk: ${item.checkInTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`}
                                             {item.checkOutTime && ` | Keluar: ${item.checkOutTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`}
                                         </p>
                                     </div>
-                                    <Badge variant={
-                                        item.status === 'Hadir' ? 'default' :
-                                        item.status === 'Terlambat' ? 'secondary' : 'destructive'
-                                    } className="w-24 justify-center shrink-0">{item.status}</Badge>
+                                    <Badge variant={getBadgeVariant(item.status)} className="w-24 justify-center shrink-0">{item.status}</Badge>
                                 </Card>
                             ))
                         ) : (
-                            <p className="text-center text-muted-foreground py-8">Tidak ada catatan kehadiran untuk tanggal yang dipilih.</p>
+                            <p className="text-center text-muted-foreground py-8">Tidak ada catatan kehadiran untuk filter yang dipilih.</p>
                         )}
                     </div>
                     {totalPages > 1 && (
@@ -377,16 +416,48 @@ export function Attendance() {
                 </AlertDialogContent>
             </AlertDialog>
             <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-                <DialogContent className="sm:max-w-xs">
+                <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle className="text-center text-lg">{selectedRecord?.name}</DialogTitle>
+                        <DialogTitle>{selectedRecord?.name}</DialogTitle>
+                        <DialogDescription>Detail catatan kehadiran.</DialogDescription>
                     </DialogHeader>
                     {selectedRecord && (
-                        <div className="flex flex-col items-center pt-2">
-                            <Avatar className="h-52 w-52 rounded-lg">
-                                <AvatarImage src={selectedRecord.checkInPhotoUrl} alt={selectedRecord.name} className="object-cover" />
-                                <AvatarFallback className="text-5xl rounded-lg">{selectedRecord.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                            </Avatar>
+                        <div className="space-y-4 pt-2">
+                            <div className="flex justify-center">
+                                <Avatar className="h-48 w-48 rounded-lg border-4 border-primary/20 shadow-lg">
+                                    <AvatarImage src={selectedRecord.checkInPhotoUrl} alt={selectedRecord.name} className="object-cover" />
+                                    <AvatarFallback className="text-5xl rounded-lg">{selectedRecord.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                            </div>
+                            
+                            <div className="space-y-2 rounded-lg border bg-muted/50 p-4 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Peran</span>
+                                    <span className="font-medium capitalize">{selectedRecord.role}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Waktu Masuk</span>
+                                    <span className="font-medium">{selectedRecord.checkInTime.toDate().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Waktu Keluar</span>
+                                    <span className="font-medium">{selectedRecord.checkOutTime ? selectedRecord.checkOutTime.toDate().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : 'Belum check-out'}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-muted-foreground">Status</span>
+                                    <Badge variant={getBadgeVariant(selectedRecord.status)}>{selectedRecord.status}</Badge>
+                                </div>
+                            </div>
+
+                            {selectedRecord.isFraudulent && (
+                                <Alert variant="destructive">
+                                    <AlertTriangle className="h-4 w-4" />
+                                    <AlertTitle>Peringatan Kecurangan</AlertTitle>
+                                    <AlertDescription>
+                                        {selectedRecord.fraudReason || 'Terdeteksi anomali pada saat check-in.'}
+                                    </AlertDescription>
+                                </Alert>
+                            )}
                         </div>
                     )}
                 </DialogContent>
