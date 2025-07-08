@@ -64,117 +64,120 @@ export function UserManagement() {
 
   useEffect(() => {
     const fetchUsersAndListenForStatus = async () => {
-        setLoading(true);
-        try {
-            // Step 1: Fetch all base user docs from their primary collections.
-            const teachersQuery = collection(db, 'teachers');
-            const teachersSnapshot = await getDocs(teachersQuery);
-            const teacherUsers = teachersSnapshot.docs.map(doc => ({
-                id: doc.id,
-                role: 'Guru',
-                ...doc.data()
-            }));
+      setLoading(true);
+      try {
+        // Step 1: Fetch all base user data from their primary collections.
+        // This assumes the 'teachers' collection contains all necessary fields for teachers.
+        const teachersQuery = query(collection(db, 'teachers'));
+        const teachersSnapshot = await getDocs(teachersQuery);
+        const teacherUsers = teachersSnapshot.docs.map(doc => ({
+          id: doc.id,
+          role: 'Guru',
+          ...doc.data()
+        }));
 
-            const adminsQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
-            const adminsSnapshot = await getDocs(adminsQuery);
-            const adminUsers = adminsSnapshot.docs.map(doc => ({
-                id: doc.id,
-                role: 'Admin',
-                ...doc.data()
-            }));
+        const adminsQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
+        const adminsSnapshot = await getDocs(adminsQuery);
+        const adminUsers = adminsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          role: 'Admin',
+          ...doc.data()
+        }));
 
-            const allBaseUsers = [...teacherUsers, ...adminUsers];
+        const allBaseUsers = [...teacherUsers, ...adminUsers];
 
-            // Step 2: Set up the real-time listener for attendance status.
-            const todayStart = new Date();
-            todayStart.setHours(0, 0, 0, 0);
-            const todayEnd = new Date();
-            todayEnd.setHours(23, 59, 59, 999);
+        // Step 2: Set up the real-time listener for attendance status.
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
 
-            const attendanceQuery = query(
-                collection(db, "photo_attendances"),
-                where("checkInTime", ">=", todayStart),
-                where("checkInTime", "<=", todayEnd)
-            );
+        const attendanceQuery = query(
+          collection(db, "photo_attendances"),
+          where("checkInTime", ">=", todayStart),
+          where("checkInTime", "<=", todayEnd)
+        );
 
-            const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
-            const settings = settingsDoc.exists() ? settingsDoc.data() : {};
+        const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
+        const settings = settingsDoc.exists() ? settingsDoc.data() : {};
+        
+        const unsubscribeAttendance = onSnapshot(attendanceQuery, (attendanceSnapshot) => {
+          const now = new Date();
+          const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
+          const isOffDay = settings.offDays?.includes(todayStr) ?? false;
+          
+          const checkInEndStr = settings.checkInEnd || '09:00';
+          const gracePeriodMinutes = settings.gracePeriod ?? 60;
+          const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
+          const checkInDeadline = new Date();
+          checkInDeadline.setHours(endHours, endMinutes, 0, 0);
+          const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
+          const isPastAbsentDeadline = now > checkInGraceEnd;
+
+          const attendanceStatusMap = new Map<string, any>();
+          attendanceSnapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.userId) {
+              attendanceStatusMap.set(data.userId, { status: data.status, isFraudulent: data.isFraudulent });
+            }
+          });
+
+          let usersWithStatus = allBaseUsers.map((user: any) => {
+            let status: User['status'];
+            const attendanceInfo = attendanceStatusMap.get(user.id);
             
-            const unsubscribeAttendance = onSnapshot(attendanceQuery, (attendanceSnapshot) => {
-                const now = new Date();
-                const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
-                const isOffDay = settings.offDays?.includes(todayStr) ?? false;
-                
-                const checkInEndStr = settings.checkInEnd || '09:00';
-                const gracePeriodMinutes = settings.gracePeriod ?? 60;
-                const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
-                const checkInDeadline = new Date();
-                checkInDeadline.setHours(endHours, endMinutes, 0, 0);
-                const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
-                const isPastAbsentDeadline = now > checkInGraceEnd;
+            if (user.role === 'Admin') {
+              status = 'Admin';
+            } else if (attendanceInfo) {
+              status = attendanceInfo.status;
+            } else if (isOffDay) {
+              status = 'Libur';
+            } else if (isPastAbsentDeadline) {
+              status = 'Tidak Hadir';
+            } else {
+              status = 'Belum Absen';
+            }
+            
+            return {
+              ...user,
+              status,
+              isFraudulent: attendanceInfo?.isFraudulent ?? false,
+            };
+          });
 
-                const attendanceStatusMap = new Map<string, any>();
-                attendanceSnapshot.forEach(doc => {
-                    const data = doc.data();
-                    if (data.userId) {
-                        attendanceStatusMap.set(data.userId, { status: data.status, isFraudulent: data.isFraudulent });
-                    }
-                });
+          usersWithStatus.sort((a, b) => {
+            if (a.role === 'Admin' && b.role !== 'Admin') return -1;
+            if (a.role !== 'Admin' && b.role === 'Admin') return 1;
+            return a.name.localeCompare(b.name);
+          });
 
-                let usersWithStatus = allBaseUsers.map((user: any) => {
-                    let status: User['status'];
-                    const attendanceInfo = attendanceStatusMap.get(user.id);
-                    
-                    if (user.role === 'Admin') {
-                        status = 'Admin';
-                    } else if (attendanceInfo) {
-                        status = attendanceInfo.status;
-                    } else if (isOffDay) {
-                        status = 'Libur';
-                    } else if (isPastAbsentDeadline) {
-                        status = 'Tidak Hadir';
-                    } else {
-                        status = 'Belum Absen';
-                    }
-                    
-                    return {
-                        ...user,
-                        status,
-                        isFraudulent: attendanceInfo?.isFraudulent ?? false,
-                    };
-                });
+          setUsers(usersWithStatus as User[]);
+          if (loading) setLoading(false);
+        }, (error) => {
+          console.error("Error in attendance onSnapshot listener: ", error);
+          toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat status kehadiran secara real-time.' });
+          setUsers([]);
+          setLoading(false);
+        });
 
-                usersWithStatus.sort((a, b) => {
-                    if (a.role === 'Admin' && b.role !== 'Admin') return -1;
-                    if (a.role !== 'Admin' && b.role === 'Admin') return 1;
-                    return a.name.localeCompare(b.name);
-                });
+        // Detach the listener when the component unmounts
+        return () => unsubscribeAttendance();
 
-                setUsers(usersWithStatus as User[]);
-                if (loading) setLoading(false);
-            }, (error) => {
-                console.error("Error in attendance onSnapshot listener: ", error);
-                setUsers([]); // Clear users on error
-                setLoading(false);
-            });
-
-            // Detach the listener when the component unmounts
-            return () => unsubscribeAttendance();
-
-        } catch (error) {
-            console.error("Error fetching users:", error);
-            setUsers([]); // Clear users on error
-            setLoading(false);
-            return () => {}; // Return an empty function for cleanup
-        }
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat data pengguna.' });
+        setUsers([]);
+        setLoading(false);
+        return () => {}; // Return an empty function for cleanup
+      }
     };
 
-    let unsubscribePromise = fetchUsersAndListenForStatus();
+    const unsubscribePromise = fetchUsersAndListenForStatus();
     
     return () => {
-        unsubscribePromise.then(unsub => unsub && unsub());
+      unsubscribePromise.then(unsub => unsub && unsub());
     };
-}, []);
+  }, [toast]);
 
 
   const filteredUsers = useMemo(() => {
