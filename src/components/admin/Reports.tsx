@@ -4,10 +4,10 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, TrendingUp, Clock, Download } from 'lucide-react';
+import { Users, TrendingUp, Clock, Download, UserX } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, doc } from 'firebase/firestore';
 import { Loader } from '../ui/loader';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -142,7 +142,26 @@ export function Reports() {
                 const presentCount = presentUserIds.size;
                 const lateCount = attendanceDocs.filter(doc => doc.data().status === 'Terlambat').length;
                 
-                const absentCount = totalGurus - presentCount;
+                const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
+                const settings = settingsDoc.exists() ? settingsDoc.data() : { checkInEnd: '09:00', gracePeriod: 60 };
+
+                let absentCount = 0;
+                if (activeTab === 'today') {
+                    const currentTime = new Date();
+                    const checkInEndStr = settings.checkInEnd || '09:00';
+                    const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
+                    const checkInDeadline = new Date();
+                    checkInDeadline.setHours(endHours, endMinutes, 0, 0);
+                    const gracePeriodMinutes = settings.gracePeriod ?? 60;
+                    const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
+
+                    if (currentTime > checkInGraceEnd) {
+                        absentCount = totalGurus - presentCount;
+                    }
+                } else {
+                    absentCount = totalGurus - presentCount;
+                }
+
                 const attendanceRate = totalGurus > 0 ? (presentCount / totalGurus) * 100 : 0;
                 
                 const rateChange = 2.3; // Placeholder
@@ -261,7 +280,7 @@ export function Reports() {
                         <div className="grid grid-cols-2 gap-4">
                             <StatCard title="Total Guru" value={stats.totalGurus} icon={Users} color="border-primary" />
                             <StatCard title="Hadir" value={stats.present} icon={TrendingUp} color="border-success" />
-                            <StatCard title="Absen" value={stats.absent} icon={Clock} color="border-destructive" />
+                            <StatCard title="Tidak Hadir" value={stats.absent} icon={UserX} color="border-destructive" />
                             <StatCard title="Terlambat" value={stats.late} icon={Clock} color="border-warning" />
                         </div>
 
