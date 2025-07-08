@@ -49,34 +49,6 @@ const transition = {
 };
 
 
-const NavLink = ({
-  activePageIndex,
-  index,
-  setView,
-  children,
-  label,
-}: {
-  activePageIndex: number;
-  index: number;
-  setView: (viewId: ViewID) => void;
-  children: React.ReactNode;
-  label: string;
-}) => {
-  const isActive = activePageIndex === index;
-  return (
-    <button
-      onClick={() => setView(mainViews[index])}
-      className={`flex flex-col items-center justify-center w-1/3 pt-2 pb-1 transition-colors duration-200 ${
-        isActive ? 'text-primary' : 'text-muted-foreground hover:text-primary'
-      }`}
-    >
-      {children}
-      <span className="text-xs mt-1 font-medium">{label}</span>
-    </button>
-  );
-};
-
-
 const CheckinWrapper = ({ onBack, onSuccess }: { onBack: () => void, onSuccess: () => void }) => (
     <div className="bg-background h-full flex flex-col">
         <header className="sticky top-0 z-10 flex items-center gap-4 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -100,6 +72,38 @@ export function MobileTeacherDashboard() {
   });
   const { userProfile, loading } = useAuth();
   
+  const NavLink = ({
+    index,
+    setView,
+    children,
+    label,
+  }: {
+    index: number;
+    setView: (viewId: ViewID) => void;
+    children: React.ReactNode;
+    label: string;
+  }) => {
+    const isActive = page.index === index;
+    const Icon = children as React.ReactElement;
+  
+    return (
+      <button
+        onClick={() => setView(mainViews[index])}
+        className={`flex flex-col items-center justify-center w-1/3 pt-2 pb-1 transition-colors duration-200 ${
+          isActive ? 'text-primary' : 'text-muted-foreground hover:text-primary'
+        }`}
+      >
+        <motion.div
+          animate={{ scale: isActive ? 1.2 : 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        >
+          {Icon}
+        </motion.div>
+        <span className="text-xs mt-1 font-medium">{label}</span>
+      </button>
+    );
+  };
+
   if (loading) {
       return <CenteredLottieLoader />;
   }
@@ -111,21 +115,17 @@ export function MobileTeacherDashboard() {
     setPage(prevPage => {
       if (prevPage.view === newView) return prevPage;
 
-      const newIndex = mainViews.indexOf(newView as MainViewID);
+      const currentIndex = mainViews.indexOf(prevPage.view as MainViewID);
+      const newPageIndex = mainViews.indexOf(newView as MainViewID);
+      
       let direction = 0;
-      let finalIndex = prevPage.index;
-
-      if (newIndex !== -1) { // It's a main view
-        if (newIndex !== prevPage.index) {
-          direction = newIndex > prevPage.index ? 1 : -1;
-        }
-        finalIndex = newIndex;
-      } else { // It's a subview
-        direction = 1; // Always slide in from right
-        // Keep the last main view index
+      if (newPageIndex !== -1 && currentIndex !== -1) {
+          direction = newPageIndex > currentIndex ? 1 : -1;
+      } else {
+          direction = 1; // for subviews
       }
       
-      return { view: newView, direction, index: finalIndex };
+      return { ...prevPage, view: newView, direction };
     });
   };
   
@@ -133,12 +133,14 @@ export function MobileTeacherDashboard() {
     const swipeThreshold = 50;
     
     setPage(currentPage => {
-        const currentIndex = currentPage.index;
+        const currentIndex = mainViews.indexOf(currentPage.view as MainViewID);
+        if (currentIndex === -1) return currentPage;
+
         let newIndex = currentIndex;
 
-        if (offset.x < -swipeThreshold) { // Swiped left
+        if (offset.x < -swipeThreshold) {
             newIndex = Math.min(currentIndex + 1, mainViews.length - 1);
-        } else if (offset.x > swipeThreshold) { // Swiped right
+        } else if (offset.x > swipeThreshold) {
             newIndex = Math.max(currentIndex - 1, 0);
         }
 
@@ -191,13 +193,13 @@ export function MobileTeacherDashboard() {
 
       {page.view !== 'checkin' && (
         <nav className="fixed bottom-0 left-0 right-0 bg-card border-t p-1 flex justify-around z-10">
-          <NavLink activePageIndex={page.index} index={0} setView={changeView} label="Beranda">
+          <NavLink index={0} setView={changeView} label="Beranda">
             <Home className="h-6 w-6" />
           </NavLink>
-          <NavLink activePageIndex={page.index} index={1} setView={changeView} label="Riwayat">
+          <NavLink index={1} setView={changeView} label="Riwayat">
             <History className="h-6 w-6" />
           </NavLink>
-          <NavLink activePageIndex={page.index} index={2} setView={changeView} label="Profil">
+          <NavLink index={2} setView={changeView} label="Profil">
             <UserIcon className="h-6 w-6" />
           </NavLink>
         </nav>

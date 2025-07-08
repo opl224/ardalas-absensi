@@ -48,59 +48,52 @@ const transition = {
   opacity: { duration: 0.2 }
 };
 
-
-const NavLink = ({
-    activePageIndex,
-    index,
-    setView,
-    children,
-    label
-}: {
-    activePageIndex: number,
-    index: number,
-    setView: (viewId: ViewID) => void,
-    children: React.ReactNode,
-    label: string
-}) => {
-    const isActive = activePageIndex === index;
-    return (
-        <button
-            onClick={() => setView(mainViews[index])}
-            className={`flex flex-col items-center w-1/5 pt-1 transition-colors duration-200 ${isActive ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
-        >
-            {children}
-            <span className="text-xs mt-1 font-medium">{label}</span>
-        </button>
-    );
-};
-
-
 export function MobileAdminDashboard() {
   const [page, setPage] = useState<{ view: ViewID; direction: number; index: number }>({
     view: 'home',
     direction: 0,
     index: 0,
   });
+
+  const NavLink = ({
+      index,
+      setView,
+      children,
+      label
+  }: {
+      index: number,
+      setView: (viewId: ViewID) => void,
+      children: React.ReactNode,
+      label: string
+  }) => {
+      const isActive = page.index === index;
+      return (
+          <button
+              onClick={() => setView(mainViews[index])}
+              className={`flex flex-col items-center w-1/5 pt-1 transition-colors duration-200 ${isActive ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
+          >
+              {children}
+              <span className="text-xs mt-1 font-medium">{label}</span>
+          </button>
+      );
+  };
   
   const changeView = (newView: ViewID) => {
     setPage(prevPage => {
       if (prevPage.view === newView) return prevPage;
 
-      const newIndex = mainViews.indexOf(newView as MainViewID);
-      let direction = 0;
-      let finalIndex = prevPage.index;
-
-      if (newIndex !== -1) { // It's a main view
-        if (newIndex !== prevPage.index) {
-          direction = newIndex > prevPage.index ? 1 : -1;
-        }
-        finalIndex = newIndex;
-      } else { // It's a subview
-        direction = 1; // Always slide in from right
-        // Keep the last main view index
-      }
+      const currentIndex = mainViews.indexOf(prevPage.view as MainViewID);
+      const newPageIndex = mainViews.indexOf(newView as MainViewID);
       
-      return { view: newView, direction, index: finalIndex };
+      let direction = 0;
+      if (newPageIndex !== -1 && currentIndex !== -1) {
+          direction = newPageIndex > currentIndex ? 1 : -1;
+      } else {
+          direction = 1; // for subviews
+      }
+
+      // On click, only update the view and direction, not the active index.
+      return { ...prevPage, view: newView, direction };
     });
   };
   
@@ -108,18 +101,25 @@ export function MobileAdminDashboard() {
     const swipeThreshold = 50;
     
     setPage(currentPage => {
-        const currentIndex = currentPage.index;
+        // Base the swipe on the currently VISIBLE page (view), not the (potentially stale) active index.
+        const currentIndex = mainViews.indexOf(currentPage.view as MainViewID);
+        if (currentIndex === -1) return currentPage;
+
         let newIndex = currentIndex;
 
-        if (offset.x < -swipeThreshold) { // Swiped left
+        // A left swipe (negative offset) moves to the next page (index + 1).
+        if (offset.x < -swipeThreshold) {
             newIndex = Math.min(currentIndex + 1, mainViews.length - 1);
-        } else if (offset.x > swipeThreshold) { // Swiped right
+        } 
+        // A right swipe (positive offset) moves to the previous page (index - 1).
+        else if (offset.x > swipeThreshold) {
             newIndex = Math.max(currentIndex - 1, 0);
         }
 
         if (newIndex !== currentIndex) {
             const newView = mainViews[newIndex];
             const direction = newIndex > currentIndex ? 1 : -1;
+            // On swipe, update everything: the view, the direction, AND the active index.
             return { view: newView, index: newIndex, direction };
         }
         
@@ -159,19 +159,19 @@ export function MobileAdminDashboard() {
 
       {/* Bottom Nav */}
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t p-2 flex justify-around z-10">
-        <NavLink activePageIndex={page.index} index={0} setView={changeView} label="Beranda">
+        <NavLink index={0} setView={changeView} label="Beranda">
           <Home className="h-6 w-6" />
         </NavLink>
-        <NavLink activePageIndex={page.index} index={1} setView={changeView} label="Pengguna">
+        <NavLink index={1} setView={changeView} label="Pengguna">
           <Users2 className="h-6 w-6" />
         </NavLink>
-        <NavLink activePageIndex={page.index} index={2} setView={changeView} label="Laporan">
+        <NavLink index={2} setView={changeView} label="Laporan">
           <LineChart className="h-6 w-6" />
         </NavLink>
-        <NavLink activePageIndex={page.index} index={3} setView={changeView} label="Kehadiran">
+        <NavLink index={3} setView={changeView} label="Kehadiran">
           <CheckSquare className="h-6 w-6" />
         </NavLink>
-        <NavLink activePageIndex={page.index} index={4} setView={changeView} label="Profil">
+        <NavLink index={4} setView={changeView} label="Profil">
           <UserIcon className="h-6 w-6" />
         </NavLink>
       </nav>
