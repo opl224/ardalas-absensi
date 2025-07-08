@@ -215,7 +215,6 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                         {status === 'not_checked_in' && (
                             <div className='space-y-4'>
                                 <p className="text-muted-foreground">Anda belum absen masuk hari ini.</p>
-                                <Button className="w-full" onClick={() => setActiveView('checkin')}>Absen Masuk</Button>
                             </div>
                         )}
                         {status === 'tidak_hadir' && (
