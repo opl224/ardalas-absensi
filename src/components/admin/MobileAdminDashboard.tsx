@@ -87,6 +87,7 @@ export function MobileAdminDashboard() {
   useEffect(() => {
     const newIndex = mainViews.indexOf(view as MainViewID);
     if(newIndex !== -1) {
+      viewIndexRef.current = newIndex;
       setActivePageIndex(newIndex);
     }
   }, [view]);
@@ -98,7 +99,6 @@ export function MobileAdminDashboard() {
     if (newIndex !== -1) {
       let d = newIndex > oldIndex ? 1 : -1;
       setDirection(d);
-      viewIndexRef.current = newIndex;
     } else {
         setDirection(1);
     }

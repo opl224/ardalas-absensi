@@ -101,6 +101,7 @@ export function MobileTeacherDashboard() {
   useEffect(() => {
     const newIndex = mainViews.indexOf(view as MainViewID);
     if(newIndex !== -1) {
+      viewIndexRef.current = newIndex;
       setActivePageIndex(newIndex);
     }
   }, [view]);
@@ -119,7 +120,6 @@ export function MobileTeacherDashboard() {
     if (newIndex !== -1) {
       let d = newIndex > oldIndex ? 1 : -1;
       setDirection(d);
-      viewIndexRef.current = newIndex;
     } else {
       setDirection(1); // subview
     }
@@ -161,7 +161,7 @@ export function MobileTeacherDashboard() {
 
   return (
     <div className="bg-gray-50 dark:bg-zinc-900 min-h-screen flex flex-col">
-       <main className={`flex-grow relative overflow-hidden ${view !== 'checkin' ? '' : ''}`}>
+       <main className="flex-grow relative overflow-hidden">
         <AnimatePresence initial={false} custom={direction}>
             <motion.div
               key={view}
