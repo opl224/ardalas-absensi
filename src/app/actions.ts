@@ -79,16 +79,18 @@ export async function handleCheckin(
     if (
         settings.schoolLatitude === undefined ||
         settings.schoolLongitude === undefined ||
-        settings.schoolRadius === undefined
+        settings.schoolRadius === undefined ||
+        settings.gracePeriod === undefined
     ) {
-        await setDoc(settingsRef, { schoolLatitude, schoolLongitude, schoolRadius }, { merge: true });
-        settings = { ...settings, schoolLatitude, schoolLongitude, schoolRadius };
+        await setDoc(settingsRef, { schoolLatitude, schoolLongitude, schoolRadius, gracePeriod: 60 }, { merge: true });
+        settings = { ...settings, schoolLatitude, schoolLongitude, schoolRadius, gracePeriod: 60 };
     }
     
     // Check timing logic
     const now = new Date();
     const checkInEnd = getTodayAtTime(settings.checkInEnd);
-    const checkInGraceEnd = new Date(checkInEnd.getTime() + 60 * 60 * 1000); // 1 hour grace period
+    const gracePeriodMinutes = settings.gracePeriod ?? 60;
+    const checkInGraceEnd = new Date(checkInEnd.getTime() + gracePeriodMinutes * 60 * 1000);
 
     // Logic for ABSENT
     if (now > checkInGraceEnd) {
@@ -239,6 +241,7 @@ const settingsSchema = z.object({
   checkInEnd: z.string().regex(/^\d{2}:\d{2}$/),
   checkOutStart: z.string().regex(/^\d{2}:\d{2}$/),
   checkOutEnd: z.string().regex(/^\d{2}:\d{2}$/),
+  gracePeriod: z.coerce.number().min(0, "Toleransi tidak boleh negatif."),
   offDays: z.array(z.string()).optional().default([]),
 });
 
@@ -254,12 +257,13 @@ export async function updateAttendanceSettings(prevState: SettingsState, formDat
       checkInEnd: formData.get("checkInEnd"),
       checkOutStart: formData.get("checkOutStart"),
       checkOutEnd: formData.get("checkOutEnd"),
+      gracePeriod: formData.get("gracePeriod"),
       offDays: formData.getAll("offDays"),
     });
 
     if (!validatedFields.success) {
       console.error("Validation Error:", validatedFields.error.flatten().fieldErrors);
-      return { error: "Data masukan tidak valid." };
+      return { error: validatedFields.error.flatten().fieldErrors.gracePeriod?.[0] || "Data masukan tidak valid." };
     }
 
     const settingsRef = doc(db, "settings", "attendance");

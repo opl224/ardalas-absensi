@@ -107,7 +107,8 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                     const settings = settingsDoc.data();
                     const now = new Date();
                     const checkInEnd = getTodayAtTime(settings.checkInEnd || '09:00');
-                    const checkInGraceEnd = new Date(checkInEnd.getTime() + 60 * 60 * 1000); 
+                    const gracePeriodMinutes = settings.gracePeriod ?? 60;
+                    const checkInGraceEnd = new Date(checkInEnd.getTime() + gracePeriodMinutes * 60 * 1000); 
 
                     if (now > checkInGraceEnd) {
                         setStatus('absent');

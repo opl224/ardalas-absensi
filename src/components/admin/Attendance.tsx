@@ -63,7 +63,7 @@ export function Attendance() {
             try {
                 // Get settings and determine deadlines
                 const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
-                const settings = settingsDoc.exists() ? settingsDoc.data() : { checkInEnd: '09:00', offDays: [] };
+                const settings = settingsDoc.exists() ? settingsDoc.data() : { checkInEnd: '09:00', offDays: [], gracePeriod: 60 };
                 const selectedDateStr = date.toLocaleDateString('en-US', { weekday: 'long' });
                 const isOffDay = settings.offDays.includes(selectedDateStr);
 
@@ -72,7 +72,8 @@ export function Attendance() {
                 const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
                 const checkInDeadline = new Date(date);
                 checkInDeadline.setHours(endHours, endMinutes, 0, 0);
-                const checkInGraceEnd = new Date(checkInDeadline.getTime() + 60 * 60 * 1000); // 1 hour grace period
+                const gracePeriodMinutes = settings.gracePeriod ?? 60;
+                const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
                 
                 const isToday = now.toDateString() === date.toDateString();
                 const canDetermineAbsent = !isOffDay && (date < new Date(new Date().setHours(0, 0, 0, 0)) || (isToday && now > checkInGraceEnd));

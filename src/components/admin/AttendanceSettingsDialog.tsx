@@ -29,6 +29,7 @@ interface Settings {
     checkInEnd: string;
     checkOutStart: string;
     checkOutEnd: string;
+    gracePeriod: number;
     offDays: string[];
 }
 
@@ -58,6 +59,7 @@ export function AttendanceSettingsDialog({ open, onOpenChange }: AttendanceSetti
                         checkInEnd: '09:00',
                         checkOutStart: '15:00',
                         checkOutEnd: '17:00',
+                        gracePeriod: 60,
                         offDays: ['Sunday', 'Saturday']
                     });
                 }
@@ -112,6 +114,10 @@ export function AttendanceSettingsDialog({ open, onOpenChange }: AttendanceSetti
                                     <Label htmlFor="checkInEnd">Selesai</Label>
                                     <Input id="checkInEnd" name="checkInEnd" type="time" defaultValue={settings.checkInEnd} />
                                 </div>
+                            </div>
+                             <div className="space-y-2 pt-2">
+                                <Label htmlFor="gracePeriod">Toleransi Terlambat (menit)</Label>
+                                <Input id="gracePeriod" name="gracePeriod" type="number" defaultValue={settings.gracePeriod} placeholder="Contoh: 60" />
                             </div>
                             <Separator />
                             <h3 className="font-semibold text-foreground">Jam Absen Keluar</h3>

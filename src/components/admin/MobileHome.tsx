@@ -52,7 +52,8 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
                 const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
                 const settings = settingsDoc.exists() ? settingsDoc.data() : {
                     checkInEnd: '09:00',
-                    offDays: ['Saturday', 'Sunday']
+                    offDays: ['Saturday', 'Sunday'],
+                    gracePeriod: 60,
                 };
 
                 const now = new Date();
@@ -95,10 +96,12 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
                     const [endHours, endMinutes] = settings.checkInEnd.split(':').map(Number);
                     const checkInDeadline = new Date();
                     checkInDeadline.setHours(endHours, endMinutes, 0, 0);
+                    const gracePeriodMinutes = settings.gracePeriod ?? 60;
+                    const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
 
                     let absentCount = 0;
                     // Only count as absent if the check-in time has passed
-                    if (new Date() > checkInDeadline) {
+                    if (new Date() > checkInGraceEnd) {
                         absentCount = totalUserCount - presentCount;
                     }
 
