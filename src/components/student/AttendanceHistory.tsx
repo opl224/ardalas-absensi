@@ -99,7 +99,12 @@ export function AttendanceHistory() {
                                         <p className="font-semibold text-foreground">{item.checkInTime.toDate().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                                         <p className="text-sm text-muted-foreground">
                                             Absen Masuk: {item.checkInTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                                            {item.checkOutTime ? ` | Absen Keluar: ${item.checkOutTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : ''}
+                                            {item.checkOutTime && (
+                                                <>
+                                                    <br />
+                                                    {`Absen Keluar: ${item.checkOutTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`}
+                                                </>
+                                            )}
                                         </p>
                                     </div>
                                     <Badge variant={

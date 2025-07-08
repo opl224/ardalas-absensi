@@ -339,7 +339,12 @@ export function Attendance() {
                                         <p className="text-sm text-muted-foreground capitalize">{item.role}</p>
                                         <p className="text-xs text-muted-foreground">
                                             {`Absen Masuk: ${item.checkInTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`}
-                                            {item.checkOutTime && ` | Absen Keluar: ${item.checkOutTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`}
+                                            {item.checkOutTime && (
+                                                <>
+                                                    <br />
+                                                    {`Absen Keluar: ${item.checkOutTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`}
+                                                </>
+                                            )}
                                         </p>
                                     </div>
                                     <Badge variant={getBadgeVariant(item.status)} className="w-24 justify-center shrink-0">{item.status}</Badge>
