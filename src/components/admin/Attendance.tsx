@@ -11,7 +11,7 @@ import { collection, query, orderBy, Timestamp, getDocs, doc, deleteDoc, where }
 import { db } from '@/lib/firebase';
 import { LottieLoader } from '../ui/lottie-loader';
 import { Button, buttonVariants } from '../ui/button';
-import { ChevronLeft, ChevronRight, Trash2, Calendar as CalendarIcon, Download, Filter, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash2, Calendar as CalendarIcon, Download, Filter, AlertTriangle, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -37,6 +37,7 @@ interface AttendanceRecord {
     checkInPhotoUrl?: string;
     isFraudulent?: boolean;
     fraudReason?: string;
+    checkInLocation?: { latitude: number, longitude: number };
 }
 
 const RECORDS_PER_PAGE = 10;
@@ -449,6 +450,33 @@ export function Attendance() {
                                     <Badge variant={getBadgeVariant(selectedRecord.status)}>{selectedRecord.status}</Badge>
                                 </div>
                             </div>
+                            
+                            {selectedRecord.checkInLocation && (
+                                <div className="space-y-2 rounded-lg border bg-muted/50 p-4 text-sm">
+                                    <div className="flex items-center gap-2 font-medium text-foreground mb-2">
+                                        <MapPin className="h-4 w-4" />
+                                        <span>Informasi Lokasi</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Latitude</span>
+                                        <span className="font-mono text-xs">{selectedRecord.checkInLocation.latitude.toFixed(6)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Longitude</span>
+                                        <span className="font-mono text-xs">{selectedRecord.checkInLocation.longitude.toFixed(6)}</span>
+                                    </div>
+                                    <div className="pt-2">
+                                        <a
+                                            href={`https://www.google.com/maps/search/?api=1&query=${selectedRecord.checkInLocation.latitude},${selectedRecord.checkInLocation.longitude}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-primary hover:underline text-xs"
+                                        >
+                                            Buka di Google Maps
+                                        </a>
+                                    </div>
+                                </div>
+                            )}
 
                             {selectedRecord.isFraudulent && (
                                 <Alert variant="destructive">

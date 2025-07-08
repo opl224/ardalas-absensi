@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from "react";
@@ -43,7 +44,6 @@ interface AttendanceRecord {
     role: string;
     checkInTime: Timestamp;
     status: 'Hadir' | 'Terlambat' | 'Penipuan' | 'Absen';
-    location: string;
 }
 
 export default function AdminDashboard() {
@@ -196,12 +196,11 @@ export default function AdminDashboard() {
                                 <TableHead className="hidden sm:table-cell">Peran</TableHead>
                                 <TableHead className="hidden sm:table-cell">Waktu</TableHead>
                                 <TableHead>Status</TableHead>
-                                <TableHead className="hidden md:table-cell">Lokasi</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
-                                    <TableRow><TableCell colSpan={5} className="py-8"><div className="flex justify-center"><LottieLoader size={40}/></div></TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={4} className="py-8"><div className="flex justify-center"><LottieLoader size={40}/></div></TableCell></TableRow>
                                 ) : (
                                     attendanceData.map((item) => (
                                     <TableRow key={item.id}>
@@ -216,7 +215,6 @@ export default function AdminDashboard() {
                                             item.status === 'Terlambat' ? 'secondary' : 'destructive'
                                         }>{item.status}</Badge>
                                         </TableCell>
-                                        <TableCell className="hidden md:table-cell">{item.location}</TableCell>
                                     </TableRow>
                                     ))
                                 )}
