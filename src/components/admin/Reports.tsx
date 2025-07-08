@@ -182,7 +182,7 @@ export function Reports() {
             return;
         }
 
-        const headers = ['Nama', 'Waktu Check-in', 'Waktu Check-out', 'Status', 'Alasan Penipuan'];
+        const headers = ['Nama', 'Waktu Absen Masuk', 'Waktu Absen Keluar', 'Status', 'Alasan Penipuan'];
         const data = reportData.map(d => [d.name, d.checkInTime, d.checkOutTime, d.status, d.fraudReason]);
         
         const periodMap: { [key: string]: string } = {

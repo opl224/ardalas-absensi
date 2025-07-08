@@ -133,7 +133,7 @@ export async function handleCheckin(
         const checkInGraceEnd = new Date(checkInEnd.getTime() + 60 * 60 * 1000); // 1 hour grace period
 
         if (now > checkInGraceEnd) {
-            return { error: "Waktu check-in telah berakhir. Anda ditandai sebagai absen." };
+            return { error: "Waktu absen masuk telah berakhir. Anda ditandai sebagai absen." };
         }
         
         const statusBasedOnTime = now > checkInEnd ? "Terlambat" : "Hadir";

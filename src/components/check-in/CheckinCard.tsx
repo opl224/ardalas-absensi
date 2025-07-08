@@ -235,7 +235,7 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {state.reason || state.error || "Terjadi masalah yang tidak diketahui."}
-              {state.isFraudulent && " Silakan hubungi administrator untuk check-in manual."}
+              {state.isFraudulent && " Silakan hubungi administrator untuk absen masuk manual."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -15,10 +15,10 @@ const ValidateAttendanceInputSchema = z.object({
   photoDataUri: z
     .string()
     .describe(
-      "Foto selfie orang yang melakukan check-in, sebagai URI data yang harus menyertakan tipe MIME dan menggunakan enkode Base64. Format yang diharapkan: 'data:<mimetype>;base64,<encoded_data>'."
+      "Foto selfie orang yang melakukan absen masuk, sebagai URI data yang harus menyertakan tipe MIME dan menggunakan enkode Base64. Format yang diharapkan: 'data:<mimetype>;base64,<encoded_data>'."
     ),
-  latitude: z.number().describe('Garis lintang dari lokasi tempat orang tersebut check-in.'),
-  longitude: z.number().describe('Garis bujur dari lokasi tempat orang tersebut check-in.'),
+  latitude: z.number().describe('Garis lintang dari lokasi tempat orang tersebut absen masuk.'),
+  longitude: z.number().describe('Garis bujur dari lokasi tempat orang tersebut absen masuk.'),
   expectedLocation: z.object({
     latitude: z.number().describe('Garis lintang sekolah yang diharapkan.'),
     longitude: z.number().describe('Garis bujur sekolah yang diharapkan.'),
@@ -28,8 +28,8 @@ const ValidateAttendanceInputSchema = z.object({
 export type ValidateAttendanceInput = z.infer<typeof ValidateAttendanceInputSchema>;
 
 const ValidateAttendanceOutputSchema = z.object({
-  isFraudulent: z.boolean().describe('Apakah check-in kehadiran berpotensi curang atau tidak.'),
-  reason: z.string().describe('Alasan mengapa check-in kehadiran berpotensi curang.'),
+  isFraudulent: z.boolean().describe('Apakah absen masuk kehadiran berpotensi curang atau tidak.'),
+  reason: z.string().describe('Alasan mengapa absen masuk kehadiran berpotensi curang.'),
 });
 export type ValidateAttendanceOutput = z.infer<typeof ValidateAttendanceOutputSchema>;
 
@@ -43,7 +43,7 @@ const prompt = ai.definePrompt({
   output: {schema: ValidateAttendanceOutputSchema},
   prompt: `Anda adalah seorang ahli validator kehadiran yang berspesialisasi dalam mendeteksi kecurangan absensi.
 
-Anda akan menggunakan informasi yang diberikan untuk menentukan apakah check-in kehadiran berpotensi curang. Pertimbangkan faktor-faktor seperti lokasi orang tersebut dibandingkan dengan lokasi sekolah yang diharapkan, dan apakah foto selfie cocok dengan orang yang diharapkan.
+Anda akan menggunakan informasi yang diberikan untuk menentukan apakah absen masuk kehadiran berpotensi curang. Pertimbangkan faktor-faktor seperti lokasi orang tersebut dibandingkan dengan lokasi sekolah yang diharapkan, dan apakah foto selfie cocok dengan orang yang diharapkan.
 
 Lintang: {{{latitude}}}
 Bujur: {{{longitude}}}
@@ -55,7 +55,7 @@ Radius: {{{expectedLocation.radius}}} meter
 
 Foto Selfie: {{media url=photoDataUri}}
 
-Berdasarkan informasi ini, tentukan apakah check-in kehadiran berpotensi curang, dan berikan alasan untuk penentuan Anda. Atur bidang keluaran isFraudulent dengan tepat.
+Berdasarkan informasi ini, tentukan apakah absen masuk kehadiran berpotensi curang, dan berikan alasan untuk penentuan Anda. Atur bidang keluaran isFraudulent dengan tepat.
 `,
 });
 

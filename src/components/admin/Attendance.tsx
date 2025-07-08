@@ -109,7 +109,7 @@ export function Attendance() {
         const { default: jsPDF } = await import('jspdf');
         const { default: autoTable } = await import('jspdf-autotable');
     
-        const headers = ['Nama', 'Peran', 'Waktu Masuk', 'Waktu Keluar', 'Status'];
+        const headers = ['Nama', 'Peran', 'Waktu Absen Masuk', 'Waktu Absen Keluar', 'Status'];
         const data = attendanceData.map(d => [
             d.name,
             d.role,
@@ -338,8 +338,8 @@ export function Attendance() {
                                         <p className="font-semibold text-foreground truncate pr-8">{item.name}</p>
                                         <p className="text-sm text-muted-foreground capitalize">{item.role}</p>
                                         <p className="text-xs text-muted-foreground">
-                                            {`Masuk: ${item.checkInTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`}
-                                            {item.checkOutTime && ` | Keluar: ${item.checkOutTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`}
+                                            {`Absen Masuk: ${item.checkInTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`}
+                                            {item.checkOutTime && ` | Absen Keluar: ${item.checkOutTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`}
                                         </p>
                                     </div>
                                     <Badge variant={getBadgeVariant(item.status)} className="w-24 justify-center shrink-0">{item.status}</Badge>
@@ -438,12 +438,12 @@ export function Attendance() {
                                     <span className="font-medium capitalize">{selectedRecord.role}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Waktu Masuk</span>
+                                    <span className="text-muted-foreground">Waktu Absen Masuk</span>
                                     <span className="font-medium">{selectedRecord.checkInTime.toDate().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Waktu Keluar</span>
-                                    <span className="font-medium">{selectedRecord.checkOutTime ? selectedRecord.checkOutTime.toDate().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : 'Belum check-out'}</span>
+                                    <span className="text-muted-foreground">Waktu Absen Keluar</span>
+                                    <span className="font-medium">{selectedRecord.checkOutTime ? selectedRecord.checkOutTime.toDate().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : 'Belum absen keluar'}</span>
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <span className="text-muted-foreground">Status</span>
@@ -483,7 +483,7 @@ export function Attendance() {
                                     <AlertTriangle className="h-4 w-4" />
                                     <AlertTitle>Peringatan Kecurangan</AlertTitle>
                                     <AlertDescription>
-                                        {selectedRecord.fraudReason || 'Terdeteksi anomali pada saat check-in.'}
+                                        {selectedRecord.fraudReason || 'Terdeteksi anomali pada saat absen masuk.'}
                                     </AlertDescription>
                                 </Alert>
                             )}

@@ -102,7 +102,7 @@ export function AttendanceSettingsDialog({ open, onOpenChange }: AttendanceSetti
                 ) : (
                     <form action={formAction}>
                         <div className="space-y-4 py-4">
-                            <h3 className="font-semibold text-foreground">Jam Masuk</h3>
+                            <h3 className="font-semibold text-foreground">Jam Absen Masuk</h3>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="checkInStart">Mulai</Label>
@@ -114,7 +114,7 @@ export function AttendanceSettingsDialog({ open, onOpenChange }: AttendanceSetti
                                 </div>
                             </div>
                             <Separator />
-                            <h3 className="font-semibold text-foreground">Jam Pulang</h3>
+                            <h3 className="font-semibold text-foreground">Jam Absen Keluar</h3>
                              <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="checkOutStart">Mulai</Label>

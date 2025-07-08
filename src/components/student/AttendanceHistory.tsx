@@ -97,8 +97,8 @@ export function AttendanceHistory() {
                                     <div className="flex-grow">
                                         <p className="font-semibold text-foreground">{item.checkInTime.toDate().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                                         <p className="text-sm text-muted-foreground">
-                                            Masuk: {item.checkInTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                                            {item.checkOutTime ? ` | Keluar: ${item.checkOutTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : ''}
+                                            Absen Masuk: {item.checkInTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                                            {item.checkOutTime ? ` | Absen Keluar: ${item.checkOutTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : ''}
                                         </p>
                                     </div>
                                     <Badge variant={

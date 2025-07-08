@@ -25,7 +25,7 @@ function CheckoutButton() {
     return (
       <Button type="submit" className="w-full" disabled={pending}>
         {pending && <LottieLoader size={24} />}
-        Check Out
+        Absen Keluar
       </Button>
     );
 }
@@ -40,7 +40,7 @@ function QuickCheckoutButton() {
                 ) : (
                     <LogOut className="h-8 w-8 text-primary" />
                 )}
-                <p className="mt-2 font-medium text-sm text-foreground">Check Out</p>
+                <p className="mt-2 font-medium text-sm text-foreground">Absen Keluar</p>
             </Card>
         </button>
     )
@@ -131,7 +131,7 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
 
     useEffect(() => {
         if (checkoutState.success) {
-            toast({ title: 'Berhasil', description: 'Anda telah berhasil check out.' });
+            toast({ title: 'Berhasil', description: 'Anda telah berhasil absen keluar.' });
         }
         if (checkoutState.error) {
             toast({ variant: 'destructive', title: 'Kesalahan', description: checkoutState.error });
@@ -186,14 +186,14 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
                         )}
                         {status === 'not_checked_in' && (
                             <div className='space-y-4'>
-                                <p className="text-muted-foreground">Anda belum check-in hari ini.</p>
-                                <Button className="w-full" onClick={() => setActiveView('checkin')}>Check In</Button>
+                                <p className="text-muted-foreground">Anda belum absen masuk hari ini.</p>
+                                <Button className="w-full" onClick={() => setActiveView('checkin')}>Absen Masuk</Button>
                             </div>
                         )}
                         {(status === 'checked_in' || status === 'checked_out') && checkinData && (
                             <>
                                 <Badge className="bg-green-500 hover:bg-green-600 text-white py-1 px-4 text-base">Hadir</Badge>
-                                <p className="text-sm text-muted-foreground">Check in pada {checkinData.time}</p>
+                                <p className="text-sm text-muted-foreground">Absen masuk pada {checkinData.time}</p>
                                 <Avatar className="h-28 w-28 mx-auto">
                                     <AvatarImage src={checkinData.photo} alt="Check-in photo" data-ai-hint="person portrait" />
                                     <AvatarFallback>ME</AvatarFallback>
@@ -206,7 +206,7 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <CheckCircle className="h-4 w-4 text-muted-foreground" />
-                                        <span className='text-muted-foreground'>Check out pada:</span>
+                                        <span className='text-muted-foreground'>Absen keluar pada:</span>
                                         <span className='font-medium text-foreground'>{status === 'checked_out' && checkoutTime ? checkoutTime : ' - '}</span>
                                     </div>
                                 </div>
@@ -232,7 +232,7 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
                             <Card className="flex h-full w-full flex-col items-center justify-center p-4 text-center hover:bg-secondary">
                                 <CheckCircle className={`h-8 w-8 ${status === 'not_checked_in' ? 'text-primary' : 'text-muted-foreground'}`} />
                                 <p className="mt-2 text-sm font-medium text-foreground">
-                                    {status === 'not_checked_in' ? 'Check In' : 'Sudah Check In'}
+                                    {status === 'not_checked_in' ? 'Absen Masuk' : 'Sudah Absen Masuk'}
                                 </p>
                             </Card>
                         </button>
@@ -251,7 +251,7 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
                                 <Card className="flex h-full w-full flex-col items-center justify-center p-4 text-center">
                                     <LogOut className="h-8 w-8 text-muted-foreground" />
                                     <p className="mt-2 text-sm font-medium text-foreground">
-                                        {status === 'checked_out' ? 'Sudah Check Out' : 'Check Out'}
+                                        {status === 'checked_out' ? 'Sudah Absen Keluar' : 'Absen Keluar'}
                                     </p>
                                 </Card>
                             </button>
