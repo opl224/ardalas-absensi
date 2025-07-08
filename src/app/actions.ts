@@ -63,11 +63,57 @@ export async function handleCheckin(
 
     const { photoDataUri, latitude, longitude, userId, userName, userRole } = validatedFields.data;
 
+    // Get attendance settings
+    const settingsRef = doc(db, "settings", "attendance");
+    const settingsDoc = await getDoc(settingsRef);
+    if (!settingsDoc.exists()) {
+        return { error: "Pengaturan absensi belum dikonfigurasi. Silakan hubungi admin." };
+    }
+    
+    let settings = settingsDoc.data();
+    const schoolLatitude = -6.241169;
+    const schoolLongitude = 107.037800;
+    const schoolRadius = 100; // in meters
+
+    // Check and set default school location if not present
+    if (
+        settings.schoolLatitude === undefined ||
+        settings.schoolLongitude === undefined ||
+        settings.schoolRadius === undefined
+    ) {
+        await setDoc(settingsRef, { schoolLatitude, schoolLongitude, schoolRadius }, { merge: true });
+        settings = { ...settings, schoolLatitude, schoolLongitude, schoolRadius };
+    }
+    
+    // Check timing logic
+    const now = new Date();
+    const checkInEnd = getTodayAtTime(settings.checkInEnd);
+    const checkInGraceEnd = new Date(checkInEnd.getTime() + 60 * 60 * 1000); // 1 hour grace period
+
+    // Logic for ABSENT
+    if (now > checkInGraceEnd) {
+        const absentRecord = {
+            userId,
+            name: userName,
+            role: userRole,
+            checkInTime: serverTimestamp(),
+            checkInLocation: { latitude, longitude },
+            checkInPhotoUrl: null,
+            isFraudulent: false,
+            fraudReason: '',
+            status: "Absen",
+        };
+        const attendanceRef = doc(collection(db, "photo_attendances"));
+        await setDoc(attendanceRef, absentRecord);
+        return { success: true, reason: "Waktu absen masuk telah berakhir. Anda telah ditandai sebagai Absen." };
+    }
+
+    // Logic for HADIR or TERLAMBAT
     if (!photoDataUri.startsWith('data:image/')) {
         return { error: 'Data gambar tidak valid. Silakan ambil ulang foto selfie Anda.' };
     }
 
-    // 1. Upload selfie to Supabase (common for all roles)
+    // 1. Upload selfie to Supabase
     const photoBlob = dataURItoBlob(photoDataUri);
     const photoPath = `${userId}/${new Date().toISOString()}.jpg`;
     
@@ -90,50 +136,7 @@ export async function handleCheckin(
     }
     const publicUrl = urlData.publicUrl;
 
-    // Initialize variables for the attendance record
-    let finalStatus: string;
-    let isFraudulent = false;
-    let fraudReason = '';
-
-    // 2. Conditional logic based on user role
-    const settingsRef = doc(db, "settings", "attendance");
-    const settingsDoc = await getDoc(settingsRef);
-    if (!settingsDoc.exists()) {
-        return { error: "Pengaturan absensi belum dikonfigurasi. Silakan hubungi admin." };
-    }
-    
-    let settings = settingsDoc.data();
-    const schoolLatitude = -6.241169;
-    const schoolLongitude = 107.037800;
-    const schoolRadius = 100; // in meters
-
-    // Check and set default school location if not present
-    if (
-        settings.schoolLatitude === undefined ||
-        settings.schoolLongitude === undefined ||
-        settings.schoolRadius === undefined
-    ) {
-        await setDoc(settingsRef, {
-            schoolLatitude,
-            schoolLongitude,
-            schoolRadius,
-        }, { merge: true });
-        
-        // Re-assign settings with the new values
-        settings = { ...settings, schoolLatitude, schoolLongitude, schoolRadius };
-    }
-    
-    const now = new Date();
-    const checkInEnd = getTodayAtTime(settings.checkInEnd);
-    const checkInGraceEnd = new Date(checkInEnd.getTime() + 60 * 60 * 1000); // 1 hour grace period
-
-    if (now > checkInGraceEnd) {
-        return { error: "Waktu absen masuk telah berakhir. Anda ditandai sebagai absen." };
-    }
-    
-    const statusBasedOnTime = now > checkInEnd ? "Terlambat" : "Hadir";
-
-    // AI Validation
+    // 2. AI Validation
     const result = await validateAttendance({
         photoDataUri,
         latitude,
@@ -145,12 +148,11 @@ export async function handleCheckin(
         },
     });
     
-    isFraudulent = result.isFraudulent;
-    fraudReason = result.reason;
+    const isFraudulent = result.isFraudulent;
+    const fraudReason = result.reason;
     
-    // The final status is based on time, not on fraud detection.
-    // If it's fraudulent, it's just a flag, the user is still marked as present/late.
-    finalStatus = statusBasedOnTime;
+    // Determine status based on time
+    const finalStatus = now > checkInEnd ? "Terlambat" : "Hadir";
 
     // 3. Save attendance record to Firestore
     const attendanceRecord = {
