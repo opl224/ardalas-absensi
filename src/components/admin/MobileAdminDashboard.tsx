@@ -1,3 +1,4 @@
+
 'use client'
 
 import React, { useState } from "react";
@@ -84,16 +85,17 @@ export function MobileAdminDashboard() {
 
       const currentIndex = mainViews.indexOf(prevPage.view as MainViewID);
       const newPageIndex = mainViews.indexOf(newView as MainViewID);
-      
+
       let direction = 0;
       if (newPageIndex !== -1 && currentIndex !== -1) {
-          direction = newPageIndex > currentIndex ? 1 : -1;
+        direction = newPageIndex > currentIndex ? 1 : -1;
       } else {
-          direction = 1; // for subviews
+        direction = 1; // for subviews
       }
 
-      // On click, only update the view and direction, not the active index.
-      return { ...prevPage, view: newView, direction };
+      // If the new view is a main view, update the index. Otherwise, keep the last main view index.
+      const finalIndex = newPageIndex !== -1 ? newPageIndex : prevPage.index;
+      return { view: newView, direction, index: finalIndex };
     });
   };
   
