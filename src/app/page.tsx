@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -30,8 +30,24 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showAccessDeniedDialog, setShowAccessDeniedDialog] = useState(false);
   const [showDesktopAccessDeniedDialog, setShowDesktopAccessDeniedDialog] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+
+  useEffect(() => {
+    // This effect runs only on the client, after the component mounts.
+    // This safely checks the window size without causing server-side errors.
+    const checkDeviceSize = () => {
+      setIsDesktop(window.innerWidth >= 768);
+    };
+    
+    checkDeviceSize(); // Check on initial mount
+    
+    window.addEventListener('resize', checkDeviceSize);
+    
+    // Cleanup the event listener when the component unmounts
+    return () => window.removeEventListener('resize', checkDeviceSize);
+  }, []); // Empty dependency array ensures this runs only once on mount.
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +66,7 @@ export default function LoginPage() {
         const role = userData.role;
 
         // Teacher restriction for desktop devices
-        const isDesktop = window.innerWidth >= 768;
+        // Use the state variable `isDesktop` which is safely set on the client.
         if (role === 'guru' && isDesktop) {
           await signOut(auth);
           setShowDesktopAccessDeniedDialog(true);
