@@ -170,19 +170,22 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
             <input type="hidden" name="clientTime" value={new Date().toTimeString().substring(0, 5)} />
             
             <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${location ? 'bg-primary/10 text-primary' : 'bg-muted'}`}>
+              <div className="flex items-start gap-4">
+                <div className={`flex h-10 w-10 items-center justify-center rounded-full shrink-0 ${location ? 'bg-primary/10 text-primary' : 'bg-muted'}`}>
                   {location ? <CheckCircle /> : <MapPin />}
                 </div>
-                <div>
+                <div className="flex-grow">
                   <h3 className="font-semibold">Langkah 1: Akses Lokasi</h3>
-                  {!location && <p className="text-sm text-muted-foreground">Kami membutuhkan lokasi Anda untuk verifikasi.</p>}
-                  {location && <p className="text-sm text-primary">Lokasi berhasil direkam.</p>}
-                  {locationError && <p className="text-sm text-destructive">{locationError}</p>}
+                  {!location ? (
+                    <>
+                      <p className="text-sm text-muted-foreground">Kami membutuhkan lokasi Anda untuk verifikasi.</p>
+                      <Button type="button" onClick={getLocation} className="mt-2">Aktifkan Lokasi</Button>
+                    </>
+                  ) : (
+                     <p className="text-sm text-primary">Lokasi berhasil direkam.</p>
+                  )}
+                  {locationError && <p className="text-sm text-destructive mt-1">{locationError}</p>}
                 </div>
-                 {!location && (
-                    <Button type="button" onClick={getLocation} className="ml-auto">Aktifkan Lokasi</Button>
-                )}
               </div>
 
               <div className="flex items-start gap-4">
