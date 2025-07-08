@@ -66,9 +66,7 @@ export function UserManagement() {
     const fetchUsersAndListenForStatus = async () => {
       setLoading(true);
       try {
-        // Step 1: Fetch all base user data from their primary collections.
-        // This assumes the 'teachers' collection contains all necessary fields for teachers.
-        const teachersQuery = query(collection(db, 'teachers'));
+        const teachersQuery = collection(db, 'teachers');
         const teachersSnapshot = await getDocs(teachersQuery);
         const teacherUsers = teachersSnapshot.docs.map(doc => ({
           id: doc.id,
@@ -86,7 +84,6 @@ export function UserManagement() {
 
         const allBaseUsers = [...teacherUsers, ...adminUsers];
 
-        // Step 2: Set up the real-time listener for attendance status.
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
         const todayEnd = new Date();
@@ -122,12 +119,12 @@ export function UserManagement() {
             }
           });
 
-          let usersWithStatus = allBaseUsers.map((user: any) => {
+          const usersWithStatus: User[] = allBaseUsers.map((user: any) => {
             let status: User['status'];
             const attendanceInfo = attendanceStatusMap.get(user.id);
             
             if (user.role === 'Admin') {
-              status = 'Admin';
+                status = 'Admin';
             } else if (attendanceInfo) {
               status = attendanceInfo.status;
             } else if (isOffDay) {
@@ -151,7 +148,7 @@ export function UserManagement() {
             return a.name.localeCompare(b.name);
           });
 
-          setUsers(usersWithStatus as User[]);
+          setUsers(usersWithStatus);
           if (loading) setLoading(false);
         }, (error) => {
           console.error("Error in attendance onSnapshot listener: ", error);
@@ -160,7 +157,6 @@ export function UserManagement() {
           setLoading(false);
         });
 
-        // Detach the listener when the component unmounts
         return () => unsubscribeAttendance();
 
       } catch (error) {
@@ -168,7 +164,7 @@ export function UserManagement() {
         toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat data pengguna.' });
         setUsers([]);
         setLoading(false);
-        return () => {}; // Return an empty function for cleanup
+        return () => {};
       }
     };
 
@@ -177,7 +173,7 @@ export function UserManagement() {
     return () => {
       unsubscribePromise.then(unsub => unsub && unsub());
     };
-  }, [toast]);
+  }, [toast, loading]);
 
 
   const filteredUsers = useMemo(() => {
