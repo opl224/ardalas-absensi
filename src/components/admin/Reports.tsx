@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, TrendingUp, Clock, Download, UserX } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, Timestamp, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, doc, getDoc } from 'firebase/firestore';
 import { Loader } from '../ui/loader';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
