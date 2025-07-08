@@ -20,6 +20,7 @@ import { db } from '@/lib/firebase';
 import { LottieLoader } from '../ui/lottie-loader';
 import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
+import { ScrollArea } from '../ui/scroll-area';
 
 interface User {
   id: string;
@@ -377,38 +378,40 @@ export function UserManagement() {
           <DialogTitle>Detail Pengguna</DialogTitle>
         </DialogHeader>
         {selectedUser && (
-          <div className="flex flex-col gap-4 py-4">
-            <div className="flex items-center gap-4">
-                <Avatar className="h-16 w-16">
-                    <AvatarImage src={selectedUser.avatar} alt={selectedUser.name} />
-                    <AvatarFallback>{selectedUser.name.slice(0,2).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div>
-                    <p className="text-xl font-bold text-foreground">{selectedUser.name}</p>
-                    <p className="text-sm text-muted-foreground capitalize">{selectedUser.role}</p>
-                    <p className="text-sm text-muted-foreground">{selectedUser.email}</p>
-                </div>
+          <ScrollArea className="max-h-[70vh] pr-4">
+            <div className="flex flex-col gap-4 py-4">
+              <div className="flex items-center gap-4">
+                  <Avatar className="h-16 w-16">
+                      <AvatarImage src={selectedUser.avatar} alt={selectedUser.name} />
+                      <AvatarFallback>{selectedUser.name.slice(0,2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                      <p className="text-xl font-bold text-foreground">{selectedUser.name}</p>
+                      <p className="text-sm text-muted-foreground capitalize">{selectedUser.role}</p>
+                      <p className="text-sm text-muted-foreground">{selectedUser.email}</p>
+                  </div>
+              </div>
+              <Separator />
+              <div className="space-y-3 text-sm">
+                  <h3 className="font-semibold text-md mb-2">Informasi Pribadi</h3>
+                  {selectedUser.role === 'guru' && <DetailItem icon={Fingerprint} label="NIP" value={selectedUser.nip} />}
+                  <DetailItem icon={VenetianMask} label="Jenis Kelamin" value={selectedUser.gender} />
+                  <DetailItem icon={Phone} label="No. Telepon" value={selectedUser.phone} />
+                  <DetailItem icon={BookMarked} label="Agama" value={selectedUser.religion} />
+                  <DetailItem icon={Home} label="Alamat" value={selectedUser.address} />
+              </div>
+              {selectedUser.role === 'guru' && (
+                  <>
+                      <Separator />
+                      <div className="space-y-3 text-sm mt-4">
+                          <h3 className="font-semibold text-md mb-2">Informasi Akademik</h3>
+                          <DetailItem icon={BookCopy} label="Mata Pelajaran" value={selectedUser.subject} />
+                          <DetailItem icon={Briefcase} label="Mengajar Kelas" value={selectedUser.class} />
+                      </div>
+                  </>
+              )}
             </div>
-            <Separator />
-            <div className="space-y-3 text-sm">
-                <h3 className="font-semibold text-md mb-2">Informasi Pribadi</h3>
-                {selectedUser.role === 'guru' && <DetailItem icon={Fingerprint} label="NIP" value={selectedUser.nip} />}
-                <DetailItem icon={VenetianMask} label="Jenis Kelamin" value={selectedUser.gender} />
-                <DetailItem icon={Phone} label="No. Telepon" value={selectedUser.phone} />
-                <DetailItem icon={BookMarked} label="Agama" value={selectedUser.religion} />
-                <DetailItem icon={Home} label="Alamat" value={selectedUser.address} />
-            </div>
-            {selectedUser.role === 'guru' && (
-                <>
-                    <Separator />
-                    <div className="space-y-3 text-sm mt-4">
-                        <h3 className="font-semibold text-md mb-2">Informasi Akademik</h3>
-                        <DetailItem icon={BookCopy} label="Mata Pelajaran" value={selectedUser.subject} />
-                        <DetailItem icon={Briefcase} label="Mengajar Kelas" value={selectedUser.class} />
-                    </div>
-                </>
-            )}
-          </div>
+          </ScrollArea>
         )}
       </DialogContent>
     </Dialog>
