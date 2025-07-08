@@ -74,7 +74,7 @@ export default function LoginPage() {
           return;
         }
 
-        if (role === 'siswa') {
+        if (role === 'siswa' || role === 'orang tua') {
             await signOut(auth);
             setShowAccessDeniedDialog(true);
             setLoading(false);

@@ -290,7 +290,7 @@ export async function updateAttendanceSettings(prevState: SettingsState, formDat
 
 const avatarUpdateSchema = z.object({
   userId: z.string().min(1),
-  userRole: z.enum(['admin', 'guru', 'siswa']),
+  userRole: z.enum(['admin', 'guru', 'siswa', 'orang tua']),
   photoDataUri: z.string().startsWith('data:image/'),
 });
 
@@ -340,7 +340,7 @@ export async function updateAvatar(prevState: AvatarUpdateState, formData: FormD
         let collectionName = '';
         if (userRole === 'guru') {
             collectionName = 'teachers';
-        } else if (userRole === 'admin' || userRole === 'siswa') {
+        } else if (userRole === 'admin' || userRole === 'siswa' || userRole === 'orang tua') {
             collectionName = 'users';
         } else {
              return { error: 'Peran pengguna tidak valid.' };

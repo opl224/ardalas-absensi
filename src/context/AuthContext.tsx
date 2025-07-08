@@ -13,7 +13,7 @@ export interface UserProfile {
     uid: string;
     email: string;
     name: string;
-    role: 'admin' | 'guru' | 'siswa';
+    role: 'admin' | 'guru' | 'siswa' | 'orang tua';
     avatar?: string;
     subject?: string;
     class?: string;
