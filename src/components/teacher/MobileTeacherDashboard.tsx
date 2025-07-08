@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Home, History, User as UserIcon, ArrowLeft } from 'lucide-react';
 import { TeacherHome } from './TeacherHome';
 import { AttendanceHistory } from './AttendanceHistory';
@@ -91,13 +91,13 @@ const CheckinWrapper = ({ onBack, onSuccess }: { onBack: () => void, onSuccess: 
 
 
 export function MobileTeacherDashboard() {
-  const [view, setView] = useState<ViewID>('home');
-  const [direction, setDirection] = useState(0);
+  const [page, setPage] = useState<{ view: ViewID; direction: number; index: number }>({
+    view: 'home',
+    direction: 0,
+    index: 0,
+  });
   const { userProfile, loading } = useAuth();
   
-  const pageIndexRef = useRef(0);
-  const activePageIndex = mainViews.indexOf(view as MainViewID);
-
   if (loading) {
       return <CenteredLottieLoader />;
   }
@@ -107,22 +107,28 @@ export function MobileTeacherDashboard() {
   
   const changeView = (newView: ViewID) => {
     const newIndex = mainViews.indexOf(newView as MainViewID);
-    const oldIndex = pageIndexRef.current;
+    
+    setPage(prevPage => {
+      let direction = 0;
+      let finalIndex = prevPage.index;
 
-    if (newIndex !== -1) { // It's a main view
-      if (newIndex !== oldIndex) {
-        setDirection(newIndex > oldIndex ? 1 : -1);
+      if (newIndex !== -1) { // It's a main view
+        if (newIndex !== prevPage.index) {
+          direction = newIndex > prevPage.index ? 1 : -1;
+        }
+        finalIndex = newIndex;
+      } else { // It's a subview
+        direction = 1; // Always slide in from right
+        // Keep the last main view index
       }
-      pageIndexRef.current = newIndex;
-    } else { // It's a subview
-      setDirection(1);
-    }
-    setView(newView);
+      
+      return { view: newView, direction, index: finalIndex };
+    });
   };
   
   const handleDragEnd = (e: any, { offset }: { offset: { x: number } }) => {
     const swipeThreshold = 50;
-    const currentIndex = pageIndexRef.current;
+    const currentIndex = page.index;
 
     if (offset.x < -swipeThreshold) { // Swiped left
       const newIndex = Math.min(currentIndex + 1, mainViews.length - 1);
@@ -138,26 +144,27 @@ export function MobileTeacherDashboard() {
   };
 
 
-  const isSubView = !mainViews.includes(view);
+  const isSubView = !mainViews.includes(page.view);
   let ComponentToRender: React.FC<any>;
-  let props: any = { setActiveView: changeView };
+  let props: any;
 
-  if (view === 'checkin') {
+  if (page.view === 'checkin') {
       ComponentToRender = CheckinWrapper;
       props = { onBack: () => changeView('home'), onSuccess: () => changeView('home') };
   } else {
-      ComponentToRender = viewComponents[view];
+      ComponentToRender = viewComponents[page.view];
+      props = { setActiveView: changeView };
   }
 
 
   return (
     <div className="bg-gray-50 dark:bg-zinc-900 min-h-screen flex flex-col">
        <main className="flex-grow relative overflow-y-auto">
-        <AnimatePresence initial={false} custom={direction}>
+        <AnimatePresence initial={false} custom={page.direction}>
             <motion.div
-              key={view}
+              key={page.view}
               className="absolute w-full h-full overflow-y-auto pb-24"
-              custom={direction}
+              custom={page.direction}
               variants={variants}
               initial="enter"
               animate="center"
@@ -173,15 +180,15 @@ export function MobileTeacherDashboard() {
         </AnimatePresence>
       </main>
 
-      {view !== 'checkin' && (
+      {page.view !== 'checkin' && (
         <nav className="fixed bottom-0 left-0 right-0 bg-card border-t p-1 flex justify-around z-10">
-          <NavLink activePageIndex={activePageIndex} index={0} setView={changeView} label="Beranda">
+          <NavLink activePageIndex={page.index} index={0} setView={changeView} label="Beranda">
             <Home className="h-6 w-6" />
           </NavLink>
-          <NavLink activePageIndex={activePageIndex} index={1} setView={changeView} label="Riwayat">
+          <NavLink activePageIndex={page.index} index={1} setView={changeView} label="Riwayat">
             <History className="h-6 w-6" />
           </NavLink>
-          <NavLink activePageIndex={activePageIndex} index={2} setView={changeView} label="Profil">
+          <NavLink activePageIndex={page.index} index={2} setView={changeView} label="Profil">
             <UserIcon className="h-6 w-6" />
           </NavLink>
         </nav>

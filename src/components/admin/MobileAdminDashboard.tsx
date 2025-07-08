@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import { Home, User as UserIcon, Users2, LineChart, CheckSquare } from "lucide-react";
 import { UserManagement } from "./UserManagement";
 import { Reports } from "./Reports";
@@ -78,30 +78,36 @@ const NavLink = ({
 
 
 export function MobileAdminDashboard() {
-  const [view, setView] = useState<ViewID>('home');
-  const [direction, setDirection] = useState(0);
-  const pageIndexRef = useRef(0);
+  const [page, setPage] = useState<{ view: ViewID; direction: number; index: number }>({
+    view: 'home',
+    direction: 0,
+    index: 0,
+  });
   
-  const activePageIndex = mainViews.indexOf(view as MainViewID);
-
   const changeView = (newView: ViewID) => {
     const newIndex = mainViews.indexOf(newView as MainViewID);
-    const oldIndex = pageIndexRef.current;
 
-    if (newIndex !== -1) { // It's a main view
-      if (newIndex !== oldIndex) {
-        setDirection(newIndex > oldIndex ? 1 : -1);
+    setPage(prevPage => {
+      let direction = 0;
+      let finalIndex = prevPage.index;
+
+      if (newIndex !== -1) { // It's a main view
+        if (newIndex !== prevPage.index) {
+          direction = newIndex > prevPage.index ? 1 : -1;
+        }
+        finalIndex = newIndex;
+      } else { // It's a subview
+        direction = 1; // Always slide in from right
+        // Keep the last main view index
       }
-      pageIndexRef.current = newIndex;
-    } else { // It's a subview
-      setDirection(1);
-    }
-    setView(newView);
+      
+      return { view: newView, direction, index: finalIndex };
+    });
   };
   
   const handleDragEnd = (e: any, { offset }: { offset: { x: number } }) => {
     const swipeThreshold = 50;
-    const currentIndex = pageIndexRef.current;
+    const currentIndex = page.index;
 
     if (offset.x < -swipeThreshold) { // Swiped left
       const newIndex = Math.min(currentIndex + 1, mainViews.length - 1);
@@ -116,8 +122,8 @@ export function MobileAdminDashboard() {
     }
   };
   
-  const isSubView = !mainViews.includes(view);
-  const ComponentToRender = viewComponents[view];
+  const isSubView = !mainViews.includes(page.view);
+  const ComponentToRender = viewComponents[page.view];
   const props = {
       setActiveView: changeView,
       onBack: () => changeView('profile'),
@@ -126,11 +132,11 @@ export function MobileAdminDashboard() {
   return (
     <div className="bg-gray-50 dark:bg-zinc-900 min-h-screen flex flex-col">
       <main className="flex-grow relative overflow-y-auto">
-        <AnimatePresence initial={false} custom={direction}>
+        <AnimatePresence initial={false} custom={page.direction}>
             <motion.div
-                key={view}
+                key={page.view}
                 className="absolute w-full h-full overflow-y-auto pb-24"
-                custom={direction}
+                custom={page.direction}
                 variants={variants}
                 initial="enter"
                 animate="center"
@@ -148,19 +154,19 @@ export function MobileAdminDashboard() {
 
       {/* Bottom Nav */}
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t p-2 flex justify-around z-10">
-        <NavLink activePageIndex={activePageIndex} index={0} setView={changeView} label="Beranda">
+        <NavLink activePageIndex={page.index} index={0} setView={changeView} label="Beranda">
           <Home className="h-6 w-6" />
         </NavLink>
-        <NavLink activePageIndex={activePageIndex} index={1} setView={changeView} label="Pengguna">
+        <NavLink activePageIndex={page.index} index={1} setView={changeView} label="Pengguna">
           <Users2 className="h-6 w-6" />
         </NavLink>
-        <NavLink activePageIndex={activePageIndex} index={2} setView={changeView} label="Laporan">
+        <NavLink activePageIndex={page.index} index={2} setView={changeView} label="Laporan">
           <LineChart className="h-6 w-6" />
         </NavLink>
-        <NavLink activePageIndex={activePageIndex} index={3} setView={changeView} label="Kehadiran">
+        <NavLink activePageIndex={page.index} index={3} setView={changeView} label="Kehadiran">
           <CheckSquare className="h-6 w-6" />
         </NavLink>
-        <NavLink activePageIndex={activePageIndex} index={4} setView={changeView} label="Profil">
+        <NavLink activePageIndex={page.index} index={4} setView={changeView} label="Profil">
           <UserIcon className="h-6 w-6" />
         </NavLink>
       </nav>
