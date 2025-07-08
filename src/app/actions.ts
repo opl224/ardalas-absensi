@@ -2,7 +2,7 @@
 
 import { supabase } from "@/lib/supabase";
 import { z } from "zod";
-import { doc, setDoc, collection, serverTimestamp, updateDoc, getDoc } from "firebase/firestore"; 
+import { doc, setDoc, collection, updateDoc, getDoc } from "firebase/firestore"; 
 import { db } from "@/lib/firebase";
 import { validateAttendance } from "@/ai/flows/attendance-validator";
 
@@ -96,7 +96,7 @@ export async function handleCheckin(
             userId,
             name: userName,
             role: userRole,
-            checkInTime: serverTimestamp(),
+            checkInTime: now,
             checkInLocation: { latitude, longitude },
             checkInPhotoUrl: null,
             isFraudulent: false,
@@ -159,7 +159,7 @@ export async function handleCheckin(
       userId,
       name: userName,
       role: userRole,
-      checkInTime: serverTimestamp(),
+      checkInTime: now,
       checkInLocation: { latitude, longitude },
       checkInPhotoUrl: publicUrl,
       isFraudulent,
@@ -222,7 +222,7 @@ export async function handleCheckout(prevState: CheckoutState, formData: FormDat
         const newStatus = now > checkOutEnd && currentStatus === 'Hadir' ? 'Terlambat' : currentStatus;
 
         await updateDoc(attendanceRef, {
-            checkOutTime: serverTimestamp(),
+            checkOutTime: now,
             status: newStatus,
         });
         
