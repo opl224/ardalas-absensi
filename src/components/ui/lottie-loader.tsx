@@ -1,7 +1,6 @@
 'use client';
 
 import Lottie from 'lottie-react';
-import animationData from '@/lib/lottie/loader-animation.json';
 import { cn } from '@/lib/utils';
 
 interface LottieLoaderProps {
@@ -12,7 +11,7 @@ interface LottieLoaderProps {
 export function LottieLoader({ className, size = 50 }: LottieLoaderProps) {
   return (
     <Lottie
-      animationData={animationData}
+      path="/lottie-animations/loader-animation.json"
       loop={true}
       style={{ width: size, height: size }}
       className={className}
