@@ -205,7 +205,7 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
                 <div className="mt-2 space-y-2">
                   {isCameraOn && (
                     <>
-                      <video ref={videoRef} autoPlay playsInline muted className="w-full rounded-md border" />
+                      <video ref={videoRef} autoPlay playsInline muted className="w-full aspect-video rounded-md border" />
                       <Button type="button" onClick={takePhoto} className="w-full">Ambil Selfie</Button>
                     </>
                   )}
