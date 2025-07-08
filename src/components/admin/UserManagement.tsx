@@ -69,7 +69,8 @@ export function UserManagement() {
 
         // 2. For each guru, fetch their details from the 'teachers' collection
         const combinedUsersPromises = usersSnapshot.docs.map(async (userDoc) => {
-            const baseUser = { id: userDoc.id, ...userDoc.data() };
+            // Explicitly type baseUser to help TypeScript
+            const baseUser = { id: userDoc.id, ...userDoc.data() } as { id: string; role: 'guru' | 'admin'; [key: string]: any };
 
             if (baseUser.role === 'guru') {
                 const teacherDocRef = doc(db, 'teachers', userDoc.id);
@@ -89,7 +90,8 @@ export function UserManagement() {
 
     let unsubscribe: (() => void) | undefined;
 
-    fetchAndCombineUsers().then(combinedUsers => {
+    // Explicitly type combinedUsers to avoid inference issues.
+    fetchAndCombineUsers().then((combinedUsers: { id: string; role: 'guru' | 'admin'; name: string; [key: string]: any }[]) => {
         // Now that we have the complete user list, set up the real-time status listener
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
