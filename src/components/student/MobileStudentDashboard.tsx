@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -114,15 +115,17 @@ export function MobileStudentDashboard() {
 
       const currentIndex = mainViews.indexOf(prevPage.view as MainViewID);
       const newPageIndex = mainViews.indexOf(newView as MainViewID);
-      
+
       let direction = 0;
       if (newPageIndex !== -1 && currentIndex !== -1) {
-          direction = newPageIndex > currentIndex ? 1 : -1;
+        direction = newPageIndex > currentIndex ? 1 : -1;
       } else {
-          direction = 1; // for subviews
+        direction = 1; // for subviews
       }
-      
-      return { ...prevPage, view: newView, direction };
+
+      // If the new view is a main view, update the index. Otherwise, keep the last main view index.
+      const finalIndex = newPageIndex !== -1 ? newPageIndex : prevPage.index;
+      return { view: newView, direction, index: finalIndex };
     });
   };
   
@@ -130,20 +133,25 @@ export function MobileStudentDashboard() {
     const swipeThreshold = 50;
     
     setPage(currentPage => {
+        // Base the swipe on the currently VISIBLE page (view), not the (potentially stale) active index.
         const currentIndex = mainViews.indexOf(currentPage.view as MainViewID);
         if (currentIndex === -1) return currentPage;
 
         let newIndex = currentIndex;
 
+        // A left swipe (negative offset) moves to the next page (index + 1).
         if (offset.x < -swipeThreshold) {
             newIndex = Math.min(currentIndex + 1, mainViews.length - 1);
-        } else if (offset.x > swipeThreshold) {
+        } 
+        // A right swipe (positive offset) moves to the previous page (index - 1).
+        else if (offset.x > swipeThreshold) {
             newIndex = Math.max(currentIndex - 1, 0);
         }
 
         if (newIndex !== currentIndex) {
             const newView = mainViews[newIndex];
             const direction = newIndex > currentIndex ? 1 : -1;
+            // On swipe, update everything: the view, the direction, AND the active index.
             return { view: newView, index: newIndex, direction };
         }
         
@@ -157,7 +165,7 @@ export function MobileStudentDashboard() {
 
   if (page.view === 'checkin') {
       ComponentToRender = CheckinWrapper;
-      props = { onBack: () => changeView('home'), onSuccess: () => changeView('home') };
+      props = { onBack: () => changeView('home'), onSuccess: () => changeView('history') };
   } else {
       ComponentToRender = viewComponents[page.view];
       props = { setActiveView: changeView };
