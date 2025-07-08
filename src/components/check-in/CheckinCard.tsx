@@ -30,6 +30,9 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
   );
 }
 
+const splitTextFrom = { opacity: 0, y: 20 };
+const splitTextTo = { opacity: 1, y: 0 };
+
 export function CheckinCard({ onSuccess }: CheckinCardProps) {
   const { userProfile } = useAuth();
   const { toast } = useToast();
@@ -165,8 +168,8 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
                   duration={0.8}
                   ease="power3.out"
                   splitType="chars"
-                  from={{ opacity: 0, y: 20 }}
-                  to={{ opacity: 1, y: 0 }}
+                  from={splitTextFrom}
+                  to={splitTextTo}
                   textAlign="left"
                   className="font-headline text-2xl"
               />

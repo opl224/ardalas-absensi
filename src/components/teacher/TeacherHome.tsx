@@ -59,6 +59,8 @@ function getTodayAtTime(timeString: string): Date {
     return today;
 }
 
+const splitTextFrom = { opacity: 0, y: 20 };
+const splitTextTo = { opacity: 1, y: 0 };
 
 export function TeacherHome({ setActiveView }: TeacherHomeProps) {
     const [dateTime, setDateTime] = useState({ date: '', time: '' });
@@ -188,8 +190,8 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                             duration={0.8}
                             ease="power3.out"
                             splitType="chars"
-                            from={{ opacity: 0, y: 20 }}
-                            to={{ opacity: 1, y: 0 }}
+                            from={splitTextFrom}
+                            to={splitTextTo}
                             textAlign="left"
                         />
                         <p className="text-sm text-muted-foreground capitalize">{userProfile.role} &bull; {userProfile.subject}</p>
