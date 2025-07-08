@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { LottieLoader } from '@/components/ui/lottie-loader';
@@ -36,6 +36,19 @@ export default function LoginPage() {
 
       if (userDoc.exists()) {
         const userData = userDoc.data();
+        const role = userData.role;
+
+        if (role === 'siswa') {
+            await signOut(auth);
+            toast({
+              variant: 'destructive',
+              title: 'Akses Ditolak',
+              description: 'Halaman ini hanya untuk Admin dan Guru.',
+            });
+            setLoading(false);
+            return;
+        }
+
         const idToken = await user.getIdToken();
         
         // Set cookie to manage session
@@ -46,13 +59,10 @@ export default function LoginPage() {
         });
 
         // Redirect based on role
-        const role = userData.role;
         if (role === 'admin') {
           router.push('/admin/dashboard');
         } else if (role === 'guru') {
           router.push('/teacher/dashboard');
-        } else if (role === 'siswa') {
-          router.push('/student/dashboard');
         } else {
           throw new Error('Peran pengguna tidak dikenali.');
         }
@@ -83,7 +93,7 @@ export default function LoginPage() {
             </Avatar>
             <div className="space-y-1">
               <CardTitle className="font-headline text-2xl">Absensi Sekolah</CardTitle>
-              <CardDescription>Masuk untuk melanjutkan</CardDescription>
+              <CardDescription>Portal Masuk Admin & Guru</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="px-6 pb-6 pt-2">
