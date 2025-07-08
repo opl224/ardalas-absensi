@@ -170,7 +170,7 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
 
             {/* Date and Time */}
             <Card className="mt-6 p-4">
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-center">
                     <CardContent className="p-0 space-y-3">
                         <div className="flex items-center gap-4">
                             <CalendarDays className="h-5 w-5 text-muted-foreground" />
@@ -181,10 +181,9 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
                             <span className="font-medium text-sm text-foreground">{dateTime.time || 'Memuat waktu...'}</span>
                         </div>
                     </CardContent>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setShowSettingsDialog(true)}>
-                        <Settings className="h-5 w-5 text-muted-foreground" />
-                        <span className="sr-only">Pengaturan</span>
-                    </Button>
+                    <button className="button-89" role="button" onClick={() => setShowSettingsDialog(true)}>
+                      Atur
+                    </button>
                 </div>
             </Card>
 
