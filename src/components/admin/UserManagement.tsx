@@ -15,6 +15,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { collection, getDocs, query, where, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader } from '../ui/loader';
@@ -245,7 +251,7 @@ export function UserManagement() {
     }
   }
 
-  const handleDownload = () => {
+  const handleDownload = async (formatType: 'pdf' | 'csv') => {
     if (loading || filteredUsers.length === 0) {
         toast({
             variant: 'destructive',
@@ -257,7 +263,7 @@ export function UserManagement() {
 
     toast({
         title: 'Mempersiapkan Unduhan',
-        description: 'Daftar pengguna akan segera diunduh sebagai CSV.',
+        description: `Daftar pengguna akan segera diunduh sebagai ${formatType.toUpperCase()}.`,
     });
 
     const headers = ['ID', 'Nama', 'Email', 'Peran', 'NIP', 'Mata Pelajaran', 'Kelas', 'Jenis Kelamin', 'Telepon', 'Agama', 'Alamat'];
@@ -273,22 +279,40 @@ export function UserManagement() {
         user.phone || '',
         user.religion || '',
         user.address || ''
-    ].map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(','));
+    ]);
 
-    const csvContent = [
-        headers.join(','),
-        ...data
-    ].join('\n');
+    const filename = 'Laporan_Pengguna';
 
-    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'Laporan_Pengguna.csv');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (formatType === 'csv') {
+      const csvData = data.map(row => row.map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(','));
+      const csvContent = [headers.join(','), ...csvData].join('\n');
+      const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${filename}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    if (formatType === 'pdf') {
+      const { default: jsPDF } = await import('jspdf');
+      const { default: autoTable } = await import('jspdf-autotable');
+
+      const doc = new jsPDF();
+      doc.text('Laporan Pengguna', 14, 16);
+      autoTable(doc, {
+          head: [headers],
+          body: data.map(row => row.map(field => String(field || ''))),
+          startY: 20,
+          theme: 'grid',
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [22, 163, 74] },
+      });
+      doc.save(`${filename}.pdf`);
+    }
   };
 
 
@@ -310,10 +334,22 @@ export function UserManagement() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
             </div>
-            <Button variant="outline" onClick={handleDownload}>
-                <Download className="mr-2 h-4 w-4" />
-                Unduh
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                    <Download className="mr-2 h-4 w-4" />
+                    Unduh
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => handleDownload('pdf')}>
+                      Unduh sebagai PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => handleDownload('csv')}>
+                      Unduh sebagai CSV
+                  </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {loading ? (
