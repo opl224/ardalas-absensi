@@ -304,7 +304,11 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                             <Card className="flex h-full w-full flex-col items-center justify-center p-4 text-center hover:bg-secondary">
                                 <CheckCircle className={`h-8 w-8 ${status === 'not_checked_in' ? 'text-primary' : 'text-muted-foreground'}`} />
                                 <p className="mt-2 text-sm font-medium text-foreground">
-                                    {status === 'not_checked_in' ? 'Absen Masuk' : 'Belum Absen Masuk'}
+                                    {
+                                        status === 'not_checked_in' ? 'Absen Masuk' :
+                                        status === 'tidak_hadir' ? 'Absen Masuk Terlewat' :
+                                        'Sudah Absen Masuk'
+                                    }
                                 </p>
                             </Card>
                         </button>
@@ -322,7 +326,7 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                                 <Card className="flex h-full w-full flex-col items-center justify-center p-4 text-center">
                                     <LogOut className="h-8 w-8 text-muted-foreground" />
                                     <p className="mt-2 text-sm font-medium text-foreground">
-                                        {status === 'checked_out' ? 'Absen Keluar' : 'Belum Absen Keluar'}
+                                        {status === 'checked_out' ? 'Sudah Absen Keluar' : 'Absen Keluar'}
                                     </p>
                                 </Card>
                             </button>
