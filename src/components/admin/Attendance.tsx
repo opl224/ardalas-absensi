@@ -34,7 +34,7 @@ interface AttendanceRecord {
     role: string;
     checkInTime: Timestamp;
     checkOutTime?: Timestamp;
-    status: 'Hadir' | 'Terlambat' | 'Absen';
+    status: 'Hadir' | 'Terlambat' | 'Tidak Hadir';
     checkInPhotoUrl?: string;
     isFraudulent?: boolean;
     fraudReason?: string;
@@ -42,7 +42,7 @@ interface AttendanceRecord {
 }
 
 const RECORDS_PER_PAGE = 10;
-const filterOptions = ['Semua Kehadiran', 'Hadir', 'Terlambat', 'Penipuan', 'Absen'];
+const filterOptions = ['Semua Kehadiran', 'Hadir', 'Terlambat', 'Kecurangan', 'Tidak Hadir'];
 
 export function Attendance() {
     const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
@@ -117,7 +117,7 @@ export function Attendance() {
                         name: user.name,
                         role: user.role,
                         checkInTime: Timestamp.fromDate(startOfDay), // Will appear at the bottom of desc list
-                        status: 'Absen',
+                        status: 'Tidak Hadir',
                         checkInPhotoUrl: user.avatar || '', // Use avatar for photo
                         isFraudulent: false,
                     }));
@@ -166,9 +166,9 @@ export function Attendance() {
         const data = attendanceData.map(d => [
             d.name,
             d.role,
-            d.status !== 'Absen' ? d.checkInTime.toDate().toLocaleString('id-ID') : '-',
+            d.status !== 'Tidak Hadir' ? d.checkInTime.toDate().toLocaleString('id-ID') : '-',
             d.checkOutTime ? d.checkOutTime.toDate().toLocaleString('id-ID') : '-',
-            d.isFraudulent ? 'Penipuan' : d.status
+            d.isFraudulent ? 'Kecurangan' : d.status
         ]);
         const formattedDate = date ? format(date, "yyyy-MM-dd") : 'tanggal_tidak_dipilih';
         const filename = `Laporan_Kehadiran_${formattedDate}`;
@@ -239,13 +239,13 @@ export function Attendance() {
         switch (record.status) {
             case 'Hadir': return 'success';
             case 'Terlambat': return 'warning';
-            case 'Absen': return 'destructive';
+            case 'Tidak Hadir': return 'destructive';
             default: return 'outline';
         }
     }
 
     const getBadgeText = (record: AttendanceRecord) => {
-        if (record.isFraudulent) return 'Penipuan';
+        if (record.isFraudulent) return 'Kecurangan';
         return record.status;
     }
 
@@ -253,7 +253,7 @@ export function Attendance() {
         if (statusFilter === 'Semua Kehadiran') {
             return attendanceData;
         }
-        if (statusFilter === 'Penipuan') {
+        if (statusFilter === 'Kecurangan') {
             return attendanceData.filter(record => record.isFraudulent);
         }
         // For other statuses, we only want non-fraudulent records for those specific filters.
@@ -401,7 +401,7 @@ export function Attendance() {
                                         <p className="font-semibold text-foreground truncate pr-8">{item.name}</p>
                                         <p className="text-sm text-muted-foreground capitalize">{item.role}</p>
                                         <p className="text-xs text-muted-foreground">
-                                            {item.status !== 'Absen' && `Absen Masuk: ${item.checkInTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`}
+                                            {item.status !== 'Tidak Hadir' && `Absen Masuk: ${item.checkInTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`}
                                             {item.checkOutTime && (
                                                 <>
                                                     <br />
@@ -493,7 +493,7 @@ export function Attendance() {
                     </DialogHeader>
                     {selectedRecord && (
                         <div className="space-y-4 pt-2">
-                             {selectedRecord.status !== 'Absen' && (
+                             {selectedRecord.status !== 'Tidak Hadir' && (
                                 <div className="flex justify-center">
                                     <Avatar className="h-48 w-48 rounded-lg border-4 border-primary/20 shadow-lg">
                                         <AvatarImage src={selectedRecord.checkInPhotoUrl} alt={selectedRecord.name} className="object-cover" />
@@ -507,7 +507,7 @@ export function Attendance() {
                                     <span className="text-muted-foreground">Peran</span>
                                     <span className="font-medium capitalize">{selectedRecord.role}</span>
                                 </div>
-                                {selectedRecord.status !== 'Absen' && (
+                                {selectedRecord.status !== 'Tidak Hadir' && (
                                     <>
                                         <div className="flex justify-between">
                                             <span className="text-muted-foreground">Waktu Absen Masuk</span>

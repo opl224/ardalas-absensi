@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useActionState, useState, useEffect } from 'react';
@@ -18,7 +19,7 @@ interface StudentHomeProps {
   setActiveView: (view: 'home' | 'history' | 'profile' | 'checkin') => void;
 }
 
-type CheckinStatus = 'not_checked_in' | 'checked_in' | 'checked_out' | 'absent' | 'loading';
+type CheckinStatus = 'not_checked_in' | 'checked_in' | 'checked_out' | 'tidak_hadir' | 'loading';
 
 function CheckoutButton() {
     const { pending } = useFormStatus();
@@ -111,7 +112,7 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
                     const checkInGraceEnd = new Date(checkInEnd.getTime() + gracePeriodMinutes * 60 * 1000);
 
                     if (now > checkInGraceEnd) {
-                        setStatus('absent');
+                        setStatus('tidak_hadir');
                     } else {
                         setStatus('not_checked_in');
                     }
@@ -216,9 +217,9 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
                                 <Button className="w-full" onClick={() => setActiveView('checkin')}>Absen Masuk</Button>
                             </div>
                         )}
-                         {status === 'absent' && (
+                         {status === 'tidak_hadir' && (
                             <div className='space-y-4'>
-                                 <Badge variant="destructive" className="py-1 px-4 text-base">Absen</Badge>
+                                 <Badge variant="destructive" className="py-1 px-4 text-base">Tidak Hadir</Badge>
                                 <p className="text-muted-foreground">Waktu absen masuk hari ini telah berakhir.</p>
                                 <Button className="w-full" disabled>Absen Masuk</Button>
                             </div>

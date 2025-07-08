@@ -24,10 +24,10 @@ interface HistoryRecord {
     id: string;
     checkInTime: Timestamp;
     checkOutTime?: Timestamp;
-    status: 'Hadir' | 'Terlambat' | 'Penipuan' | 'Absen';
+    status: 'Hadir' | 'Terlambat' | 'Kecurangan' | 'Tidak Hadir';
 }
 
-const filterOptions = ['Semua Kehadiran', 'Hadir', 'Terlambat', 'Absen'];
+const filterOptions = ['Semua Kehadiran', 'Hadir', 'Terlambat', 'Tidak Hadir'];
 
 export function AttendanceHistory() {
   const { userProfile } = useAuth();
@@ -239,7 +239,7 @@ export function AttendanceHistory() {
                                 <Badge variant={
                                     item.status === 'Hadir' ? 'success' :
                                     item.status === 'Terlambat' ? 'warning' :
-                                    item.status === 'Absen' ? 'outline' : 'destructive'
+                                    item.status === 'Tidak Hadir' ? 'outline' : 'destructive'
                                 } className="w-24 justify-center">{item.status}</Badge>
                             </Card>
                         ))

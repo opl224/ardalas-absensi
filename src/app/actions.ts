@@ -1,3 +1,4 @@
+
 'use server'
 
 import { supabase } from "@/lib/supabase";
@@ -118,11 +119,11 @@ export async function handleCheckin(
             checkInPhotoUrl: null,
             isFraudulent: false,
             fraudReason: '',
-            status: "Absen",
+            status: "Tidak Hadir",
         };
         const attendanceRef = doc(collection(db, "photo_attendances"));
         await setDoc(attendanceRef, absentRecord);
-        return { success: true, reason: "Waktu absen masuk telah berakhir. Anda telah ditandai sebagai Absen." };
+        return { success: true, reason: "Waktu absen masuk telah berakhir. Anda telah ditandai sebagai Tidak Hadir." };
     }
 
     // Logic for HADIR or TERLAMBAT

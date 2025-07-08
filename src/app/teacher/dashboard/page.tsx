@@ -42,7 +42,8 @@ interface StudentAttendanceRecord {
     id: string;
     name: string;
     checkInTime: Timestamp;
-    status: 'Hadir' | 'Terlambat' | 'Penipuan' | 'Absen';
+    status: 'Hadir' | 'Terlambat' | 'Tidak Hadir';
+    isFraudulent?: boolean;
 }
 
 export default function TeacherDashboard() {
@@ -184,7 +185,7 @@ export default function TeacherDashboard() {
                         </Card>
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Absen Hari Ini</CardTitle>
+                                <CardTitle className="text-sm font-medium">Tidak Hadir Hari Ini</CardTitle>
                                 <GraduationCap className="h-4 w-4 text-destructive" />
                             </CardHeader>
                             <CardContent>
@@ -232,10 +233,11 @@ export default function TeacherDashboard() {
                                         <TableCell className="hidden sm:table-cell">{item.checkInTime.toDate().toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'})}</TableCell>
                                         <TableCell>
                                         <Badge variant={
+                                            item.isFraudulent ? 'destructive' :
                                             item.status === 'Hadir' ? 'success' :
                                             item.status === 'Terlambat' ? 'warning' : 
-                                            item.status === 'Absen' ? 'outline' : 'destructive'
-                                        }>{item.status}</Badge>
+                                            item.status === 'Tidak Hadir' ? 'outline' : 'destructive'
+                                        }>{item.isFraudulent ? 'Kecurangan' : item.status}</Badge>
                                         </TableCell>
                                     </TableRow>
                                     ))}

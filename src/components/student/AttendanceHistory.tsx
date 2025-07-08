@@ -14,7 +14,7 @@ interface HistoryRecord {
     id: string;
     checkInTime: Timestamp;
     checkOutTime?: Timestamp;
-    status: 'Hadir' | 'Terlambat' | 'Absen';
+    status: 'Hadir' | 'Terlambat' | 'Tidak Hadir';
     isFraudulent?: boolean;
 }
 
@@ -112,8 +112,8 @@ export function AttendanceHistory() {
                                         item.isFraudulent ? 'destructive' :
                                         item.status === 'Hadir' ? 'success' :
                                         item.status === 'Terlambat' ? 'warning' : 
-                                        item.status === 'Absen' ? 'outline' : 'destructive'
-                                    } className="w-24 justify-center">{item.isFraudulent ? 'Penipuan' : item.status}</Badge>
+                                        item.status === 'Tidak Hadir' ? 'outline' : 'destructive'
+                                    } className="w-24 justify-center">{item.isFraudulent ? 'Kecurangan' : item.status}</Badge>
                                 </Card>
                             ))
                         )}

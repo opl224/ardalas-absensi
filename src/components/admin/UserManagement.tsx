@@ -26,7 +26,7 @@ interface User {
   name: string;
   email: string;
   role: 'guru' | 'admin';
-  status: 'Hadir' | 'Terlambat' | 'Absen' | 'Penipuan' | 'Libur' | 'Belum Absen' | 'Admin';
+  status: 'Hadir' | 'Terlambat' | 'Tidak Hadir' | 'Kecurangan' | 'Libur' | 'Belum Absen' | 'Admin';
   avatar: string;
   subject?: string;
   class?: string;
@@ -80,22 +80,28 @@ export function UserManagement() {
             }
             const settings = settingsDoc.data();
 
+            // Fetch all users (admins and teachers) from the 'users' collection
             const usersQuery = query(collection(db, 'users'), where('role', 'in', ['guru', 'admin']));
             const usersSnapshot = await getDocs(usersQuery);
+            const allUsersFromUsersCollection = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-            const enrichedUsersPromises = usersSnapshot.docs.map(async (userDoc) => {
-                const userData = { id: userDoc.id, ...userDoc.data() };
-                if (userData.role === 'guru') {
-                    const teacherDocRef = doc(db, 'teachers', userDoc.id);
-                    const teacherDocSnap = await getDoc(teacherDocRef);
-                    if (teacherDocSnap.exists()) {
-                        return { ...teacherDocSnap.data(), ...userData };
-                    }
+            // Create a map for easy lookup
+            const usersMap = new Map(allUsersFromUsersCollection.map(user => [user.id, user]));
+
+            // Fetch all teacher details from the 'teachers' collection
+            const teachersQuery = query(collection(db, 'teachers'));
+            const teachersSnapshot = await getDocs(teachersQuery);
+            const allTeachersDetails = teachersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            // Combine the data
+            const combinedUsers = allUsersFromUsersCollection.map(baseUser => {
+                if (baseUser.role === 'guru') {
+                    const teacherDetails = allTeachersDetails.find(t => t.id === baseUser.id);
+                    return { ...baseUser, ...teacherDetails }; // Merge, baseUser info (like role, email) is leading
                 }
-                return userData;
-            });
+                return baseUser; // It's an admin, return as is
+            }) as User[];
 
-            const allUsers = (await Promise.all(enrichedUsersPromises)).filter(Boolean) as User[];
 
             const todayStart = new Date();
             todayStart.setHours(0, 0, 0, 0);
@@ -125,7 +131,7 @@ export function UserManagement() {
                     }
                 });
 
-                const fetchedUsers = allUsers.map(user => {
+                const fetchedUsers = combinedUsers.map(user => {
                     let status: User['status'];
                     if (user.role === 'admin') {
                         status = 'Admin';
@@ -136,7 +142,7 @@ export function UserManagement() {
                         } else if (isOffDay) {
                             status = 'Libur';
                         } else if (isPastAbsentDeadline) {
-                            status = 'Absen';
+                            status = 'Tidak Hadir';
                         } else {
                             status = 'Belum Absen';
                         }
@@ -230,8 +236,8 @@ export function UserManagement() {
     switch (status) {
         case 'Hadir': return 'success';
         case 'Terlambat': return 'warning';
-        case 'Absen':
-        case 'Penipuan':
+        case 'Tidak Hadir':
+        case 'Kecurangan':
             return 'destructive';
         case 'Libur':
         case 'Belum Absen':

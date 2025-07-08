@@ -44,7 +44,7 @@ interface AttendanceRecord {
     name: string;
     role: string;
     checkInTime: Timestamp;
-    status: 'Hadir' | 'Terlambat' | 'Penipuan' | 'Absen';
+    status: 'Hadir' | 'Terlambat' | 'Kecurangan' | 'Tidak Hadir';
     isFraudulent?: boolean;
 }
 
@@ -235,7 +235,7 @@ export default function AdminDashboard() {
                         </Card>
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Guru Absen Hari Ini</CardTitle>
+                            <CardTitle className="text-sm font-medium">Guru Tidak Hadir Hari Ini</CardTitle>
                             <Users className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
@@ -249,7 +249,7 @@ export default function AdminDashboard() {
                         </Card>
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Peringatan Penipuan</CardTitle>
+                            <CardTitle className="text-sm font-medium">Peringatan Kecurangan</CardTitle>
                             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
@@ -296,7 +296,7 @@ export default function AdminDashboard() {
                                             item.isFraudulent ? 'destructive' :
                                             item.status === 'Hadir' ? 'success' :
                                             item.status === 'Terlambat' ? 'warning' : 'destructive'
-                                        }>{item.isFraudulent ? 'Penipuan' : item.status}</Badge>
+                                        }>{item.isFraudulent ? 'Kecurangan' : item.status}</Badge>
                                         </TableCell>
                                     </TableRow>
                                     ))
