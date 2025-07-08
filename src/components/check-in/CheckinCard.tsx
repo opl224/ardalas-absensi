@@ -192,7 +192,7 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
                 <div className={`flex h-10 w-10 items-center justify-center rounded-full shrink-0 ${photoDataUri ? 'bg-primary/10 text-primary' : 'bg-muted'}`}>
                   {photoDataUri ? <CheckCircle /> : <Camera />}
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h3 className="font-semibold">Langkah 2: Ambil Foto Selfie</h3>
                   <p className="text-sm text-muted-foreground">Foto Anda digunakan untuk memvalidasi kehadiran Anda.</p>
                 </div>
@@ -215,6 +215,7 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
                             "hidden": !isCameraOn,
                         })}
                     />
+                    <canvas ref={canvasRef} className="hidden"></canvas>
                     
                     {photoDataUri && !isCameraOn && (
                         <img src={photoDataUri} alt="User selfie" className="w-full aspect-[4/3] object-cover rounded-md border" />
@@ -259,4 +260,3 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
     </>
   );
 }
-
