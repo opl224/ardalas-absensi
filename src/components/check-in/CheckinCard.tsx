@@ -161,7 +161,7 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
           <Progress value={progressValue} className="mt-2" />
         </CardHeader>
         <CardContent>
-          <form action={formAction} className="space-y-6">
+          <form action={formAction}>
             <input type="hidden" name="photoDataUri" value={photoDataUri || ""} />
             <input type="hidden" name="latitude" value={location?.latitude || ""} />
             <input type="hidden" name="longitude" value={location?.longitude || ""} />
@@ -178,9 +178,10 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
                 <div>
                   <h3 className="font-semibold">Langkah 1: Akses Lokasi</h3>
                   <p className="text-sm text-muted-foreground">Kami membutuhkan lokasi Anda untuk verifikasi.</p>
-                  {!location ? (
+                  {!location && (
                     <Button type="button" onClick={getLocation} className="mt-2">Aktifkan Lokasi</Button>
-                  ) : (
+                  )}
+                  {location && (
                      <p className="text-sm text-primary mt-2">Lokasi berhasil direkam.</p>
                   )}
                   {locationError && <p className="text-sm text-destructive mt-1">{locationError}</p>}
@@ -191,43 +192,45 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
                 <div className={`flex h-10 w-10 items-center justify-center rounded-full shrink-0 ${photoDataUri ? 'bg-primary/10 text-primary' : 'bg-muted'}`}>
                   {photoDataUri ? <CheckCircle /> : <Camera />}
                 </div>
-                <div className="flex-grow min-w-0">
+                <div>
                   <h3 className="font-semibold">Langkah 2: Ambil Foto Selfie</h3>
                   <p className="text-sm text-muted-foreground">Foto Anda digunakan untuk memvalidasi kehadiran Anda.</p>
-                  
-                  {location && !isCameraOn && !photoDataUri && (
-                      <Button type="button" onClick={startCamera} className="mt-2" disabled={!location}>Mulai Kamera</Button>
-                  )}
-                  {cameraError && <p className="text-sm text-destructive mt-2">{cameraError}</p>}
-                  
-                  <div className={cn("mt-2 space-y-2", { "hidden": !isCameraOn && !photoDataUri })}>
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      className={cn("w-full aspect-video object-cover rounded-md border", {
-                        "hidden": !isCameraOn,
-                      })}
-                    />
-                    
-                    {photoDataUri && !isCameraOn && (
-                      <img src={photoDataUri} alt="User selfie" className="w-full aspect-video object-cover rounded-md border" />
-                    )}
-
-                    {isCameraOn && (
-                      <Button type="button" onClick={takePhoto} className="w-full">Ambil Selfie</Button>
-                    )}
-
-                    {photoDataUri && !isCameraOn && (
-                      <Button type="button" variant="outline" onClick={startCamera} className="w-full">Ambil Ulang Foto</Button>
-                    )}
-                  </div>
                 </div>
               </div>
             </div>
+
+            {location && (
+                <div className="mt-4 space-y-2">
+                    {!isCameraOn && !photoDataUri && (
+                        <Button type="button" onClick={startCamera} className="w-full" disabled={!location}>Mulai Kamera</Button>
+                    )}
+                    {cameraError && <p className="text-sm text-destructive mt-2">{cameraError}</p>}
+
+                    <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className={cn("w-full aspect-[4/3] object-cover rounded-md border", {
+                            "hidden": !isCameraOn,
+                        })}
+                    />
+                    
+                    {photoDataUri && !isCameraOn && (
+                        <img src={photoDataUri} alt="User selfie" className="w-full aspect-[4/3] object-cover rounded-md border" />
+                    )}
+
+                    {isCameraOn && (
+                        <Button type="button" onClick={takePhoto} className="w-full">Ambil Selfie</Button>
+                    )}
+
+                    {photoDataUri && !isCameraOn && (
+                        <Button type="button" variant="outline" onClick={startCamera} className="w-full">Ambil Ulang Foto</Button>
+                    )}
+                </div>
+            )}
             
-            <CardFooter className="p-0 pt-4">
+            <CardFooter className="p-0 pt-6">
                 <SubmitButton disabled={!photoDataUri || !location} />
             </CardFooter>
           </form>
@@ -256,3 +259,4 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
     </>
   );
 }
+
