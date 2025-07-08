@@ -149,7 +149,7 @@ export function UserManagement() {
           });
 
           setUsers(usersWithStatus);
-          if (loading) setLoading(false);
+          setLoading(false);
         }, (error) => {
           console.error("Error in attendance onSnapshot listener: ", error);
           toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat status kehadiran secara real-time.' });
@@ -173,8 +173,7 @@ export function UserManagement() {
     return () => {
       unsubscribePromise.then(unsub => unsub && unsub());
     };
-  }, [toast, loading]);
-
+  }, [toast]);
 
   const filteredUsers = useMemo(() => {
     setCurrentPage(1);
