@@ -28,7 +28,7 @@ export function Privacy({ onBack }: { onBack: () => void }) {
                 <div className="text-center mb-8">
                     <Shield className="h-12 w-12 text-primary mx-auto mb-2" />
                     <h2 className="text-2xl font-bold">Privasi & Keamanan</h2>
-                    <p className="text-muted-foreground">Kelola pengaturan privasi dan data Anda</p>
+                    <p className="text-muted-foreground">Pengaturan privasi dan data Anda</p>
                 </div>
 
                 <Card>

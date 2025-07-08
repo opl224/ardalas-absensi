@@ -1,4 +1,3 @@
-
 'use client'
 
 import React, { useState } from "react";
@@ -166,23 +165,25 @@ export function MobileAdminDashboard() {
       </main>
 
       {/* Bottom Nav */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t p-2 flex justify-around z-10">
-        <NavLink index={0} setView={changeView} label="Beranda">
-          <Home className="h-6 w-6" />
-        </NavLink>
-        <NavLink index={1} setView={changeView} label="Pengguna">
-          <Users2 className="h-6 w-6" />
-        </NavLink>
-        <NavLink index={2} setView={changeView} label="Laporan">
-          <LineChart className="h-6 w-6" />
-        </NavLink>
-        <NavLink index={3} setView={changeView} label="Kehadiran">
-          <CheckSquare className="h-6 w-6" />
-        </NavLink>
-        <NavLink index={4} setView={changeView} label="Profil">
-          <UserIcon className="h-6 w-6" />
-        </NavLink>
-      </nav>
+      {!isSubView && (
+        <nav className="fixed bottom-0 left-0 right-0 bg-card border-t p-2 flex justify-around z-10">
+          <NavLink index={0} setView={changeView} label="Beranda">
+            <Home className="h-6 w-6" />
+          </NavLink>
+          <NavLink index={1} setView={changeView} label="Pengguna">
+            <Users2 className="h-6 w-6" />
+          </NavLink>
+          <NavLink index={2} setView={changeView} label="Laporan">
+            <LineChart className="h-6 w-6" />
+          </NavLink>
+          <NavLink index={3} setView={changeView} label="Kehadiran">
+            <CheckSquare className="h-6 w-6" />
+          </NavLink>
+          <NavLink index={4} setView={changeView} label="Profil">
+            <UserIcon className="h-6 w-6" />
+          </NavLink>
+        </nav>
+      )}
     </div>
   );
 }

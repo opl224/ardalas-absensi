@@ -199,7 +199,7 @@ export function MobileTeacherDashboard() {
         </AnimatePresence>
       </main>
 
-      {page.view !== 'checkin' && (
+      {!isSubView && (
         <nav className="fixed bottom-0 left-0 right-0 bg-card border-t p-1 flex justify-around z-10">
           <NavLink index={0} setView={changeView} label="Beranda">
             <Home className="h-6 w-6" />
