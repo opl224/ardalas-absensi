@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useState, useEffect } from "react";
@@ -57,8 +58,8 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
                 const now = new Date();
                 const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
 
-                // Get total non-admin users first
-                const usersQuery = query(collection(db, 'users'), where('role', 'in', ['siswa', 'guru']));
+                // Get total teachers only
+                const usersQuery = query(collection(db, 'users'), where('role', '==', 'guru'));
                 const usersSnapshot = await getDocs(usersQuery);
                 const totalUserCount = usersSnapshot.size;
 
@@ -81,6 +82,7 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
 
                 const attendanceQuery = query(
                     collection(db, "photo_attendances"),
+                    where("role", "==", "guru"),
                     where("checkInTime", ">=", startOfToday),
                     where("checkInTime", "<", endOfToday)
                 );
@@ -172,7 +174,7 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
             {/* Today's Overview */}
             <Card className="mt-6">
                 <CardHeader className="p-4">
-                    <CardTitle className="text-lg">Kehadiran Hari Ini</CardTitle>
+                    <CardTitle className="text-lg">Kehadiran Guru Hari Ini</CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
                     {loading ? (
@@ -195,7 +197,7 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
                             </div>
                             <Separator className="my-4" />
                             <div className="flex justify-between items-center text-sm">
-                                <p className="font-medium text-foreground">Tingkat Kehadiran Keseluruhan</p>
+                                <p className="font-medium text-foreground">Tingkat Kehadiran Guru</p>
                                 <p className="font-bold text-primary text-base">{stats.rate}%</p>
                             </div>
                         </>

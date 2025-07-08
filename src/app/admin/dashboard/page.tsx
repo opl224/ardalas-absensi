@@ -33,10 +33,11 @@ import { Logo } from "@/components/Logo"
 import { AttendanceChart } from "@/components/admin/AttendanceChart"
 import { MobileAdminDashboard } from "@/components/admin/MobileAdminDashboard"
 import { useAuth } from "@/hooks/useAuth";
-import { collection, getDocs, query, orderBy, limit, Timestamp } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, limit, Timestamp, where, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { CenteredLottieLoader, LottieLoader } from "@/components/ui/lottie-loader";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface AttendanceRecord {
     id: string;
@@ -46,16 +47,24 @@ interface AttendanceRecord {
     status: 'Hadir' | 'Terlambat' | 'Penipuan' | 'Absen';
 }
 
+interface DashboardStats {
+    totalTeachers: number;
+    presentToday: number;
+    absentToday: number;
+    fraudAlerts: number;
+}
+
 export default function AdminDashboard() {
   const { userProfile } = useAuth();
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
-    // TODO: Implement real-time data fetching from Firestore
     const fetchAttendance = async () => {
         try {
-            const q = query(collection(db, "photo_attendances"), orderBy("checkInTime", "desc"), limit(10));
+            const q = query(collection(db, "photo_attendances"), where("role", "==", "guru"), orderBy("checkInTime", "desc"), limit(10));
             const querySnapshot = await getDocs(q);
             const data = querySnapshot.docs.map(doc => ({
                 id: doc.id,
@@ -69,7 +78,64 @@ export default function AdminDashboard() {
             setLoading(false);
         }
     };
+
+    const fetchStats = async () => {
+        setStatsLoading(true);
+        try {
+            const teachersQuery = query(collection(db, "users"), where("role", "==", "guru"));
+            const teachersSnapshot = await getDocs(teachersQuery);
+            const totalTeachers = teachersSnapshot.size;
+
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            const todayEnd = new Date();
+            todayEnd.setHours(23, 59, 59, 999);
+
+            const attendanceQuery = query(
+                collection(db, "photo_attendances"),
+                where("role", "==", "guru"),
+                where("checkInTime", ">=", todayStart),
+                where("checkInTime", "<=", todayEnd)
+            );
+            const attendanceSnapshot = await getDocs(attendanceQuery);
+            const presentToday = attendanceSnapshot.size;
+            const fraudAlerts = attendanceSnapshot.docs.filter(doc => doc.data().isFraudulent).length;
+            
+            const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
+            let absentToday = 0;
+            if (settingsDoc.exists()) {
+                const settings = settingsDoc.data();
+                const now = new Date();
+                const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
+                const isOffDay = settings.offDays?.includes(todayStr);
+                const checkInEndStr = settings.checkInEnd || '09:00';
+                const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
+                const checkInDeadline = new Date();
+                checkInDeadline.setHours(endHours, endMinutes, 0, 0);
+
+                if (!isOffDay && now > checkInDeadline) {
+                    absentToday = totalTeachers - presentToday;
+                }
+            } else {
+                 absentToday = totalTeachers - presentToday;
+            }
+
+            setStats({
+                totalTeachers,
+                presentToday,
+                absentToday: absentToday > 0 ? absentToday : 0,
+                fraudAlerts,
+            });
+
+        } catch (error) {
+            console.error("Error fetching dashboard stats:", error);
+        } finally {
+            setStatsLoading(false);
+        }
+    };
+
     fetchAttendance();
+    fetchStats();
   }, []);
   
   if (!userProfile) return <CenteredLottieLoader />;
@@ -138,54 +204,69 @@ export default function AdminDashboard() {
                 </header>
                 <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
                     <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Pengguna</CardTitle>
-                        <Users2 className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                        {/* TODO: Fetch data from Firestore */}
-                        <div className="text-2xl font-bold">450</div>
-                        <p className="text-xs text-muted-foreground">380 Siswa, 70 Guru</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Hadir Hari Ini</CardTitle>
-                        <BookUser className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                        <div className="text-2xl font-bold text-primary">370</div>
-                        <p className="text-xs text-muted-foreground">+5% dari kemarin</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Absen Hari Ini</CardTitle>
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                        <div className="text-2xl font-bold text-destructive">10</div>
-                        <p className="text-xs text-muted-foreground">2.6% dari siswa</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Peringatan Penipuan</CardTitle>
-                        <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                        <div className="text-2xl font-bold text-destructive">1</div>
-                        <p className="text-xs text-muted-foreground">Verifikasi manual diperlukan</p>
-                        </CardContent>
-                    </Card>
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Guru</CardTitle>
+                            <Users2 className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                            {statsLoading ? <Skeleton className="h-8 w-1/2" /> : (
+                                <>
+                                    <div className="text-2xl font-bold">{stats?.totalTeachers ?? 0}</div>
+                                    <p className="text-xs text-muted-foreground">Total guru terdaftar</p>
+                                </>
+                            )}
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Guru Hadir Hari Ini</CardTitle>
+                            <BookUser className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                            {statsLoading ? <Skeleton className="h-8 w-1/2" /> : (
+                                <>
+                                    <div className="text-2xl font-bold text-primary">{stats?.presentToday ?? 0}</div>
+                                    <p className="text-xs text-muted-foreground">dari {stats?.totalTeachers ?? 0} guru</p>
+                                </>
+                            )}
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Guru Absen Hari Ini</CardTitle>
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                            {statsLoading ? <Skeleton className="h-8 w-1/2" /> : (
+                                <>
+                                    <div className="text-2xl font-bold text-destructive">{stats?.absentToday ?? 0}</div>
+                                    <p className="text-xs text-muted-foreground">dari {stats?.totalTeachers ?? 0} guru</p>
+                                </>
+                            )}
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Peringatan Penipuan</CardTitle>
+                            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                             {statsLoading ? <Skeleton className="h-8 w-1/2" /> : (
+                                <>
+                                    <div className="text-2xl font-bold text-destructive">{stats?.fraudAlerts ?? 0}</div>
+                                    <p className="text-xs text-muted-foreground">Verifikasi manual diperlukan</p>
+                                </>
+                            )}
+                            </CardContent>
+                        </Card>
                     </div>
                     <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
                     <Card className="xl:col-span-2">
                         <CardHeader>
-                        <CardTitle>Aktivitas Terbaru</CardTitle>
+                        <CardTitle>Aktivitas Guru Terbaru</CardTitle>
                         <CardDescription>
-                            Catatan absensi masuk terbaru.
+                            Catatan absensi masuk guru terbaru.
                         </CardDescription>
                         </CardHeader>
                         <CardContent>

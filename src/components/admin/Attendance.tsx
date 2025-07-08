@@ -82,9 +82,10 @@ export function Attendance() {
                 const endOfDay = new Date(date);
                 endOfDay.setHours(23, 59, 59, 999);
 
-                // 1. Fetch existing attendance records
+                // 1. Fetch existing attendance records for teachers
                 const q = query(
                     collection(db, "photo_attendances"),
+                    where("role", "==", "guru"),
                     where("checkInTime", ">=", startOfDay),
                     where("checkInTime", "<=", endOfDay),
                     orderBy("checkInTime", "desc")
@@ -99,12 +100,12 @@ export function Attendance() {
                 let finalRecords = [...fetchedRecords];
 
                 if (canDetermineAbsent) {
-                    // 2. Fetch all users who should attend
-                    const usersQuery = query(collection(db, 'users'), where('role', 'in', ['siswa', 'guru']));
+                    // 2. Fetch all teachers who should attend
+                    const usersQuery = query(collection(db, 'users'), where('role', '==', 'guru'));
                     const usersSnapshot = await getDocs(usersQuery);
                     const allUsers = usersSnapshot.docs.map(userDoc => ({ id: userDoc.id, ...userDoc.data() }));
 
-                    // 3. Find which users are absent
+                    // 3. Find which teachers are absent
                     const presentUserIds = new Set(fetchedRecords.map(r => r.userId));
                     const absentUsers = allUsers.filter(user => !presentUserIds.has(user.id));
                     
@@ -297,7 +298,7 @@ export function Attendance() {
     return (
         <div className="bg-gray-50 dark:bg-zinc-900">
              <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                <h1 className="text-xl font-bold text-foreground">Catatan Kehadiran</h1>
+                <h1 className="text-xl font-bold text-foreground">Catatan Kehadiran Guru</h1>
             </header>
             <div className="p-4">
                  <div className="flex items-center gap-2 mb-4">
