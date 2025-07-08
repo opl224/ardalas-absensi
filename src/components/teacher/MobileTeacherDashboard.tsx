@@ -153,7 +153,7 @@ export function MobileTeacherDashboard() {
         <AnimatePresence initial={false} custom={direction}>
             <motion.div
               key={view.toString()}
-              className="absolute w-full h-full"
+              className="absolute w-full h-full overflow-y-auto"
               custom={direction}
               variants={variants}
               initial="enter"
