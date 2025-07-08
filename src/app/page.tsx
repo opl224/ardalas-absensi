@@ -159,7 +159,7 @@ export default function LoginPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setShowAccessDeniedDialog(false)}>Kembali</AlertDialogAction>
+            <AlertDialogAction onClick={() => window.location.reload()}>Kembali</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
