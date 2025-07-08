@@ -113,7 +113,8 @@ export function UserManagement() {
                 const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
                 const isOffDay = settings.offDays?.includes(todayStr) ?? false;
                 const checkInEnd = getTodayAtTime(settings.checkInEnd || '09:00');
-                const checkInGraceEnd = new Date(checkInEnd.getTime() + 60 * 60 * 1000);
+                const gracePeriodMinutes = settings.gracePeriod ?? 60;
+                const checkInGraceEnd = new Date(checkInEnd.getTime() + gracePeriodMinutes * 60 * 1000);
                 const isPastAbsentDeadline = now > checkInGraceEnd;
 
                 const attendanceStatusMap = new Map<string, string>();
@@ -398,5 +399,3 @@ export function UserManagement() {
     </Dialog>
   );
 }
-
-    
