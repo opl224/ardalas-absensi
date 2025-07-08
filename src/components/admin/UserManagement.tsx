@@ -66,12 +66,11 @@ export function UserManagement() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   useEffect(() => {
-    let unsubscribe: () => void;
+    let unsubscribe: (() => void) | undefined = undefined;
 
     const syncUsersAndStatus = async () => {
         setLoading(true);
         try {
-            // Fetch settings once
             const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
             if (!settingsDoc.exists()) {
                 console.error("Attendance settings not found!");
@@ -81,18 +80,23 @@ export function UserManagement() {
             }
             const settings = settingsDoc.data();
 
-            // Fetch users once
-            const teachersQuery = collection(db, 'teachers');
-            const teachersSnapshot = await getDocs(teachersQuery);
-            const teacherUsers = teachersSnapshot.docs.map(doc => ({ id: doc.id, role: 'guru', ...doc.data() })) as User[];
+            const usersQuery = query(collection(db, 'users'), where('role', 'in', ['guru', 'admin']));
+            const usersSnapshot = await getDocs(usersQuery);
 
-            const adminsQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
-            const adminsSnapshot = await getDocs(adminsQuery);
-            const adminUsers = adminsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as User[];
-            
-            const allUsers = [...adminUsers, ...teacherUsers];
+            const enrichedUsersPromises = usersSnapshot.docs.map(async (userDoc) => {
+                const userData = { id: userDoc.id, ...userDoc.data() };
+                if (userData.role === 'guru') {
+                    const teacherDocRef = doc(db, 'teachers', userDoc.id);
+                    const teacherDocSnap = await getDoc(teacherDocRef);
+                    if (teacherDocSnap.exists()) {
+                        return { ...teacherDocSnap.data(), ...userData };
+                    }
+                }
+                return userData;
+            });
 
-            // Set up real-time listener for today's attendance
+            const allUsers = (await Promise.all(enrichedUsersPromises)).filter(Boolean) as User[];
+
             const todayStart = new Date();
             todayStart.setHours(0, 0, 0, 0);
             const todayEnd = new Date();
@@ -107,8 +111,8 @@ export function UserManagement() {
             unsubscribe = onSnapshot(attendanceQuery, (attendanceSnapshot) => {
                 const now = new Date();
                 const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
-                const isOffDay = settings.offDays.includes(todayStr);
-                const checkInEnd = getTodayAtTime(settings.checkInEnd);
+                const isOffDay = settings.offDays?.includes(todayStr) ?? false;
+                const checkInEnd = getTodayAtTime(settings.checkInEnd || '09:00');
                 const checkInGraceEnd = new Date(checkInEnd.getTime() + 60 * 60 * 1000);
                 const isPastAbsentDeadline = now > checkInGraceEnd;
 
@@ -146,7 +150,10 @@ export function UserManagement() {
                 });
 
                 setUsers(fetchedUsers);
-                setLoading(false); // Set loading to false after first data fetch
+                if (loading) setLoading(false);
+            }, (error) => {
+                console.error("Error in onSnapshot listener: ", error);
+                setLoading(false);
             });
 
         } catch (error) {
@@ -157,7 +164,6 @@ export function UserManagement() {
 
     syncUsersAndStatus();
 
-    // Cleanup listener on component unmount
     return () => {
         if (unsubscribe) {
             unsubscribe();
@@ -392,3 +398,5 @@ export function UserManagement() {
     </Dialog>
   );
 }
+
+    
