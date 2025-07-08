@@ -13,6 +13,7 @@ import { handleCheckin, type CheckinState } from "@/app/actions";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface CheckinCardProps {
   onSuccess?: () => void;
@@ -203,18 +204,30 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
                 </div>
 
                 <div className="mt-2 space-y-2">
-                  {isCameraOn && (
-                    <>
-                      <video ref={videoRef} autoPlay playsInline muted className="w-full aspect-video rounded-md border" />
-                      <Button type="button" onClick={takePhoto} className="w-full">Ambil Selfie</Button>
-                    </>
+                   {/* Video element is always in the DOM to prevent race conditions, but hidden with CSS */}
+                   <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className={cn("w-full aspect-video rounded-md border", {
+                      "hidden": !isCameraOn,
+                    })}
+                  />
+                  
+                  {/* Show the taken photo when camera is off */}
+                  {photoDataUri && !isCameraOn && (
+                    <img src={photoDataUri} alt="User selfie" className="w-full aspect-video object-cover rounded-md border" />
                   )}
 
-                  {!isCameraOn && photoDataUri && (
-                    <>
-                      <img src={photoDataUri} alt="User selfie" className="w-full rounded-md border" />
-                      <Button type="button" variant="outline" onClick={startCamera} className="w-full">Ambil Ulang Foto</Button>
-                    </>
+                  {/* Show take photo button only when camera is on */}
+                  {isCameraOn && (
+                    <Button type="button" onClick={takePhoto} className="w-full">Ambil Selfie</Button>
+                  )}
+
+                  {/* Show retake photo button only after a photo is taken */}
+                  {photoDataUri && !isCameraOn && (
+                    <Button type="button" variant="outline" onClick={startCamera} className="w-full">Ambil Ulang Foto</Button>
                   )}
                 </div>
               </div>
