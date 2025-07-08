@@ -238,12 +238,12 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
                         <>
                             <div className="flex justify-around text-center">
                                 <div>
-                                    <div className="w-16 h-16 bg-green-500 text-white rounded-full flex items-center justify-center text-2xl font-bold">{stats.present}</div>
-                                    <p className="mt-2 text-sm font-medium text-muted-foreground">Hadir</p>
+                                    <div className="w-16 h-16 bg-red-500 ml-2 text-white rounded-full flex items-center justify-center text-2xl font-bold">{stats.absent}</div>
+                                    <p className="mt-2 text-sm font-medium text-muted-foreground">Tidak Hadir</p>
                                 </div>
                                 <div>
-                                    <div className="w-16 h-16 bg-red-500 text-white rounded-full flex items-center justify-center text-2xl font-bold">{stats.absent}</div>
-                                    <p className="mt-2 text-sm font-medium text-muted-foreground">Tidak Hadir</p>
+                                    <div className="w-16 h-16 bg-green-500 text-white rounded-full flex items-center justify-center text-2xl font-bold">{stats.present}</div>
+                                    <p className="mt-2 text-sm font-medium text-muted-foreground">Hadir</p>
                                 </div>
                                 <div>
                                     <div className="w-16 h-16 bg-yellow-400 text-black rounded-full flex items-center justify-center text-2xl font-bold">{stats.late}</div>
