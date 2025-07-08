@@ -29,6 +29,7 @@ import { Calendar } from "@/components/ui/calendar";
 
 interface AttendanceRecord {
     id: string;
+    userId: string;
     name: string;
     role: string;
     checkInTime: Timestamp;
@@ -60,12 +61,28 @@ export function Attendance() {
             if (!date) return;
             setLoading(true);
             try {
+                // Get settings and determine deadlines
+                const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
+                const settings = settingsDoc.exists() ? settingsDoc.data() : { checkInEnd: '09:00', offDays: [] };
+                const selectedDateStr = date.toLocaleDateString('en-US', { weekday: 'long' });
+                const isOffDay = settings.offDays.includes(selectedDateStr);
+
+                const now = new Date();
+                const checkInEndStr = settings.checkInEnd || '09:00';
+                const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
+                const checkInDeadline = new Date(date);
+                checkInDeadline.setHours(endHours, endMinutes, 0, 0);
+                const checkInGraceEnd = new Date(checkInDeadline.getTime() + 60 * 60 * 1000); // 1 hour grace period
+                
+                const isToday = now.toDateString() === date.toDateString();
+                const canDetermineAbsent = !isOffDay && (date < new Date(new Date().setHours(0, 0, 0, 0)) || (isToday && now > checkInGraceEnd));
+
                 const startOfDay = new Date(date);
                 startOfDay.setHours(0, 0, 0, 0);
-
                 const endOfDay = new Date(date);
                 endOfDay.setHours(23, 59, 59, 999);
 
+                // 1. Fetch existing attendance records
                 const q = query(
                     collection(db, "photo_attendances"),
                     where("checkInTime", ">=", startOfDay),
@@ -74,22 +91,56 @@ export function Attendance() {
                 );
                 
                 const querySnapshot = await getDocs(q);
-                const data: AttendanceRecord[] = querySnapshot.docs.map(doc => ({
+                const fetchedRecords: AttendanceRecord[] = querySnapshot.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data(),
                 })) as AttendanceRecord[];
-                 setAttendanceData(data);
-                 setCurrentPage(1); // Reset page on new date
-                 setStatusFilter('Semua Kehadiran'); // Reset filter on new date
+                
+                let finalRecords = [...fetchedRecords];
+
+                if (canDetermineAbsent) {
+                    // 2. Fetch all users who should attend
+                    const usersQuery = query(collection(db, 'users'), where('role', 'in', ['siswa', 'guru']));
+                    const usersSnapshot = await getDocs(usersQuery);
+                    const allUsers = usersSnapshot.docs.map(userDoc => ({ id: userDoc.id, ...userDoc.data() }));
+
+                    // 3. Find which users are absent
+                    const presentUserIds = new Set(fetchedRecords.map(r => r.userId));
+                    const absentUsers = allUsers.filter(user => !presentUserIds.has(user.id));
+                    
+                    // 4. Create placeholder records for them
+                    const absentRecords: AttendanceRecord[] = absentUsers.map(user => ({
+                        id: `absent-${user.id}-${date.getTime()}`,
+                        userId: user.id,
+                        name: user.name,
+                        role: user.role,
+                        checkInTime: Timestamp.fromDate(startOfDay), // Will appear at the bottom of desc list
+                        status: 'Absen',
+                        checkInPhotoUrl: user.avatar || '', // Use avatar for photo
+                        isFraudulent: false,
+                    }));
+                    
+                    finalRecords = [...fetchedRecords, ...absentRecords];
+                    finalRecords.sort((a, b) => b.checkInTime.toMillis() - a.checkInTime.toMillis());
+                }
+
+                setAttendanceData(finalRecords);
+                setCurrentPage(1); // Reset page on new data
+                setStatusFilter('Semua Kehadiran'); // Reset filter on new data
             } catch (error) {
                 console.error("Error fetching attendance data: ", error);
+                toast({
+                    variant: 'destructive',
+                    title: 'Gagal Memuat Data',
+                    description: 'Terjadi kesalahan saat mengambil data kehadiran.'
+                });
             } finally {
                 setLoading(false);
             }
         };
 
         fetchAttendance();
-    }, [date]);
+    }, [date, toast]);
 
     const handleFilterChange = (filter: string) => {
         setStatusFilter(filter);
@@ -113,7 +164,7 @@ export function Attendance() {
         const data = attendanceData.map(d => [
             d.name,
             d.role,
-            d.checkInTime.toDate().toLocaleString('id-ID'),
+            d.status !== 'Absen' ? d.checkInTime.toDate().toLocaleString('id-ID') : '-',
             d.checkOutTime ? d.checkOutTime.toDate().toLocaleString('id-ID') : '-',
             d.status
         ]);
@@ -324,8 +375,9 @@ export function Attendance() {
                                     <Button
                                         variant="ghost"
                                         size="icon"
-                                        className="absolute top-1 right-1 h-7 w-7 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+                                        className="absolute top-1 right-1 h-7 w-7 text-destructive/70 hover:text-destructive hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-not-allowed"
                                         onClick={(e) => openDeleteDialog(e, item.id)}
+                                        disabled={item.id.startsWith('absent-')}
                                     >
                                         <Trash2 className="h-4 w-4" />
                                         <span className="sr-only">Hapus Catatan</span>
@@ -338,7 +390,7 @@ export function Attendance() {
                                         <p className="font-semibold text-foreground truncate pr-8">{item.name}</p>
                                         <p className="text-sm text-muted-foreground capitalize">{item.role}</p>
                                         <p className="text-xs text-muted-foreground">
-                                            {`Absen Masuk: ${item.checkInTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`}
+                                            {item.status !== 'Absen' && `Absen Masuk: ${item.checkInTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`}
                                             {item.checkOutTime && (
                                                 <>
                                                     <br />
@@ -430,26 +482,32 @@ export function Attendance() {
                     </DialogHeader>
                     {selectedRecord && (
                         <div className="space-y-4 pt-2">
-                            <div className="flex justify-center">
-                                <Avatar className="h-48 w-48 rounded-lg border-4 border-primary/20 shadow-lg">
-                                    <AvatarImage src={selectedRecord.checkInPhotoUrl} alt={selectedRecord.name} className="object-cover" />
-                                    <AvatarFallback className="text-5xl rounded-lg">{selectedRecord.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                                </Avatar>
-                            </div>
+                             {selectedRecord.status !== 'Absen' && (
+                                <div className="flex justify-center">
+                                    <Avatar className="h-48 w-48 rounded-lg border-4 border-primary/20 shadow-lg">
+                                        <AvatarImage src={selectedRecord.checkInPhotoUrl} alt={selectedRecord.name} className="object-cover" />
+                                        <AvatarFallback className="text-5xl rounded-lg">{selectedRecord.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                                    </Avatar>
+                                </div>
+                            )}
                             
                             <div className="space-y-2 rounded-lg border bg-muted/50 p-4 text-sm">
                                 <div className="flex justify-between">
                                     <span className="text-muted-foreground">Peran</span>
                                     <span className="font-medium capitalize">{selectedRecord.role}</span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Waktu Absen Masuk</span>
-                                    <span className="font-medium">{selectedRecord.checkInTime.toDate().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Waktu Absen Keluar</span>
-                                    <span className="font-medium">{selectedRecord.checkOutTime ? selectedRecord.checkOutTime.toDate().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : 'Belum absen keluar'}</span>
-                                </div>
+                                {selectedRecord.status !== 'Absen' && (
+                                    <>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Waktu Absen Masuk</span>
+                                            <span className="font-medium">{selectedRecord.checkInTime.toDate().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Waktu Absen Keluar</span>
+                                            <span className="font-medium">{selectedRecord.checkOutTime ? selectedRecord.checkOutTime.toDate().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : 'Belum absen keluar'}</span>
+                                        </div>
+                                    </>
+                                )}
                                 <div className="flex justify-between items-center">
                                     <span className="text-muted-foreground">Status</span>
                                     <Badge variant={getBadgeVariant(selectedRecord.status)}>{selectedRecord.status}</Badge>
