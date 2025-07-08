@@ -96,7 +96,7 @@ export function MobileTeacherDashboard() {
   const { userProfile, loading } = useAuth();
   
   const pageIndexRef = useRef(0);
-  const [activePageIndex, setActivePageIndex] = useState(0);
+  const activePageIndex = mainViews.indexOf(view as MainViewID);
 
   if (loading) {
       return <CenteredLottieLoader />;
@@ -114,7 +114,6 @@ export function MobileTeacherDashboard() {
         setDirection(newIndex > oldIndex ? 1 : -1);
       }
       pageIndexRef.current = newIndex;
-      setActivePageIndex(newIndex);
     } else { // It's a subview
       setDirection(1);
     }
@@ -157,7 +156,7 @@ export function MobileTeacherDashboard() {
         <AnimatePresence initial={false} custom={direction}>
             <motion.div
               key={view}
-              className="absolute w-full h-full overflow-y-auto pb-20"
+              className="absolute w-full h-full overflow-y-auto pb-24"
               custom={direction}
               variants={variants}
               initial="enter"

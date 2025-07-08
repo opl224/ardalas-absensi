@@ -81,7 +81,8 @@ export function MobileAdminDashboard() {
   const [view, setView] = useState<ViewID>('home');
   const [direction, setDirection] = useState(0);
   const pageIndexRef = useRef(0);
-  const [activePageIndex, setActivePageIndex] = useState(0);
+  
+  const activePageIndex = mainViews.indexOf(view as MainViewID);
 
   const changeView = (newView: ViewID) => {
     const newIndex = mainViews.indexOf(newView as MainViewID);
@@ -92,7 +93,6 @@ export function MobileAdminDashboard() {
         setDirection(newIndex > oldIndex ? 1 : -1);
       }
       pageIndexRef.current = newIndex;
-      setActivePageIndex(newIndex);
     } else { // It's a subview
       setDirection(1);
     }
