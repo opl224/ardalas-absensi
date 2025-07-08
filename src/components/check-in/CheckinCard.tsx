@@ -5,9 +5,10 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Camera, MapPin, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { Loader } from "../ui/loader";
+import SplitText from "@/components/ui/SplitText";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card";
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { handleCheckin, type CheckinState } from "@/app/actions";
 import { Progress } from "@/components/ui/progress";
@@ -156,7 +157,20 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
     <>
       <Card className="w-full max-w-lg shadow-lg">
         <CardHeader>
-          <CardTitle className="font-headline text-2xl">Hai, {userProfile.name}!</CardTitle>
+          <div className="font-headline text-2xl">
+              <span>Hai, </span>
+              <SplitText
+                  text={`${userProfile.name}!`}
+                  delay={80}
+                  duration={0.6}
+                  ease="power3.out"
+                  splitType="chars"
+                  from={{ opacity: 0, y: 20 }}
+                  to={{ opacity: 1, y: 0 }}
+                  textAlign="left"
+                  className="font-headline text-2xl"
+              />
+          </div>
           <CardDescription>Ikuti langkah-langkah di bawah ini untuk menandai kehadiran Anda.</CardDescription>
           <Progress value={progressValue} className="mt-2" />
         </CardHeader>
