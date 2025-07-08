@@ -15,6 +15,11 @@ import { CenteredLoader, Loader } from '../ui/loader';
 import { collection, query, where, onSnapshot, Timestamp, orderBy, limit, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import SplitText from '../ui/SplitText';
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface TeacherHomeProps {
   setActiveView: (view: 'home' | 'history' | 'profile' | 'checkin') => void;
@@ -219,10 +224,17 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                         />
                         <p className="text-sm text-muted-foreground capitalize">{userProfile.role} &bull; {userProfile.subject}</p>
                     </div>
-                    <Avatar className="h-14 w-14">
-                        <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait"/>
-                        <AvatarFallback>{userProfile.name.slice(0,2).toUpperCase()}</AvatarFallback>
-                    </Avatar>
+                     <Dialog>
+                        <DialogTrigger asChild>
+                            <Avatar className="h-14 w-14 cursor-pointer">
+                                <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait"/>
+                                <AvatarFallback>{userProfile.name.slice(0,2).toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                        </DialogTrigger>
+                        <DialogContent className="p-0 border-0 bg-transparent shadow-none w-auto max-w-lg">
+                            <img src={userProfile.avatar} alt={userProfile.name} className="w-full h-auto rounded-lg" data-ai-hint="person portrait" />
+                        </DialogContent>
+                    </Dialog>
                 </div>
 
                 <Card className="p-4">

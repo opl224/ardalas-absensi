@@ -13,6 +13,11 @@ import { AttendanceSettingsDialog } from "./AttendanceSettingsDialog";
 import { Button } from "../ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import SplitText from "../ui/SplitText";
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 type ActiveView = 'home' | 'profile' | 'users' | 'reports' | 'attendance';
 
@@ -173,10 +178,17 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
                     />
                     <p className="text-sm text-muted-foreground">Administrator Sistem</p>
                 </div>
-                <Avatar className="h-14 w-14">
-                    <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait" />
-                    <AvatarFallback>{userProfile.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                </Avatar>
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <Avatar className="h-14 w-14 cursor-pointer">
+                            <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait" />
+                            <AvatarFallback>{userProfile.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                    </DialogTrigger>
+                    <DialogContent className="p-0 border-0 bg-transparent shadow-none w-auto max-w-lg">
+                        <img src={userProfile.avatar} alt={userProfile.name} className="w-full h-auto rounded-lg" data-ai-hint="person portrait" />
+                    </DialogContent>
+                </Dialog>
             </div>
 
             {/* Date and Time */}
