@@ -35,30 +35,11 @@ export function AttendanceHistory() {
           orderBy("checkInTime", "desc")
       );
 
-      const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const unsubscribe = onSnapshot(q, (snapshot) => {
           setLoading(true);
-          const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
-          const settings = settingsDoc.exists() ? settingsDoc.data() : { checkOutEnd: '17:00' };
-
-          const now = new Date();
-          const [hours, minutes] = settings.checkOutEnd.split(':').map(Number);
-          const checkOutDeadline = new Date();
-          checkOutDeadline.setHours(hours, minutes, 0, 0);
-
           const historyData = snapshot.docs.map(doc => {
-              const data = doc.data();
-              const record = { id: doc.id, ...data } as HistoryRecord;
-
-              const checkInDate = record.checkInTime.toDate();
-              const isToday = now.toDateString() === checkInDate.toDateString();
-
-              // If it's today, no checkout time exists, and it's past the checkout deadline
-              // and the status was 'Hadir', update status to 'Terlambat' for display.
-              if (isToday && !record.checkOutTime && now > checkOutDeadline && record.status === 'Hadir') {
-                  return { ...record, status: 'Terlambat' };
-              }
-              return record;
-          }) as HistoryRecord[];
+              return { id: doc.id, ...doc.data() } as HistoryRecord;
+          });
 
           setHistory(historyData);
           setLoading(false);

@@ -212,32 +212,11 @@ export async function handleCheckout(prevState: CheckoutState, formData: FormDat
             return { error: "Informasi pengguna atau absensi tidak ditemukan." };
         }
         
-        // Fetch attendance settings
-        const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
-        if (!settingsDoc.exists()) {
-            return { error: "Pengaturan absensi belum dikonfigurasi. Silakan hubungi admin." };
-        }
-        const settings = settingsDoc.data();
-        
-        const now = new Date();
-        const checkOutEnd = getTodayAtTime(settings.checkOutEnd);
-
         const attendanceRef = doc(db, "photo_attendances", attendanceId);
-        const attendanceSnap = await getDoc(attendanceRef);
         
-        if (!attendanceSnap.exists()) {
-            return { error: "Catatan kehadiran tidak ditemukan." };
-        }
-        const currentData = attendanceSnap.data();
-        const currentStatus = currentData.status;
-
-        // If checkout is late and status was 'Hadir', update to 'Terlambat'.
-        // Otherwise, keep the current status (e.g., if they were already 'Terlambat' on check-in).
-        const newStatus = now > checkOutEnd && currentStatus === 'Hadir' ? 'Terlambat' : currentStatus;
-
+        // Simply update the checkout time. The status is determined at check-in and should not change.
         await updateDoc(attendanceRef, {
-            checkOutTime: now,
-            status: newStatus,
+            checkOutTime: new Date(),
         });
         
         return { success: true };
