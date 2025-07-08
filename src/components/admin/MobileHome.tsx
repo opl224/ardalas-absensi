@@ -149,8 +149,8 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
                     <SplitText
                         text={userProfile.name}
                         className="text-2xl font-bold text-foreground"
-                        delay={80}
-                        duration={0.6}
+                        delay={120}
+                        duration={0.8}
                         ease="power3.out"
                         splitType="chars"
                         from={{ opacity: 0, y: 20 }}

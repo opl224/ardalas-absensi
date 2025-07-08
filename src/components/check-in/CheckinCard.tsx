@@ -161,8 +161,8 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
               <span>Hai, </span>
               <SplitText
                   text={`${userProfile.name}!`}
-                  delay={80}
-                  duration={0.6}
+                  delay={120}
+                  duration={0.8}
                   ease="power3.out"
                   splitType="chars"
                   from={{ opacity: 0, y: 20 }}
