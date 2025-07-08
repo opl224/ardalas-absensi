@@ -312,8 +312,8 @@ export function Attendance() {
              <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <h1 className="text-xl font-bold text-foreground">Catatan Kehadiran Guru</h1>
             </header>
-            <div className="p-4">
-                 <div className="flex items-center gap-2 mb-4">
+            <div className="p-4 space-y-4">
+                 <div className="flex items-center gap-2">
                     <div className="flex-grow">
                         <Popover>
                             <PopoverTrigger asChild>
@@ -354,14 +354,17 @@ export function Attendance() {
                             ))}
                         </DropdownMenuContent>
                     </DropdownMenu>
+                 </div>
+                 
+                 <div>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="shrink-0">
-                                <Download className="h-4 w-4 sm:mr-2" />
-                                <span className="hidden sm:inline">Unduh</span>
+                            <Button variant="outline" className="w-full">
+                                <Download className="mr-2 h-4 w-4" />
+                                Unduh Laporan
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                        <DropdownMenuContent align="end" className="w-[--radix-dropdown-menu-trigger-width]">
                             <DropdownMenuItem onSelect={() => handleDownload('pdf')}>
                                 Unduh sebagai PDF
                             </DropdownMenuItem>
@@ -371,6 +374,7 @@ export function Attendance() {
                         </DropdownMenuContent>
                     </DropdownMenu>
                  </div>
+
                 {loading ? (
                     <div className="flex justify-center items-center h-64">
                         <Loader scale={1.6} />
