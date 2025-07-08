@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { collection, getDocs, query, where, doc, getDoc, onSnapshot, documentId } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { LottieLoader } from '../ui/lottie-loader';
 import { cn } from '@/lib/utils';
@@ -27,7 +27,7 @@ interface User {
   id: string;
   name: string;
   email: string;
-  role: 'guru' | 'admin';
+  role: 'Guru' | 'Admin';
   status: 'Hadir' | 'Terlambat' | 'Tidak Hadir' | 'Kecurangan' | 'Libur' | 'Belum Absen' | 'Admin';
   avatar: string;
   nip?: string;
@@ -64,35 +64,37 @@ export function UserManagement() {
   useEffect(() => {
     setLoading(true);
 
-    let unsubscribeAttendance: (() => void) | null = null;
-
-    const fetchAndListen = async () => {
+    const fetchUsersAndListenForStatus = async () => {
         try {
-            // Step 1: Fetch all 'guru' and 'admin' users from the 'users' collection.
-            const usersQuery = query(collection(db, 'users'), where('role', 'in', ['guru', 'admin']));
+            // Step 1: Fetch all 'Guru' and 'Admin' users from the 'users' collection. (Using capitalized roles)
+            const usersQuery = query(collection(db, 'users'), where('role', 'in', ['Guru', 'Admin']));
             const usersSnapshot = await getDocs(usersQuery);
-            const baseUsersFromUsers = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const baseUsersFromUsers = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as { [key: string]: any } }));
 
             // Step 2: Fetch details for all teachers from the 'teachers' collection.
-            const teacherIds = baseUsersFromUsers.filter(u => u.role === 'guru').map(u => u.id);
-            const teachersDataMap = new Map();
+            const teacherIds = baseUsersFromUsers.filter(u => u.role === 'Guru').map(u => u.id);
+            let teachersDataMap = new Map();
+
             if (teacherIds.length > 0) {
-                const teachersQuery = query(collection(db, 'teachers'), where(documentId(), 'in', teacherIds));
-                const teachersSnapshot = await getDocs(teachersQuery);
-                teachersSnapshot.forEach(doc => {
-                    teachersDataMap.set(doc.id, doc.data());
+                const teachersDetailsPromises = teacherIds.map(id => getDoc(doc(db, 'teachers', id)));
+                const teachersDetailsSnapshots = await Promise.all(teachersDetailsPromises);
+                
+                teachersDetailsSnapshots.forEach(docSnap => {
+                    if (docSnap.exists()) {
+                        teachersDataMap.set(docSnap.id, docSnap.data());
+                    }
                 });
             }
             
             // Step 3: Merge teacher details into the base user list.
             const combinedUsers = baseUsersFromUsers.map(user => {
-                if (user.role === 'guru' && teachersDataMap.has(user.id)) {
+                if (user.role === 'Guru' && teachersDataMap.has(user.id)) {
                     return { ...user, ...teachersDataMap.get(user.id) };
                 }
                 return user;
             });
             
-            // Step 4: Set up the real-time listener for attendance.
+            // Step 4: Set up the real-time listener for attendance status.
             const todayStart = new Date();
             todayStart.setHours(0, 0, 0, 0);
             const todayEnd = new Date();
@@ -107,7 +109,7 @@ export function UserManagement() {
             const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
             const settings = settingsDoc.exists() ? settingsDoc.data() : {};
             
-            unsubscribeAttendance = onSnapshot(attendanceQuery, (attendanceSnapshot) => {
+            const unsubscribeAttendance = onSnapshot(attendanceQuery, (attendanceSnapshot) => {
                 const now = new Date();
                 const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
                 const isOffDay = settings.offDays?.includes(todayStr) ?? false;
@@ -130,7 +132,7 @@ export function UserManagement() {
 
                 let usersWithStatus = combinedUsers.map(user => {
                     let status: User['status'];
-                    if (user.role === 'admin') {
+                    if (user.role === 'Admin') {
                         status = 'Admin';
                     } else {
                         const attendanceStatus = attendanceStatusMap.get(user.id);
@@ -147,9 +149,9 @@ export function UserManagement() {
                     return { ...user, status };
                 });
 
-                usersWithStatus.sort((a, b) => {
-                    if (a.role === 'admin' && b.role !== 'admin') return -1;
-                    if (a.role !== 'admin' && b.role === 'admin') return 1;
+                usersWithStatus.sort((a: any, b: any) => {
+                    if (a.role === 'Admin' && b.role !== 'Admin') return -1;
+                    if (a.role !== 'Admin' && b.role === 'Admin') return 1;
                     return a.name.localeCompare(b.name);
                 });
 
@@ -159,24 +161,32 @@ export function UserManagement() {
                 console.error("Error in attendance onSnapshot listener: ", error);
                 setLoading(false);
             });
+
+            return unsubscribeAttendance;
+
         } catch (error) {
             console.error("Error fetching users:", error);
             setLoading(false);
+            return () => {};
         }
     };
 
-    fetchAndListen();
+    let unsubscribe: (() => void) | undefined;
+    const run = async () => {
+        unsubscribe = await fetchUsersAndListenForStatus();
+    }
+    run();
 
     return () => {
-        if (unsubscribeAttendance) {
-            unsubscribeAttendance();
+        if (unsubscribe) {
+            unsubscribe();
         }
     };
 }, []);
 
 
   const filteredUsers = useMemo(() => {
-    setCurrentPage(1); // Reset to first page on search
+    setCurrentPage(1);
     if (!searchTerm) {
         return users;
     }
@@ -335,7 +345,7 @@ export function UserManagement() {
                                   <p className="font-semibold text-foreground truncate">{user.name}</p>
                                   <p className="text-sm text-muted-foreground -mt-1 truncate">{user.email}</p>
                                   <div className="flex items-center gap-2 mt-1">
-                                    {user.role === 'admin' ? (
+                                    {user.role === 'Admin' ? (
                                       <div className="glowing-admin-badge">Admin</div>
                                     ) : (
                                       <Badge variant={getBadgeVariant(user.status)}>
@@ -428,13 +438,13 @@ export function UserManagement() {
               <Separator />
               <div className="space-y-3 text-sm">
                   <h3 className="font-semibold text-md mb-2">Informasi Pribadi</h3>
-                  {selectedUser.role === 'guru' && <DetailItem icon={Fingerprint} label="NIP" value={selectedUser.nip} />}
+                  {selectedUser.role === 'Guru' && <DetailItem icon={Fingerprint} label="NIP" value={selectedUser.nip} />}
                   <DetailItem icon={VenetianMask} label="Jenis Kelamin" value={selectedUser.gender} />
                   <DetailItem icon={Phone} label="No. Telepon" value={selectedUser.phone} />
                   <DetailItem icon={BookMarked} label="Agama" value={selectedUser.religion} />
                   <DetailItem icon={Home} label="Alamat" value={selectedUser.address} />
               </div>
-              {selectedUser.role === 'guru' && (
+              {selectedUser.role === 'Guru' && (
                   <>
                       <Separator />
                       <div className="space-y-3 text-sm mt-4">
