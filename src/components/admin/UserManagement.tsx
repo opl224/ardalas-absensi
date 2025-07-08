@@ -37,6 +37,7 @@ interface User {
   phone?: string;
   religion?: string;
   address?: string;
+  isFraudulent?: boolean;
 }
 
 const USERS_PER_PAGE = 10;
@@ -62,38 +63,39 @@ export function UserManagement() {
   const { toast } = useToast();
 
   useEffect(() => {
-    setLoading(true);
-
     const fetchUsersAndListenForStatus = async () => {
+        setLoading(true);
         try {
-            // Step 1: Fetch all 'Guru' and 'Admin' users from the 'users' collection. (Using capitalized roles)
-            const usersQuery = query(collection(db, 'users'), where('role', 'in', ['Guru', 'Admin']));
+            // Step 1: Fetch all 'guru' and 'admin' users from the 'users' collection.
+            const usersQuery = query(collection(db, 'users'), where('role', 'in', ['guru', 'admin']));
             const usersSnapshot = await getDocs(usersQuery);
-            const baseUsersFromUsers = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as { [key: string]: any } }));
+            const baseUsers = usersSnapshot.docs.map(userDoc => ({
+                id: userDoc.id,
+                ...userDoc.data()
+            }));
 
-            // Step 2: Fetch details for all teachers from the 'teachers' collection.
-            const teacherIds = baseUsersFromUsers.filter(u => u.role === 'Guru').map(u => u.id);
-            let teachersDataMap = new Map();
-
-            if (teacherIds.length > 0) {
-                const teachersDetailsPromises = teacherIds.map(id => getDoc(doc(db, 'teachers', id)));
-                const teachersDetailsSnapshots = await Promise.all(teachersDetailsPromises);
-                
-                teachersDetailsSnapshots.forEach(docSnap => {
-                    if (docSnap.exists()) {
-                        teachersDataMap.set(docSnap.id, docSnap.data());
-                    }
-                });
-            }
+            // Step 2: Fetch details for all teachers in parallel.
+            const teacherDetailsPromises = baseUsers
+                .filter(user => user.role === 'guru')
+                .map(user => getDoc(doc(db, 'teachers', user.id)));
             
-            // Step 3: Merge teacher details into the base user list.
-            const combinedUsers = baseUsersFromUsers.map(user => {
-                if (user.role === 'Guru' && teachersDataMap.has(user.id)) {
+            const teacherDetailsSnapshots = await Promise.all(teacherDetailsPromises);
+            
+            const teachersDataMap = new Map();
+            teacherDetailsSnapshots.forEach(docSnap => {
+                if (docSnap.exists()) {
+                    teachersDataMap.set(docSnap.id, docSnap.data());
+                }
+            });
+
+            // Step 3: Combine base user data with teacher-specific details.
+            const combinedUsers = baseUsers.map(user => {
+                if (user.role === 'guru' && teachersDataMap.has(user.id)) {
                     return { ...user, ...teachersDataMap.get(user.id) };
                 }
                 return user;
             });
-            
+
             // Step 4: Set up the real-time listener for attendance status.
             const todayStart = new Date();
             todayStart.setHours(0, 0, 0, 0);
@@ -122,34 +124,39 @@ export function UserManagement() {
                 const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
                 const isPastAbsentDeadline = now > checkInGraceEnd;
 
-                const attendanceStatusMap = new Map<string, string>();
+                const attendanceStatusMap = new Map<string, any>();
                 attendanceSnapshot.forEach(doc => {
                     const data = doc.data();
-                    if (data.userId && data.status) {
-                        attendanceStatusMap.set(data.userId, data.status);
+                    if (data.userId) {
+                        attendanceStatusMap.set(data.userId, { status: data.status, isFraudulent: data.isFraudulent });
                     }
                 });
 
-                let usersWithStatus = combinedUsers.map(user => {
+                let usersWithStatus = combinedUsers.map((user: any) => {
                     let status: User['status'];
-                    if (user.role === 'Admin') {
+                    const attendanceInfo = attendanceStatusMap.get(user.id);
+                    
+                    if (user.role === 'admin') {
                         status = 'Admin';
+                    } else if (attendanceInfo) {
+                        status = attendanceInfo.status;
+                    } else if (isOffDay) {
+                        status = 'Libur';
+                    } else if (isPastAbsentDeadline) {
+                        status = 'Tidak Hadir';
                     } else {
-                        const attendanceStatus = attendanceStatusMap.get(user.id);
-                        if (attendanceStatus) {
-                            status = attendanceStatus as User['status'];
-                        } else if (isOffDay) {
-                            status = 'Libur';
-                        } else if (isPastAbsentDeadline) {
-                            status = 'Tidak Hadir';
-                        } else {
-                            status = 'Belum Absen';
-                        }
+                        status = 'Belum Absen';
                     }
-                    return { ...user, status };
+                    
+                    return {
+                        ...user,
+                        status,
+                        role: user.role.charAt(0).toUpperCase() + user.role.slice(1), // Capitalize role for display
+                        isFraudulent: attendanceInfo?.isFraudulent ?? false,
+                    };
                 });
 
-                usersWithStatus.sort((a: any, b: any) => {
+                usersWithStatus.sort((a, b) => {
                     if (a.role === 'Admin' && b.role !== 'Admin') return -1;
                     if (a.role !== 'Admin' && b.role === 'Admin') return 1;
                     return a.name.localeCompare(b.name);
@@ -162,12 +169,13 @@ export function UserManagement() {
                 setLoading(false);
             });
 
-            return unsubscribeAttendance;
+            // Detach the listener when the component unmounts
+            return () => unsubscribeAttendance();
 
         } catch (error) {
             console.error("Error fetching users:", error);
             setLoading(false);
-            return () => {};
+            return () => {}; // Return an empty function for cleanup
         }
     };
 
