@@ -81,7 +81,7 @@ export default function LoginPage() {
       toast({
         variant: 'destructive',
         title: 'Gagal Masuk',
-        description: error.message || 'Email atau kata sandi salah. Silakan coba lagi.',
+        description: 'Email atau kata sandi salah',
       });
       setLoading(false);
     }
