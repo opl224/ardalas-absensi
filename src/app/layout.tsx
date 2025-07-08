@@ -5,7 +5,7 @@ import { AuthProvider } from '@/context/AuthContext';
 import { ThemeProvider } from '@/components/ThemeProvider';
 
 export const metadata: Metadata = {
-  title: 'SchoolTrack',
+  title: 'Absensi',
   description: 'Aplikasi web untuk absensi guru dan siswa',
 };
 

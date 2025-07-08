@@ -1,4 +1,4 @@
-# **App Name**: SchoolTrack
+# **App Name**: Absensi
 
 ## Core Features:
 

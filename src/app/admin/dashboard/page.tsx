@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { Home, LineChart, Search, Users2, BookUser, Users, AlertTriangle, GraduationCap, Briefcase } from "lucide-react"
+import { Home, LineChart, Search, Users2, BookUser, Users, AlertTriangle, GraduationCap, Briefcase, CheckSquare } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -159,15 +159,15 @@ export default function AdminDashboard() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="Siswa">
-                    <GraduationCap />
-                    <span>Siswa</span>
+                  <SidebarMenuButton tooltip="Pengguna">
+                    <Users2 />
+                    <span>Pengguna</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="Guru">
-                    <Briefcase />
-                    <span>Guru</span>
+                  <SidebarMenuButton tooltip="Kehadiran">
+                    <CheckSquare />
+                    <span>Kehadiran</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
