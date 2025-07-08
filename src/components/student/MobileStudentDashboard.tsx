@@ -74,14 +74,14 @@ const NavLink = ({
 };
 
 const CheckinWrapper = ({ onBack, onSuccess }: { onBack: () => void, onSuccess: () => void }) => (
-    <div className="bg-background min-h-full flex flex-col">
+    <div className="bg-background h-full flex flex-col">
         <header className="sticky top-0 z-10 flex items-center gap-4 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <button onClick={onBack} className="p-1">
                 <ArrowLeft className="h-6 w-6" />
             </button>
             <h1 className="text-xl font-bold text-foreground">Kehadiran</h1>
         </header>
-        <div className="flex-grow flex items-center justify-center p-4">
+        <div className="flex-grow overflow-y-auto p-4 flex flex-col items-center">
             <CheckinCard onSuccess={onSuccess} />
         </div>
     </div>
@@ -145,7 +145,7 @@ export function MobileStudentDashboard() {
 
   return (
     <div className="bg-gray-50 dark:bg-zinc-900 min-h-screen flex flex-col">
-      <main className="flex-grow pb-20 relative overflow-hidden">
+      <main className={`flex-grow relative overflow-hidden ${view !== 'checkin' ? 'pb-20' : ''}`}>
         <AnimatePresence initial={false} custom={direction}>
             <motion.div
               key={view.toString()}
@@ -174,17 +174,19 @@ export function MobileStudentDashboard() {
         </AnimatePresence>
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t p-1 flex justify-around z-10">
-        <NavLink activePageIndex={currentIndex} index={0} setView={changeView} label="Beranda">
-          <Home className="h-6 w-6" />
-        </NavLink>
-        <NavLink activePageIndex={currentIndex} index={1} setView={changeView} label="Riwayat">
-          <History className="h-6 w-6" />
-        </NavLink>
-        <NavLink activePageIndex={currentIndex} index={2} setView={changeView} label="Profil">
-          <UserIcon className="h-6 w-6" />
-        </NavLink>
-      </nav>
+      {view !== 'checkin' && (
+        <nav className="fixed bottom-0 left-0 right-0 bg-card border-t p-1 flex justify-around z-10">
+          <NavLink activePageIndex={currentIndex} index={0} setView={changeView} label="Beranda">
+            <Home className="h-6 w-6" />
+          </NavLink>
+          <NavLink activePageIndex={currentIndex} index={1} setView={changeView} label="Riwayat">
+            <History className="h-6 w-6" />
+          </NavLink>
+          <NavLink activePageIndex={currentIndex} index={2} setView={changeView} label="Profil">
+            <UserIcon className="h-6 w-6" />
+          </NavLink>
+        </nav>
+      )}
     </div>
   );
 }
