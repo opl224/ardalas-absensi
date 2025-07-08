@@ -12,6 +12,7 @@ import { collection, query, where, getDocs, onSnapshot, Timestamp, doc, getDoc }
 import { AttendanceSettingsDialog } from "./AttendanceSettingsDialog";
 import { Button } from "../ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import SplitText from "../ui/SplitText";
 
 type ActiveView = 'home' | 'profile' | 'users' | 'reports' | 'attendance';
 
@@ -145,7 +146,17 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
             <div className="flex items-center justify-between mt-6">
                 <div>
                     <p className="text-sm text-muted-foreground">Selamat datang kembali,</p>
-                    <p className="text-2xl font-bold text-foreground">{userProfile.name}</p>
+                    <SplitText
+                        text={userProfile.name}
+                        className="text-2xl font-bold text-foreground"
+                        delay={80}
+                        duration={0.6}
+                        ease="power3.out"
+                        splitType="chars"
+                        from={{ opacity: 0, y: 20 }}
+                        to={{ opacity: 1, y: 0 }}
+                        textAlign="left"
+                    />
                     <p className="text-sm text-muted-foreground">Administrator Sistem</p>
                 </div>
                 <Avatar className="h-14 w-14">

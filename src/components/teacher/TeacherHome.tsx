@@ -14,6 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { CenteredLoader, Loader } from '../ui/loader';
 import { collection, query, where, onSnapshot, Timestamp, orderBy, limit, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import SplitText from '../ui/SplitText';
 
 interface TeacherHomeProps {
   setActiveView: (view: 'home' | 'history' | 'profile' | 'checkin') => void;
@@ -180,7 +181,17 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                 <div className="flex items-center justify-between">
                     <div>
                         <p className="text-sm text-muted-foreground">Halo,</p>
-                        <p className="text-2xl font-bold text-foreground">{userProfile.name}</p>
+                        <SplitText
+                            text={userProfile.name}
+                            className="text-2xl font-bold text-foreground"
+                            delay={80}
+                            duration={0.6}
+                            ease="power3.out"
+                            splitType="chars"
+                            from={{ opacity: 0, y: 20 }}
+                            to={{ opacity: 1, y: 0 }}
+                            textAlign="left"
+                        />
                         <p className="text-sm text-muted-foreground capitalize">{userProfile.role} &bull; {userProfile.subject}</p>
                     </div>
                     <Avatar className="h-14 w-14">

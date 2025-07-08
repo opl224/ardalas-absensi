@@ -109,7 +109,6 @@ export default function LoginPage() {
               </Avatar>
               <div className="space-y-1">
                 <CardTitle className="font-headline text-2xl">Absensi Sekolah</CardTitle>
-                <CardDescription>Portal Masuk Admin & Guru</CardDescription>
               </div>
             </CardHeader>
             <CardContent className="px-6 pb-6 pt-2">
