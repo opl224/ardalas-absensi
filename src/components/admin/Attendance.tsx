@@ -301,23 +301,16 @@ export function Attendance() {
                     fileData = dataUri.substring(dataUri.indexOf(',') + 1);
                 }
                 
-                const path = `absensi-18/${filename}`;
-                
-                await Filesystem.mkdir({
-                  path: 'absensi-18',
-                  directory: Directory.Downloads,
-                  recursive: true,
-                });
-    
-                const result = await Filesystem.writeFile({
-                    path: path,
+                await Filesystem.writeFile({
+                    path: filename,
                     data: fileData,
                     directory: Directory.Downloads,
+                    recursive: true,
                 });
     
                 toast({
                     title: "Unduhan Selesai",
-                    description: `File disimpan di folder Downloads/absensi-18`,
+                    description: `${filename} disimpan di folder Unduhan perangkat Anda.`,
                 });
     
             } catch (e: any) {
@@ -766,5 +759,6 @@ export function Attendance() {
 
 
     
+
 
 

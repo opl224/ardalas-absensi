@@ -126,23 +126,16 @@ export function AttendanceHistory() {
                 fileData = dataUri.substring(dataUri.indexOf(',') + 1);
             }
 
-            const path = `absensi-18/${filename}`;
-            
-            await Filesystem.mkdir({
-              path: 'absensi-18',
-              directory: Directory.Downloads,
-              recursive: true,
-            });
-
             await Filesystem.writeFile({
-                path,
+                path: filename,
                 data: fileData,
                 directory: Directory.Downloads,
+                recursive: true
             });
 
             toast({
                 title: "Unduhan Selesai",
-                description: `File disimpan di folder Downloads/absensi-18`,
+                description: `${filename} disimpan di folder Unduhan perangkat Anda.`,
             });
         } catch (e: any) {
             console.error('Error saving file to device', e);
