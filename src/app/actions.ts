@@ -1,5 +1,4 @@
 
-import { supabase } from "@/lib/supabase";
 import { z } from "zod";
 import { doc, setDoc, collection, updateDoc, getDoc } from "firebase/firestore"; 
 import { db } from "@/lib/firebase";
@@ -20,23 +19,6 @@ export type CheckinState = {
   error?: string;
   success?: boolean;
 }
-
-// Helper function to convert data URI to Buffer for server-side processing
-function dataURIToBuffer(dataURI: string): { buffer: Buffer; mimeType: string; extension: string } {
-    if (!dataURI.includes(',')) {
-        throw new Error('Invalid data URI format');
-    }
-    const dataUriParts = dataURI.split(',');
-    const header = dataUriParts[0];
-    const data = dataUriParts[1];
-
-    const mimeType = header.match(/:(.*?);/)?.[1] || 'application/octet-stream';
-    const extension = mimeType.split('/')[1] || 'bin';
-    
-    const buffer = Buffer.from(data, 'base64');
-    return { buffer, mimeType, extension };
-}
-
 
 // This function is still used by other components (e.g., Attendance.tsx)
 function getTodayAtTime(timeString: string): Date {
@@ -66,13 +48,6 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 export async function handleCheckin(
   formData: FormData
 ): Promise<CheckinState> {
-  // Check for Supabase config first
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.trim() === '' || supabaseAnonKey.trim() === '') {
-      console.error("Supabase environment variables are missing.");
-      return { error: 'Konfigurasi server untuk penyimpanan gambar tidak lengkap. Harap hubungi administrator.' };
-  }
 
   try {
     const validatedFields = checkinSchema.safeParse({
@@ -164,33 +139,8 @@ export async function handleCheckin(
     if (!photoDataUri.startsWith('data:image/')) {
         return { error: 'Data gambar tidak valid. Silakan ambil ulang foto selfie Anda.' };
     }
-
-    // 1. Upload selfie to Supabase
-    const { buffer, mimeType } = dataURIToBuffer(photoDataUri);
-    const photoPath = `${userId}/${new Date().toISOString()}.jpg`;
     
-    const { error: uploadError } = await supabase.storage
-      .from('selfies')
-      .upload(photoPath, buffer, {
-        cacheControl: '3600',
-        upsert: false,
-        contentType: mimeType,
-      });
-
-    if (uploadError) {
-      console.error('Supabase Upload Error:', uploadError);
-      const message = `Gagal mengunggah foto. Aksi Diperlukan: Ini hampir selalu disebabkan oleh kebijakan (policy) bucket Supabase yang salah. Periksa hal berikut di Dasbor Supabase Anda: 1. Bucket 'selfies' harus bersifat PUBLIK. 2. Harus ada kebijakan INSERT pada bucket 'selfies' yang mengizinkan *semua pengguna (anon)*. Kode server saat ini menggunakan kunci anonim.`;
-      return { error: message };
-    }
-
-    const { data: urlData } = supabase.storage.from('selfies').getPublicUrl(photoPath);
-
-    if (!urlData || !urlData.publicUrl) {
-        return { error: 'Gagal mendapatkan URL publik untuk foto. Silakan coba lagi.' };
-    }
-    const publicUrl = urlData.publicUrl;
-
-    // 2. Location Validation (No AI)
+    // Location Validation (No AI)
     const distance = calculateDistance(latitude, longitude, schoolLatitude, schoolLongitude);
     
     let isFraudulent = false;
@@ -204,14 +154,14 @@ export async function handleCheckin(
     // Determine status based on time (using client time)
     const finalStatus = clientTotalMinutes > checkInEndTotalMinutes ? "Terlambat" : "Hadir";
 
-    // 3. Save attendance record to Firestore
+    // Save attendance record to Firestore, storing the data URI directly
     const attendanceRecord = {
       userId,
       name: userName,
       role: userRole,
       checkInTime: now, // The official timestamp is always the server's UTC time
       checkInLocation: { latitude, longitude },
-      checkInPhotoUrl: publicUrl,
+      checkInPhotoUrl: photoDataUri, // Store the base64 data URI
       isFraudulent,
       fraudReason,
       status: finalStatus,
@@ -317,14 +267,6 @@ export type AvatarUpdateState = {
 };
 
 export async function updateAvatar(formData: FormData): Promise<AvatarUpdateState> {
-    // Check for Supabase config first
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.trim() === '' || supabaseAnonKey.trim() === '') {
-        console.error("Supabase environment variables are missing.");
-        return { error: 'Konfigurasi server untuk penyimpanan gambar tidak lengkap. Harap hubungi administrator.' };
-    }
-
     const validatedFields = avatarUpdateSchema.safeParse({
         userId: formData.get('userId'),
         userRole: formData.get('userRole'),
@@ -339,29 +281,6 @@ export async function updateAvatar(formData: FormData): Promise<AvatarUpdateStat
     const { userId, userRole, photoDataUri } = validatedFields.data;
 
     try {
-        const { buffer, mimeType, extension } = dataURIToBuffer(photoDataUri);
-        const photoPath = `avatars/${userId}/${Date.now()}.${extension}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('selfies')
-          .upload(photoPath, buffer, {
-            cacheControl: '3600',
-            upsert: true,
-            contentType: mimeType,
-          });
-
-        if (uploadError) {
-            console.error('Supabase Upload Error:', uploadError);
-            const message = `Gagal mengunggah avatar. Aksi Diperlukan: Ini hampir selalu disebabkan oleh kebijakan (policy) bucket Supabase yang salah. Periksa hal berikut di Dasbor Supabase Anda: 1. Bucket 'selfies' harus bersifat PUBLIK. 2. Harus ada kebijakan INSERT/UPDATE pada bucket 'selfies' yang mengizinkan *semua pengguna (anon)*. Kode server saat ini menggunakan kunci anonim.`;
-            return { error: message };
-        }
-
-        const { data: urlData } = supabase.storage.from('selfies').getPublicUrl(photoPath);
-        if (!urlData || !urlData.publicUrl) {
-            return { error: 'Gagal mendapatkan URL publik untuk avatar.' };
-        }
-        const publicUrl = urlData.publicUrl;
-        
         let collectionName = '';
         if (userRole === 'guru') {
             collectionName = 'teachers';
@@ -374,10 +293,11 @@ export async function updateAvatar(formData: FormData): Promise<AvatarUpdateStat
         const userDocRef = doc(db, collectionName, userId);
 
         await updateDoc(userDocRef, {
-            avatar: publicUrl,
+            avatar: photoDataUri, // Store the base64 data URI directly
         });
 
-        return { success: true, newAvatarUrl: publicUrl };
+        // The new "URL" is the data URI itself
+        return { success: true, newAvatarUrl: photoDataUri };
 
     } catch (e) {
         console.error('An error occurred during avatar update:', e);
