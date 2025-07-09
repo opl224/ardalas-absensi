@@ -74,7 +74,7 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
         (error) => {
           let message = "Anda harus memberikan izin lokasi untuk melanjutkan.";
            if (error.code === error.PERMISSION_DENIED) {
-            message = "Izin lokasi ditolak. Silakan aktifkan di pengaturan aplikasi lalu coba lagi.";
+            message = "Izin lokasi ditolak. Silakan aktifkan lokasi di pengaturan ponsel anda dan coba lagi.";
           } else if (error.code === error.POSITION_UNAVAILABLE) {
             message = "Informasi lokasi tidak tersedia saat ini. Pastikan GPS Anda aktif.";
           } else if (error.code === error.TIMEOUT) {

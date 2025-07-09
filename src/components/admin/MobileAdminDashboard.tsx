@@ -9,6 +9,9 @@ import { Profile } from "./Profile";
 import { Attendance } from "./Attendance";
 import { Privacy } from "./Privacy";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAndroidBackHandler } from "@/hooks/useAndroidBackHandler";
+import { ExitAppDialog } from "../ExitAppDialog";
+
 
 type MainViewID = 'home' | 'users' | 'reports' | 'attendance' | 'profile';
 type SubViewID = 'privacy';
@@ -136,9 +139,21 @@ export function MobileAdminDashboard() {
   
   const isSubView = !mainViews.includes(page.view);
   const ComponentToRender = viewComponents[page.view];
+  const onBack = () => changeView('profile');
+
+  const { showExitDialog, setShowExitDialog, handleConfirmExit } = useAndroidBackHandler({
+    currentView: page.view,
+    isSubView,
+    onBack,
+    profileViewId: 'profile',
+    homeViewId: 'home',
+    changeView,
+    mainViews,
+  });
+
   const props = {
       setActiveView: changeView,
-      onBack: () => changeView('profile'),
+      onBack: onBack,
   };
 
   return (
@@ -184,6 +199,12 @@ export function MobileAdminDashboard() {
           </NavLink>
         </nav>
       )}
+
+      <ExitAppDialog
+        open={showExitDialog}
+        onOpenChange={setShowExitDialog}
+        onConfirm={handleConfirmExit}
+      />
     </div>
   );
 }

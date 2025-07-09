@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -11,6 +10,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { CenteredLoader } from '@/components/ui/loader';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Privacy } from './Privacy';
+import { useAndroidBackHandler } from '@/hooks/useAndroidBackHandler';
+import { ExitAppDialog } from '../ExitAppDialog';
 
 type MainViewID = 'home' | 'history' | 'profile';
 type SubViewID = 'checkin' | 'privacy';
@@ -166,14 +167,32 @@ export function MobileTeacherDashboard() {
   const isSubView = !mainViews.includes(page.view);
   let ComponentToRender: React.FC<any>;
   let props: any;
+  let onBack = () => {};
+
 
   if (page.view === 'checkin') {
       ComponentToRender = CheckinWrapper;
-      props = { onBack: () => changeView('home'), onSuccess: () => changeView('history') };
-  } else {
+      onBack = () => changeView('home');
+      props = { onBack, onSuccess: () => changeView('history') };
+  } else if (page.view === 'privacy') {
+      ComponentToRender = viewComponents[page.view];
+      onBack = () => changeView('profile');
+      props = { onBack };
+  }
+  else {
       ComponentToRender = viewComponents[page.view];
       props = { setActiveView: changeView, onBack: () => changeView('profile') };
   }
+
+  const { showExitDialog, setShowExitDialog, handleConfirmExit } = useAndroidBackHandler({
+    currentView: page.view,
+    isSubView,
+    onBack,
+    profileViewId: 'profile',
+    homeViewId: 'home',
+    changeView,
+    mainViews,
+  });
 
 
   return (
@@ -212,6 +231,12 @@ export function MobileTeacherDashboard() {
           </NavLink>
         </nav>
       )}
+
+       <ExitAppDialog
+        open={showExitDialog}
+        onOpenChange={setShowExitDialog}
+        onConfirm={handleConfirmExit}
+      />
     </div>
   );
 }
