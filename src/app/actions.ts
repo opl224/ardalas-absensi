@@ -82,36 +82,42 @@ export async function handleCheckin(
         return { error: "Pengaturan absensi belum dikonfigurasi. Silakan hubungi admin." };
     }
     
-    let settings = settingsDoc.data();
-    const schoolLatitude = -6.241169;
-    const schoolLongitude = 107.037800;
-    const schoolRadius = 100; // in meters
+    const settings = settingsDoc.data();
 
-    // Check and set default school location if not present
+    // Defensively get all required settings with defaults to prevent crashes
+    const schoolLatitude = settings.schoolLatitude ?? -6.241169;
+    const schoolLongitude = settings.schoolLongitude ?? 107.037800;
+    const schoolRadius = settings.schoolRadius ?? 100;
+    const gracePeriod = settings.gracePeriod ?? 60;
+    const checkInEndValue = settings.checkInEnd;
+    const checkInEndStr = (typeof checkInEndValue === 'string' && checkInEndValue.includes(':'))
+      ? checkInEndValue
+      : '09:00';
+
+    // Self-healing: If any core values were missing, write them back to Firestore.
     if (
         settings.schoolLatitude === undefined ||
         settings.schoolLongitude === undefined ||
         settings.schoolRadius === undefined ||
         settings.gracePeriod === undefined
     ) {
-        await setDoc(settingsRef, { schoolLatitude, schoolLongitude, schoolRadius, gracePeriod: 60 }, { merge: true });
-        settings = { ...settings, schoolLatitude, schoolLongitude, schoolRadius, gracePeriod: 60 };
+        await setDoc(settingsRef, { 
+            schoolLatitude, 
+            schoolLongitude, 
+            schoolRadius, 
+            gracePeriod 
+        }, { merge: true });
     }
     
     // --- TIMEZONE-SAFE TIME LOGIC ---
-    // All comparisons are done using minutes from midnight based on the client's local time.
-    const checkInEndStr = settings.checkInEnd || '09:00';
-
-    // Defensively parse grace period to ensure it is a valid number.
-    let gracePeriodMinutes = Number(settings.gracePeriod ?? 60);
+    let gracePeriodMinutes = Number(gracePeriod);
     if (isNaN(gracePeriodMinutes)) {
-        gracePeriodMinutes = 60; // Default to 60 if parsing fails to prevent NaN errors.
+        gracePeriodMinutes = 60; // Final fallback if data is malformed
     }
     
-    const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
+    const [endHours, endMinutes] = checkInEndStr.split(':').map(Number); // This is safe now
     const checkInEndTotalMinutes = endHours * 60 + endMinutes;
 
-    // This is the absolute deadline. After this, the user is marked 'Tidak Hadir'.
     const absentDeadlineMinutes = checkInEndTotalMinutes + gracePeriodMinutes;
 
     const [clientHours, clientMinutes] = clientTime.split(':').map(Number);
@@ -119,7 +125,6 @@ export async function handleCheckin(
 
 
     // Logic for ABSENT (based on client time)
-    // If the user tries to check in after the absolute deadline, record them as 'Tidak Hadir' and stop.
     if (clientTotalMinutes > absentDeadlineMinutes) {
         const absentRecord = {
             userId,
@@ -166,19 +171,17 @@ export async function handleCheckin(
     const publicUrl = urlData.publicUrl;
 
     // 2. Location Validation (No AI)
-    const distance = calculateDistance(latitude, longitude, settings.schoolLatitude, settings.schoolLongitude);
+    const distance = calculateDistance(latitude, longitude, schoolLatitude, schoolLongitude);
     
     let isFraudulent = false;
     let fraudReason = '';
 
-    if (distance > settings.schoolRadius) {
+    if (distance > schoolRadius) {
         isFraudulent = true;
-        fraudReason = `Anda berada ${Math.round(distance)} meter dari lokasi sekolah, yang berada di luar radius ${settings.schoolRadius} meter yang diizinkan.`;
+        fraudReason = `Anda berada ${Math.round(distance)} meter dari lokasi sekolah, yang berada di luar radius ${schoolRadius} meter yang diizinkan.`;
     }
     
     // Determine status based on time (using client time)
-    // If client time is after the check-in end time, they are late. Otherwise, they are present.
-    // The grace period ONLY determines absence, not lateness.
     const finalStatus = clientTotalMinutes > checkInEndTotalMinutes ? "Terlambat" : "Hadir";
 
     // 3. Save attendance record to Firestore
