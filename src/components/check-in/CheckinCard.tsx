@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Camera, MapPin, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { Camera, MapPin, CheckCircle, XCircle, AlertTriangle, RefreshCw } from "lucide-react";
 import { Loader } from "../ui/loader";
 import SplitText from "@/components/ui/SplitText";
 
@@ -61,7 +61,7 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
     }
   }, [state, onSuccess]);
 
-  const getLocation = () => {
+  const requestLocation = useCallback(() => {
     setIsGettingLocation(true);
     setLocationError(null);
     if (navigator.geolocation) {
@@ -74,9 +74,13 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
           setIsGettingLocation(false);
         },
         (error) => {
-          let message = `Kesalahan: ${error.message}. Harap aktifkan layanan lokasi.`;
-           if (error.code === error.TIMEOUT) {
-            message = "Gagal mendapatkan lokasi: Waktu habis. Coba lagi.";
+          let message = "Anda harus memberikan izin lokasi untuk melanjutkan.";
+           if (error.code === error.PERMISSION_DENIED) {
+            message = "Izin lokasi ditolak. Silakan aktifkan di pengaturan aplikasi lalu coba lagi.";
+          } else if (error.code === error.POSITION_UNAVAILABLE) {
+            message = "Informasi lokasi tidak tersedia saat ini. Pastikan GPS Anda aktif.";
+          } else if (error.code === error.TIMEOUT) {
+            message = "Gagal mendapatkan lokasi: Waktu habis. Pastikan koneksi internet dan GPS stabil.";
           }
           setLocationError(message);
           toast({ variant: 'destructive', title: 'Kesalahan Lokasi', description: message });
@@ -84,7 +88,7 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
         },
         {
           enableHighAccuracy: true,
-          timeout: 10000, // 10-second timeout
+          timeout: 15000,
           maximumAge: 0
         }
       );
@@ -94,7 +98,11 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
       toast({ variant: 'destructive', title: 'Kesalahan Lokasi', description: errorMsg });
       setIsGettingLocation(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    requestLocation();
+  }, [requestLocation]);
   
   const startCamera = () => {
     setCameraError(null);
@@ -159,6 +167,7 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
     setLocation(null);
     setResultDialogOpen(false);
     setState({});
+    requestLocation(); // Try to get location again after closing dialog
   }
 
   const getStep = () => {
@@ -221,18 +230,25 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
                   {location ? <CheckCircle /> : <MapPin />}
                 </div>
                 <div>
-                  <h3 className="font-semibold">Langkah 1: Akses Lokasi</h3>
-                  <p className="text-sm text-muted-foreground">Kami membutuhkan lokasi Anda untuk verifikasi.</p>
-                  {!location && (
-                    <Button type="button" onClick={getLocation} className="mt-2" disabled={isGettingLocation}>
-                      {isGettingLocation && <Loader scale={0.48} />}
-                      {isGettingLocation ? 'Mencari Lokasi...' : 'Aktifkan Lokasi'}
-                    </Button>
+                  <h3 className="font-semibold">Langkah 1: Verifikasi Lokasi</h3>
+                  {isGettingLocation && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+                        <Loader scale={0.4} />
+                        <span>Mendapatkan lokasi Anda...</span>
+                    </div>
                   )}
-                  {location && (
-                     <p className="text-sm text-primary mt-2">Lokasi berhasil direkam.</p>
+                  {location && !isGettingLocation && (
+                     <p className="text-sm text-primary mt-2">Lokasi berhasil diverifikasi.</p>
                   )}
-                  {locationError && <p className="text-sm text-destructive mt-1">{locationError}</p>}
+                  {locationError && !isGettingLocation && (
+                    <div className="mt-2 space-y-2">
+                      <p className="text-sm text-destructive mt-1">{locationError}</p>
+                      <Button type="button" variant="secondary" onClick={requestLocation}>
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Coba Lagi
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
 
