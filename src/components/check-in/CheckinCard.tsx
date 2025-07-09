@@ -3,6 +3,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Camera, MapPin, CheckCircle, XCircle, AlertTriangle, RefreshCw } from "lucide-react";
+import { App } from '@capacitor/app';
 import { Loader } from "../ui/loader";
 import SplitText from "@/components/ui/SplitText";
 
@@ -101,8 +102,23 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
   }, [toast]);
 
   useEffect(() => {
-    requestLocation();
-  }, [requestLocation]);
+    // Permintaan awal saat komponen dimuat jika kita belum memiliki lokasi
+    if (!location && !isGettingLocation) {
+      requestLocation();
+    }
+
+    const listener = App.addListener('resume', () => {
+      // Saat aplikasi kembali aktif (misalnya setelah pengguna memberikan izin di pengaturan),
+      // coba dapatkan lokasi lagi jika kita belum memilikinya.
+      if (!location && !isGettingLocation) {
+        requestLocation();
+      }
+    });
+
+    return () => {
+      listener.remove();
+    };
+  }, [requestLocation, location, isGettingLocation]);
   
   const startCamera = () => {
     setCameraError(null);
