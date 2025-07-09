@@ -11,6 +11,8 @@ import { collection, query, where, getDocs, Timestamp, doc, getDoc } from 'fireb
 import { Loader } from '../ui/loader';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 
 interface ReportStats {
     totalGurus: number;
@@ -207,11 +209,6 @@ export function Reports() {
             return;
         }
 
-        toast({
-            title: "Mempersiapkan Unduhan",
-            description: `Laporan Anda akan segera diunduh sebagai ${formatType.toUpperCase()}.`
-        });
-
         const headers = ['Nama', 'Waktu Absen Masuk', 'Waktu Absen Keluar', 'Status', 'Alasan Kecurangan'];
         const data = reportData.map(d => [d.name, d.checkInTime, d.checkOutTime, d.status, d.fraudReason]);
         
@@ -222,37 +219,76 @@ export function Reports() {
             year: 'Tahun Ini'
         };
         const period = periodMap[activeTab] || activeTab;
-        const filename = `Laporan_Kehadiran_Guru_${period.replace(' ','_')}_${new Date().toISOString().slice(0, 10)}`;
+        const filename = `Laporan_Kehadiran_Guru_${period.replace(' ','_')}_${new Date().toISOString().slice(0, 10)}.${formatType}`;
+        
+        if (Capacitor.isNativePlatform()) {
+            try {
+                let fileData: string;
+                if (formatType === 'csv') {
+                    const csvContent = [headers.join(','), ...data.map(row => row.join(','))].join('\n');
+                    fileData = btoa(unescape(encodeURIComponent(csvContent)));
+                } else { // pdf
+                    const { default: jsPDF } = await import('jspdf');
+                    const { default: autoTable } = await import('jspdf-autotable');
+                    const doc = new jsPDF();
+                    doc.text(`Laporan Kehadiran Guru - ${period}`, 14, 16);
+                    autoTable(doc, { head: [headers], body: data, startY: 20 });
+                    const dataUri = doc.output('datauristring');
+                    fileData = dataUri.substring(dataUri.indexOf(',') + 1);
+                }
 
-        if (formatType === 'csv') {
-            const csvContent = [
-                headers.join(','),
-                ...data.map(row => row.join(','))
-            ].join('\n');
+                const path = `absensi-18/${filename}`;
+                
+                await Filesystem.mkdir({
+                  path: 'absensi-18',
+                  directory: Directory.Downloads,
+                  recursive: true,
+                });
 
-            const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', `${filename}.csv`);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
+                await Filesystem.writeFile({
+                    path,
+                    data: fileData,
+                    directory: Directory.Downloads,
+                });
 
-        if (formatType === 'pdf') {
-            const jsPDF = (await import('jspdf')).default;
-            const autoTable = (await import('jspdf-autotable')).default;
+                toast({
+                    title: "Unduhan Selesai",
+                    description: `File disimpan di folder Downloads/absensi-18`,
+                });
 
-            const doc = new jsPDF();
-            doc.text(`Laporan Kehadiran Guru - ${period}`, 14, 16);
-            autoTable(doc, {
-                head: [headers],
-                body: data,
-                startY: 20,
+            } catch (e: any) {
+                console.error('Error saving file to device', e);
+                toast({
+                    variant: 'destructive',
+                    title: 'Gagal Menyimpan File',
+                    description: e.message || 'Tidak dapat menyimpan laporan ke perangkat.',
+                });
+            }
+        } else {
+            // Web implementation
+            toast({
+                title: "Mempersiapkan Unduhan",
+                description: `Laporan Anda akan segera diunduh sebagai ${formatType.toUpperCase()}.`
             });
-            doc.save(`${filename}.pdf`);
+            if (formatType === 'csv') {
+                const csvContent = [headers.join(','), ...data.map(row => row.join(','))].join('\n');
+                const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.setAttribute('download', filename);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+    
+            if (formatType === 'pdf') {
+                const { default: jsPDF } = await import('jspdf');
+                const { default: autoTable } = await import('jspdf-autotable');
+                const doc = new jsPDF();
+                doc.text(`Laporan Kehadiran Guru - ${period}`, 14, 16);
+                autoTable(doc, { head: [headers], body: data, startY: 20 });
+                doc.save(filename);
+            }
         }
     }
 

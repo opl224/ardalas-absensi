@@ -18,6 +18,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 
 
 interface HistoryRecord {
@@ -96,14 +98,6 @@ export function AttendanceHistory() {
       return;
     }
 
-    toast({
-        title: "Mempersiapkan Unduhan",
-        description: `Laporan Anda akan segera diunduh sebagai ${formatType.toUpperCase()}.`
-    });
-
-    const { default: jsPDF } = await import('jspdf');
-    const { default: autoTable } = await import('jspdf-autotable');
-
     const headers = ['Nama', 'Tanggal', 'Waktu Absen Masuk', 'Waktu Absen Keluar', 'Status'];
     const data = filteredHistory.map(d => [
         userProfile?.name || '-',
@@ -113,32 +107,78 @@ export function AttendanceHistory() {
         d.status
     ]);
     const formattedDate = date ? format(date, "yyyy-MM-dd") : 'tanggal-tidak-dipilih';
-    const filename = `Laporan_Kehadiran_${userProfile?.name?.replace(' ', '_')}_${formattedDate}`;
+    const filename = `Laporan_Kehadiran_${userProfile?.name?.replace(' ', '_')}_${formattedDate}.${formatType}`;
 
-    if (formatType === 'csv') {
-      const csvContent = [
-        headers.join(','),
-        ...data.map(row => row.join(','))
-      ].join('\n');
-      const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `${filename}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
+    if (Capacitor.isNativePlatform()) {
+        try {
+            let fileData: string;
+            if (formatType === 'csv') {
+                const csvContent = [headers.join(','), ...data.map(row => row.join(','))].join('\n');
+                fileData = btoa(unescape(encodeURIComponent(csvContent)));
+            } else { // pdf
+                const { default: jsPDF } = await import('jspdf');
+                const { default: autoTable } = await import('jspdf-autotable');
+                const doc = new jsPDF();
+                doc.text(`Laporan Kehadiran - ${userProfile?.name}`, 14, 10);
+                doc.text(`Tanggal: ${date ? format(date, "PPP", { locale: localeId }) : 'Semua'}`, 14, 16);
+                autoTable(doc, { head: [headers], body: data, startY: 22 });
+                const dataUri = doc.output('datauristring');
+                fileData = dataUri.substring(dataUri.indexOf(',') + 1);
+            }
 
-    if (formatType === 'pdf') {
-      const doc = new jsPDF();
-      doc.text(`Laporan Kehadiran - ${userProfile?.name}`, 14, 10);
-      doc.text(`Tanggal: ${date ? format(date, "PPP", { locale: localeId }) : 'Semua'}`, 14, 16);
-      autoTable(doc, {
-        head: [headers],
-        body: data,
-        startY: 22,
-      });
-      doc.save(`${filename}.pdf`);
+            const path = `absensi-18/${filename}`;
+            
+            await Filesystem.mkdir({
+              path: 'absensi-18',
+              directory: Directory.Downloads,
+              recursive: true,
+            });
+
+            await Filesystem.writeFile({
+                path,
+                data: fileData,
+                directory: Directory.Downloads,
+            });
+
+            toast({
+                title: "Unduhan Selesai",
+                description: `File disimpan di folder Downloads/absensi-18`,
+            });
+        } catch (e: any) {
+            console.error('Error saving file to device', e);
+            toast({
+                variant: 'destructive',
+                title: 'Gagal Menyimpan File',
+                description: e.message || 'Tidak dapat menyimpan laporan ke perangkat.',
+            });
+        }
+    } else {
+        // Web implementation
+        toast({
+            title: "Mempersiapkan Unduhan",
+            description: `Laporan Anda akan segera diunduh sebagai ${formatType.toUpperCase()}.`
+        });
+    
+        if (formatType === 'csv') {
+          const csvContent = [headers.join(','), ...data.map(row => row.join(','))].join('\n');
+          const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+    
+        if (formatType === 'pdf') {
+          const { default: jsPDF } = await import('jspdf');
+          const { default: autoTable } = await import('jspdf-autotable');
+          const doc = new jsPDF();
+          doc.text(`Laporan Kehadiran - ${userProfile?.name}`, 14, 10);
+          doc.text(`Tanggal: ${date ? format(date, "PPP", { locale: localeId }) : 'Semua'}`, 14, 16);
+          autoTable(doc, { head: [headers], body: data, startY: 22 });
+          doc.save(filename);
+        }
     }
   };
 

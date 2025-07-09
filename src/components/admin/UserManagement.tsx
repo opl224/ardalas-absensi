@@ -28,6 +28,8 @@ import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 
 interface User {
   id: string;
@@ -263,11 +265,6 @@ export function UserManagement() {
         return;
     }
 
-    toast({
-        title: 'Mempersiapkan Unduhan',
-        description: `Daftar pengguna akan segera diunduh sebagai ${formatType.toUpperCase()}.`,
-    });
-
     const headers = ['ID', 'Nama', 'Email', 'Peran', 'NIP', 'Mata Pelajaran', 'Kelas', 'Jenis Kelamin', 'Telepon', 'Agama', 'Alamat'];
     const data = filteredUsers.map(user => [
         user.id,
@@ -283,37 +280,88 @@ export function UserManagement() {
         user.address || ''
     ]);
 
-    const filename = 'Laporan_Pengguna';
+    const filename = `Laporan_Pengguna.${formatType}`;
 
-    if (formatType === 'csv') {
-      const csvData = data.map(row => row.map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(','));
-      const csvContent = [headers.join(','), ...csvData].join('\n');
-      const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `${filename}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
+    if (Capacitor.isNativePlatform()) {
+        try {
+            let fileData: string;
+            if (formatType === 'csv') {
+                const csvData = data.map(row => row.map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(','));
+                const csvContent = [headers.join(','), ...csvData].join('\n');
+                fileData = btoa(unescape(encodeURIComponent(csvContent)));
+            } else { // pdf
+                const { default: jsPDF } = await import('jspdf');
+                const { default: autoTable } = await import('jspdf-autotable');
+                const doc = new jsPDF();
+                doc.text('Laporan Pengguna', 14, 16);
+                autoTable(doc, { head: [headers], body: data.map(row => row.map(field => String(field || ''))), startY: 20, theme: 'grid', styles: { fontSize: 8 }, headStyles: { fillColor: [22, 163, 74] } });
+                const dataUri = doc.output('datauristring');
+                fileData = dataUri.substring(dataUri.indexOf(',') + 1);
+            }
 
-    if (formatType === 'pdf') {
-      const { default: jsPDF } = await import('jspdf');
-      const { default: autoTable } = await import('jspdf-autotable');
+            const path = `absensi-18/${filename}`;
+            
+            await Filesystem.mkdir({
+              path: 'absensi-18',
+              directory: Directory.Downloads,
+              recursive: true,
+            });
 
-      const doc = new jsPDF();
-      doc.text('Laporan Pengguna', 14, 16);
-      autoTable(doc, {
-          head: [headers],
-          body: data.map(row => row.map(field => String(field || ''))),
-          startY: 20,
-          theme: 'grid',
-          styles: { fontSize: 8 },
-          headStyles: { fillColor: [22, 163, 74] },
-      });
-      doc.save(`${filename}.pdf`);
+            await Filesystem.writeFile({
+                path,
+                data: fileData,
+                directory: Directory.Downloads,
+            });
+
+            toast({
+                title: "Unduhan Selesai",
+                description: `File disimpan di folder Downloads/absensi-18`,
+            });
+
+        } catch (e: any) {
+            console.error('Error saving file to device', e);
+            toast({
+                variant: 'destructive',
+                title: 'Gagal Menyimpan File',
+                description: e.message || 'Tidak dapat menyimpan laporan ke perangkat.',
+            });
+        }
+    } else {
+        // Web implementation
+        toast({
+            title: 'Mempersiapkan Unduhan',
+            description: `Daftar pengguna akan segera diunduh sebagai ${formatType.toUpperCase()}.`,
+        });
+
+        if (formatType === 'csv') {
+          const csvData = data.map(row => row.map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(','));
+          const csvContent = [headers.join(','), ...csvData].join('\n');
+          const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+          const link = document.createElement('a');
+          const url = URL.createObjectURL(blob);
+          link.setAttribute('href', url);
+          link.setAttribute('download', filename);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+    
+        if (formatType === 'pdf') {
+          const { default: jsPDF } = await import('jspdf');
+          const { default: autoTable } = await import('jspdf-autotable');
+    
+          const doc = new jsPDF();
+          doc.text('Laporan Pengguna', 14, 16);
+          autoTable(doc, {
+              head: [headers],
+              body: data.map(row => row.map(field => String(field || ''))),
+              startY: 20,
+              theme: 'grid',
+              styles: { fontSize: 8 },
+              headStyles: { fillColor: [22, 163, 74] },
+          });
+          doc.save(filename);
+        }
     }
   };
 
@@ -473,6 +521,16 @@ export function UserManagement() {
                   <DetailItem icon={BookMarked} label="Agama" value={selectedUser.religion} />
                   <DetailItem icon={Home} label="Alamat" value={selectedUser.address} />
               </div>
+              {selectedUser.role === 'Guru' && (
+                <>
+                  <Separator />
+                  <div className="space-y-3 text-sm">
+                      <h3 className="font-semibold text-md mb-2">Informasi Akademik</h3>
+                      <DetailItem icon={BookCopy} label="Mata Pelajaran" value={selectedUser.subject} />
+                      <DetailItem icon={Briefcase} label="Mengajar Kelas" value={selectedUser.class} />
+                  </div>
+                </>
+              )}
             </div>
           </ScrollArea>
         )}
