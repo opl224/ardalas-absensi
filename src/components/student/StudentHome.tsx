@@ -21,6 +21,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { App, Capacitor } from '@capacitor/core';
 
 interface StudentHomeProps {
   setActiveView: (view: 'home' | 'history' | 'profile' | 'checkin') => void;
@@ -70,6 +71,7 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
     const [checkinData, setCheckinData] = useState<{ time: string; photo: string; attendanceId: string; status: 'Hadir' | 'Terlambat' } | null>(null);
     const [checkoutTime, setCheckoutTime] = useState<string | null>(null);
     const [isCheckoutAllowed, setIsCheckoutAllowed] = useState(false);
+    const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
 
     const { userProfile } = useAuth();
     const { toast } = useToast();
@@ -78,6 +80,18 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
     const [isPending, startTransition] = useTransition();
     const formRef = useRef<HTMLFormElement>(null);
 
+
+    useEffect(() => {
+        if (Capacitor.isNativePlatform() && isAvatarDialogOpen) {
+          const listener = App.addListener('backButton', (e) => {
+            e.canGoBack = false;
+            setIsAvatarDialogOpen(false);
+          });
+          return () => {
+            listener.remove();
+          };
+        }
+      }, [isAvatarDialogOpen]);
 
     useEffect(() => {
         const updateDateTime = () => {
@@ -203,7 +217,7 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
                         <p className="text-sm text-muted-foreground capitalize">{userProfile.role}</p>
                     </div>
                     {isCustomAvatar ? (
-                        <Dialog>
+                        <Dialog open={isAvatarDialogOpen} onOpenChange={setIsAvatarDialogOpen}>
                             <DialogTrigger asChild>
                                 <Avatar className="h-14 w-14 cursor-pointer">
                                     <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait"/>

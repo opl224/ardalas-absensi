@@ -28,7 +28,7 @@ import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { Capacitor } from '@capacitor/core';
+import { App, Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 
 interface User {
@@ -69,6 +69,19 @@ export function UserManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const { toast } = useToast();
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+
+  useEffect(() => {
+    if (Capacitor.isNativePlatform() && isDetailDialogOpen) {
+      const listener = App.addListener('backButton', (e) => {
+        e.canGoBack = false;
+        setIsDetailDialogOpen(false);
+      });
+      return () => {
+        listener.remove();
+      };
+    }
+  }, [isDetailDialogOpen]);
 
   useEffect(() => {
     const fetchUsersAndListenForStatus = async () => {
@@ -360,7 +373,10 @@ export function UserManagement() {
 
 
   return (
-    <Dialog onOpenChange={(open) => !open && setSelectedUser(null)}>
+    <Dialog open={isDetailDialogOpen} onOpenChange={(open) => {
+      setIsDetailDialogOpen(open);
+      if (!open) setSelectedUser(null);
+    }}>
       <div className="bg-gray-50 dark:bg-zinc-900">
         <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <h1 className="text-xl font-bold text-foreground">Manajemen Pengguna</h1>

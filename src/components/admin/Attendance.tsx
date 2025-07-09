@@ -30,7 +30,7 @@ import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Switch } from '../ui/switch';
-import { Capacitor } from '@capacitor/core';
+import { App, Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 
 
@@ -176,6 +176,27 @@ export function Attendance() {
         });
         return () => unsubscribe();
     }, []);
+
+    useEffect(() => {
+        if (Capacitor.isNativePlatform()) {
+            // Prioritize the top-most dialog
+            if (isEditDialogOpen || isDeleteDialogOpen || isViewDialogOpen) {
+              const listener = App.addListener('backButton', (e) => {
+                  e.canGoBack = false;
+                  if (isEditDialogOpen) {
+                    setIsEditDialogOpen(false);
+                  } else if (isDeleteDialogOpen) {
+                    setIsDeleteDialogOpen(false);
+                  } else if (isViewDialogOpen) {
+                      setIsViewDialogOpen(false);
+                  }
+              });
+              return () => {
+                listener.remove();
+              };
+            }
+        }
+    }, [isEditDialogOpen, isDeleteDialogOpen, isViewDialogOpen]);
 
     useEffect(() => {
         if (!date || !settings) return;
@@ -759,6 +780,7 @@ export function Attendance() {
 
 
     
+
 
 
 

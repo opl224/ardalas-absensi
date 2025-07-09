@@ -21,6 +21,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { App, Capacitor } from "@capacitor/core";
 
 type ActiveView = 'home' | 'profile' | 'users' | 'reports' | 'attendance';
 
@@ -42,6 +43,20 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
     const [loading, setLoading] = useState(true);
     const [showSettingsDialog, setShowSettingsDialog] = useState(false);
     const [settings, setSettings] = useState<any | null>(null);
+    const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
+
+    useEffect(() => {
+        if (Capacitor.isNativePlatform() && (showSettingsDialog || isAvatarDialogOpen)) {
+          const listener = App.addListener('backButton', (e) => {
+            e.canGoBack = false;
+            if (showSettingsDialog) setShowSettingsDialog(false);
+            if (isAvatarDialogOpen) setIsAvatarDialogOpen(false);
+          });
+          return () => {
+            listener.remove();
+          };
+        }
+      }, [showSettingsDialog, isAvatarDialogOpen]);
 
     useEffect(() => {
         const updateDateTime = () => {
@@ -184,7 +199,7 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
                     <p className="text-sm text-muted-foreground">Administrator Sistem</p>
                 </div>
                 {isCustomAvatar ? (
-                    <Dialog>
+                    <Dialog open={isAvatarDialogOpen} onOpenChange={setIsAvatarDialogOpen}>
                         <DialogTrigger asChild>
                             <Avatar className="h-14 w-14 cursor-pointer">
                                 <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait" />

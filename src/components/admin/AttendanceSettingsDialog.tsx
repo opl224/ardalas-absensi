@@ -13,6 +13,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader } from '../ui/loader';
 import { Separator } from '../ui/separator';
+import { App, Capacitor } from '@capacitor/core';
 
 const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const daysOfWeekIndonesian: { [key: string]: string } = {
@@ -45,6 +46,18 @@ export function AttendanceSettingsDialog({ open, onOpenChange }: AttendanceSetti
     const [settings, setSettings] = useState<Settings | null>(null);
     const [loading, setLoading] = useState(true);
     const [isPending, startTransition] = useTransition();
+
+    useEffect(() => {
+        if (Capacitor.isNativePlatform() && open) {
+            const listener = App.addListener('backButton', (e) => {
+                e.canGoBack = false;
+                onOpenChange(false);
+            });
+            return () => {
+                listener.remove();
+            };
+        }
+    }, [open, onOpenChange]);
 
     useEffect(() => {
         const fetchSettings = async () => {
