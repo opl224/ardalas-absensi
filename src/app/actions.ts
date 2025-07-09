@@ -292,9 +292,10 @@ export async function updateAvatar(formData: FormData): Promise<AvatarUpdateStat
 
         const userDocRef = doc(db, collectionName, userId);
 
-        await updateDoc(userDocRef, {
-            avatar: photoDataUri, // Store the base64 data URI directly
-        });
+        // Use setDoc with merge:true to create the document if it doesn't exist, or update it if it does.
+        await setDoc(userDocRef, {
+            avatar: photoDataUri,
+        }, { merge: true });
 
         // The new "URL" is the data URI itself
         return { success: true, newAvatarUrl: photoDataUri };
