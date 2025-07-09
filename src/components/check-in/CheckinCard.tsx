@@ -78,7 +78,7 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
           } else if (error.code === error.POSITION_UNAVAILABLE) {
             message = "Informasi lokasi tidak tersedia saat ini. Pastikan GPS Anda aktif.";
           } else if (error.code === error.TIMEOUT) {
-            message = "Gagal mendapatkan lokasi: Waktu habis. Pastikan koneksi internet dan GPS stabil.";
+            message = "Gagal mendapatkan lokasi: Waktu habis. Pastikan koneksi internet dan GPS stabil. dan jangan lupa aktifkan lokasi di pengaturan";
           }
           setLocationError(message);
           toast({ variant: 'destructive', title: 'Kesalahan Lokasi', description: message });
