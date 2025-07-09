@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useTransition, useRef } from 'react';
@@ -316,13 +315,6 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                                         <span className='font-medium text-foreground'>{status === 'checked_out' && checkoutTime ? checkoutTime : ' - '}</span>
                                     </div>
                                 </div>
-                                {status === 'checked_in' && (
-                                    <form onSubmit={handleCheckoutSubmit}>
-                                        <input type="hidden" name="userId" value={userProfile.uid} />
-                                        <input type="hidden" name="attendanceId" value={checkinData.attendanceId} />
-                                        <CheckoutButton disabled={!isCheckoutAllowed} pending={isPending} />
-                                    </form>
-                                )}
                             </>
                         )}
                     </CardContent>
