@@ -113,9 +113,13 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
           }
-        } catch (err) {
-          setCameraError("Tidak dapat mengakses kamera. Harap berikan izin.");
-          toast({ variant: 'destructive', title: 'Kesalahan Kamera', description: "Tidak dapat mengakses kamera. Harap berikan izin." });
+        } catch (err: any) {
+          let message = "Tidak dapat mengakses kamera. Harap periksa pengaturan perangkat Anda.";
+          if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+              message = "Izin kamera ditolak. Silakan aktifkan di pengaturan browser atau aplikasi Anda, lalu coba lagi.";
+          }
+          setCameraError(message);
+          toast({ variant: 'destructive', title: 'Kesalahan Kamera', description: message });
           setIsCameraOn(false);
         }
       };
@@ -290,7 +294,15 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
                       {!isCameraOn && !photoDataUri && (
                           <Button type="button" onClick={startCamera} className="w-full" disabled={!location}>Mulai Kamera</Button>
                       )}
-                      {cameraError && <p className="text-sm text-destructive mt-2">{cameraError}</p>}
+                      {cameraError && !isCameraOn && (
+                        <div className="mt-2 space-y-2">
+                            <p className="text-sm text-destructive mt-2">{cameraError}</p>
+                            <Button type="button" onClick={startCamera} className="w-full" variant="outline">
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                Coba Lagi
+                            </Button>
+                        </div>
+                      )}
 
                       <video
                           ref={videoRef}
@@ -340,7 +352,13 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={state.success && onSuccess ? onSuccess : resetCheckin}>Tutup</AlertDialogAction>
+            <AlertDialogAction onClick={() => {
+                if (state.success && onSuccess) {
+                    onSuccess();
+                } else {
+                    resetCheckin();
+                }
+            }}>Tutup</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
