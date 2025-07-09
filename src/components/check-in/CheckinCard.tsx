@@ -247,7 +247,7 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
                     {!location && !isGettingLocation && (
                       <>
                           <p className="text-sm text-muted-foreground">Klik tombol untuk mengaktifkan dan memverifikasi lokasi Anda.</p>
-                          <Button type="button" variant="secondary" onClick={requestLocation} className="mt-2">
+                          <Button type="button" variant="default" onClick={requestLocation} className="mt-2">
                               <MapPin className="mr-2 h-4 w-4" />
                               Aktifkan Lokasi
                           </Button>
@@ -265,7 +265,7 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
                     {locationError && !isGettingLocation && (
                       <div className="mt-2 space-y-2">
                         <p className="text-sm text-destructive mt-1">{locationError}</p>
-                        <Button type="button" variant="secondary" onClick={requestLocation}>
+                        <Button type="button" variant="default" onClick={requestLocation}>
                           <RefreshCw className="mr-2 h-4 w-4" />
                           Coba Lagi
                         </Button>
