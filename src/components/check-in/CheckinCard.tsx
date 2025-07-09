@@ -3,7 +3,6 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Camera, MapPin, CheckCircle, XCircle, AlertTriangle, RefreshCw } from "lucide-react";
-import { App } from '@capacitor/app';
 import { Loader } from "../ui/loader";
 import SplitText from "@/components/ui/SplitText";
 
@@ -100,37 +99,6 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
       setIsGettingLocation(false);
     }
   }, [toast]);
-
-  useEffect(() => {
-    // Permintaan awal saat komponen dimuat jika kita belum memiliki lokasi
-    if (!location && !isGettingLocation) {
-      requestLocation();
-    }
-
-    // Define an async function to set up the listener
-    const setupListener = async () => {
-      return await App.addListener('resume', () => {
-        // Saat aplikasi kembali aktif (misalnya setelah pengguna memberikan izin di pengaturan),
-        // coba dapatkan lokasi lagi jika kita belum memilikinya.
-        if (!location && !isGettingLocation) {
-          requestLocation();
-        }
-      });
-    };
-
-    // Set up the listener and get a promise for the handle
-    const listenerPromise = setupListener();
-
-    // Return a cleanup function
-    return () => {
-      // When the component unmounts, resolve the promise and remove the listener
-      const removeListener = async () => {
-        const listener = await listenerPromise;
-        await listener.remove();
-      };
-      removeListener();
-    };
-  }, [requestLocation, location, isGettingLocation]);
   
   const startCamera = () => {
     setCameraError(null);
@@ -193,9 +161,9 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
   const resetCheckin = () => {
     setPhotoDataUri(null);
     setLocation(null);
+    setLocationError(null);
     setResultDialogOpen(false);
     setState({});
-    requestLocation(); // Try to get location again after closing dialog
   }
 
   const getStep = () => {
@@ -259,6 +227,15 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
                 </div>
                 <div>
                   <h3 className="font-semibold">Langkah 1: Verifikasi Lokasi</h3>
+                  {!location && !isGettingLocation && (
+                    <>
+                        <p className="text-sm text-muted-foreground">Klik tombol untuk mengaktifkan dan memverifikasi lokasi Anda.</p>
+                        <Button type="button" variant="secondary" onClick={requestLocation} className="mt-2">
+                            <MapPin className="mr-2 h-4 w-4" />
+                            Aktifkan Lokasi
+                        </Button>
+                    </>
+                  )}
                   {isGettingLocation && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
                         <Loader scale={0.4} />
