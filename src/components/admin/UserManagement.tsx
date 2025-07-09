@@ -1,4 +1,3 @@
-
 'use client'
 
 import { useState, useEffect, useMemo } from 'react';
@@ -90,7 +89,7 @@ export function UserManagement() {
           role: 'Admin',
         }));
 
-        const allBaseUsers = [...teacherUsers, ...adminUsers] as any[];
+        const allBaseUsers = [...teacherUsers, ...adminUsers].filter(user => user.name && user.email) as any[];
 
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
