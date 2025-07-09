@@ -1,30 +1,13 @@
+// This file is intentionally left blank to disable middleware,
+// as it's not compatible with `output: 'export'` for Capacitor builds.
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
-
+// Middleware is disabled because it's incompatible with `output: 'export'`
 export function middleware(request: NextRequest) {
-  const token = request.cookies.get('firebaseIdToken');
-  const { pathname } = request.nextUrl;
-
-  // Student dashboard is disabled, redirect to login
-  if (pathname.startsWith('/student')) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/'
-    return NextResponse.redirect(url)
-  }
-
-  const protectedRoutes = ['/admin', '/teacher']; // Removed '/student'
-  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
-
-  if (isProtectedRoute && !token) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/'
-    return NextResponse.redirect(url)
-  }
-
-  return NextResponse.next()
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/teacher/:path*', '/student/:path*'],
-}
+  matcher: [],
+};
