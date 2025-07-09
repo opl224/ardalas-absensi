@@ -50,7 +50,7 @@ export function UserNav() {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={logout}>
+        <DropdownMenuItem onClick={() => logout("Anda telah berhasil keluar.")}>
           Keluar
         </DropdownMenuItem>
       </DropdownMenuContent>

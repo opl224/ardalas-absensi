@@ -29,7 +29,7 @@ export function LogoutDialog({ open, onOpenChange, onConfirm }: LogoutDialogProp
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel>Batal</AlertDialogCancel>
-                    <AlertDialogAction onClick={onConfirm}>Keluar</AlertDialogAction>
+                    <AlertDialogAction onClick={() => onConfirm()}>Keluar</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
