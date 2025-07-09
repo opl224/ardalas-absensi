@@ -76,9 +76,8 @@ export function StudentProfile() {
     return (
         <>
             <div className="bg-gray-50 dark:bg-zinc-900">
-                <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <h1 className="text-xl font-bold text-foreground">Profil</h1>
-                    <ThemeToggle />
                 </header>
                 <div className="p-4">
                     <div className="flex items-center gap-4 mb-6">
@@ -99,9 +98,14 @@ export function StudentProfile() {
                                 <span className="sr-only">Ubah Avatar</span>
                             </Button>
                         </div>
-                        <div>
-                            <p className="text-xl font-bold text-foreground">{userProfile.name}</p>
-                            <p className="text-sm text-muted-foreground capitalize">{userProfile.role}</p>
+                        <div className="flex-grow min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                                <div>
+                                    <p className="text-xl font-bold text-foreground truncate">{userProfile.name}</p>
+                                    <p className="text-sm text-muted-foreground capitalize">{userProfile.role}</p>
+                                </div>
+                                <ThemeToggle />
+                            </div>
                         </div>
                     </div>
 
