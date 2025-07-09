@@ -40,6 +40,7 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
 
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [photoDataUri, setPhotoDataUri] = useState<string | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
@@ -61,6 +62,7 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
   }, [state, onSuccess]);
 
   const getLocation = () => {
+    setIsGettingLocation(true);
     setLocationError(null);
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -69,15 +71,28 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
           });
+          setIsGettingLocation(false);
         },
         (error) => {
-          setLocationError(`Kesalahan: ${error.message}. Harap aktifkan layanan lokasi.`);
-          toast({ variant: 'destructive', title: 'Kesalahan Lokasi', description: `Kesalahan: ${error.message}. Harap aktifkan layanan lokasi.` });
+          let message = `Kesalahan: ${error.message}. Harap aktifkan layanan lokasi.`;
+           if (error.code === error.TIMEOUT) {
+            message = "Gagal mendapatkan lokasi: Waktu habis. Coba lagi.";
+          }
+          setLocationError(message);
+          toast({ variant: 'destructive', title: 'Kesalahan Lokasi', description: message });
+          setIsGettingLocation(false);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000, // 10-second timeout
+          maximumAge: 0
         }
       );
     } else {
-      setLocationError("Geolocation tidak didukung oleh browser ini.");
-      toast({ variant: 'destructive', title: 'Kesalahan Lokasi', description: "Geolocation tidak didukung oleh browser ini." });
+      const errorMsg = "Geolocation tidak didukung oleh browser ini.";
+      setLocationError(errorMsg);
+      toast({ variant: 'destructive', title: 'Kesalahan Lokasi', description: errorMsg });
+      setIsGettingLocation(false);
     }
   };
   
@@ -209,7 +224,10 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
                   <h3 className="font-semibold">Langkah 1: Akses Lokasi</h3>
                   <p className="text-sm text-muted-foreground">Kami membutuhkan lokasi Anda untuk verifikasi.</p>
                   {!location && (
-                    <Button type="button" onClick={getLocation} className="mt-2">Aktifkan Lokasi</Button>
+                    <Button type="button" onClick={getLocation} className="mt-2" disabled={isGettingLocation}>
+                      {isGettingLocation && <Loader scale={0.48} />}
+                      {isGettingLocation ? 'Mencari Lokasi...' : 'Aktifkan Lokasi'}
+                    </Button>
                   )}
                   {location && (
                      <p className="text-sm text-primary mt-2">Lokasi berhasil direkam.</p>
