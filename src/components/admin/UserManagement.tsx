@@ -153,7 +153,9 @@ export function UserManagement() {
           usersWithStatus.sort((a, b) => {
             if (a.role === 'Admin' && b.role !== 'Admin') return -1;
             if (a.role !== 'Admin' && b.role === 'Admin') return 1;
-            return a.name.localeCompare(b.name);
+            const nameA = a.name || '';
+            const nameB = b.name || '';
+            return nameA.localeCompare(nameB);
           });
 
           setUsers(usersWithStatus);
@@ -365,7 +367,7 @@ export function UserManagement() {
                           <div className="flex items-center gap-4">
                               <Avatar className="h-12 w-12">
                                   <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="person portrait" />
-                                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                                  <AvatarFallback>{user.name?.charAt(0)}</AvatarFallback>
                               </Avatar>
                               <div className="flex-grow min-w-0">
                                   <p className="font-semibold text-foreground truncate">{user.name}</p>
@@ -454,7 +456,7 @@ export function UserManagement() {
               <div className="flex items-center gap-4">
                   <Avatar className="h-16 w-16">
                       <AvatarImage src={selectedUser.avatar} alt={selectedUser.name} />
-                      <AvatarFallback>{selectedUser.name.slice(0,2).toUpperCase()}</AvatarFallback>
+                      <AvatarFallback>{selectedUser.name?.slice(0,2).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   <div>
                       <p className="text-xl font-bold text-foreground">{selectedUser.name}</p>
