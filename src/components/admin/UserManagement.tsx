@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useState, useEffect, useMemo } from 'react';
@@ -472,16 +473,6 @@ export function UserManagement() {
                   <DetailItem icon={BookMarked} label="Agama" value={selectedUser.religion} />
                   <DetailItem icon={Home} label="Alamat" value={selectedUser.address} />
               </div>
-              {selectedUser.role === 'Guru' && (
-                  <>
-                      <Separator />
-                      <div className="space-y-3 text-sm mt-4">
-                          <h3 className="font-semibold text-md mb-2">Informasi Akademik</h3>
-                          <DetailItem icon={BookCopy} label="Mata Pelajaran" value={selectedUser.subject} />
-                          <DetailItem icon={Briefcase} label="Mengajar Kelas" value={selectedUser.class} />
-                      </div>
-                  </>
-              )}
             </div>
           </ScrollArea>
         )}

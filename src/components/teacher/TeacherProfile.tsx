@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect, useTransition } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, Mail, Book, LogOut, Shield, ChevronRight, Camera } from "lucide-react";
+import { User, Mail, LogOut, Shield, ChevronRight, Camera, BookCopy, Briefcase } from "lucide-react";
 import { LogoutDialog } from "@/components/admin/LogoutDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { CenteredLoader, Loader } from "../ui/loader";
@@ -136,7 +136,16 @@ export function TeacherProfile({ setActiveView }: TeacherProfileProps) {
                         <CardContent className="divide-y divide-border pt-0">
                             <InfoRow icon={User} label="Nama Lengkap" value={userProfile.name} />
                             <InfoRow icon={Mail} label="Email" value={userProfile.email} />
-                            <InfoRow icon={Book} label="Mata Pelajaran" value={userProfile.subject || 'Tidak diketahui'} />
+                        </CardContent>
+                    </Card>
+
+                    <Card className="mb-6">
+                        <CardHeader>
+                            <CardTitle className="text-lg">Informasi Akademik</CardTitle>
+                        </CardHeader>
+                        <CardContent className="divide-y divide-border pt-0">
+                            <InfoRow icon={BookCopy} label="Mata Pelajaran" value={userProfile.subject || 'Belum diatur'} />
+                            <InfoRow icon={Briefcase} label="Mengajar Kelas" value={userProfile.class || 'Belum diatur'} />
                         </CardContent>
                     </Card>
 
