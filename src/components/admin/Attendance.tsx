@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useTransition } from 'react';
 import { format } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -11,11 +11,11 @@ import { collection, query, orderBy, Timestamp, getDocs, doc, deleteDoc, where, 
 import { db } from '@/lib/firebase';
 import { Loader } from '../ui/loader';
 import { Button, buttonVariants } from '../ui/button';
-import { ChevronLeft, ChevronRight, Trash2, Calendar as CalendarIcon, Download, Filter, AlertTriangle, MapPin } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash2, Calendar as CalendarIcon, Download, Filter, AlertTriangle, MapPin, Edit } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import {
   DropdownMenu,
@@ -25,6 +25,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Calendar } from "@/components/ui/calendar";
+import { updateAttendanceRecord, type AttendanceUpdateState } from '@/app/actions';
+import { Label } from '../ui/label';
+import { Input } from '../ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Switch } from '../ui/switch';
 
 
 interface AttendanceRecord {
@@ -44,6 +49,108 @@ interface AttendanceRecord {
 const RECORDS_PER_PAGE = 10;
 const filterOptions = ['Semua Kehadiran', 'Hadir', 'Terlambat', 'Kecurangan', 'Tidak Hadir'];
 
+function EditAttendanceDialog({ record, open, onOpenChange }: { record: AttendanceRecord | null, open: boolean, onOpenChange: (open: boolean) => void }) {
+    const [state, setState] = useState<AttendanceUpdateState>({});
+    const [isPending, startTransition] = useTransition();
+    const { toast } = useToast();
+    const formRef = useRef<HTMLFormElement>(null);
+
+    useEffect(() => {
+        if (state.success) {
+            toast({ title: 'Berhasil', description: 'Catatan kehadiran telah diperbarui.' });
+            onOpenChange(false);
+        }
+        if (state.error) {
+            toast({ variant: 'destructive', title: 'Gagal', description: state.error });
+        }
+    }, [state, toast, onOpenChange]);
+
+    if (!record) return null;
+
+    const toDateTimeLocal = (timestamp?: Timestamp): string => {
+        if (!timestamp) return '';
+        const date = timestamp.toDate();
+        const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+        const localISOTime = new Date(date.getTime() - tzoffset).toISOString().slice(0, 16);
+        return localISOTime;
+    };
+
+    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (!formRef.current) return;
+        const formData = new FormData(formRef.current);
+        startTransition(async () => {
+            const result = await updateAttendanceRecord(formData);
+            setState(result);
+        });
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Edit Kehadiran: {record.name}</DialogTitle>
+                </DialogHeader>
+                <form ref={formRef} onSubmit={handleSubmit} className="space-y-4 pt-2">
+                    <input type="hidden" name="attendanceId" value={record.id} />
+                    <div className="space-y-2">
+                        <Label htmlFor="checkInTime">Waktu Absen Masuk</Label>
+                        <Input
+                            id="checkInTime"
+                            name="checkInTime"
+                            type="datetime-local"
+                            defaultValue={toDateTimeLocal(record.checkInTime)}
+                            disabled={isPending}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="checkOutTime">Waktu Absen Keluar</Label>
+                        <Input
+                            id="checkOutTime"
+                            name="checkOutTime"
+                            type="datetime-local"
+                            defaultValue={toDateTimeLocal(record.checkOutTime)}
+                            disabled={isPending}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="status">Status</Label>
+                        <Select name="status" defaultValue={record.status} disabled={isPending}>
+                            <SelectTrigger id="status">
+                                <SelectValue placeholder="Pilih status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Hadir">Hadir</SelectItem>
+                                <SelectItem value="Terlambat">Terlambat</SelectItem>
+                                <SelectItem value="Tidak Hadir">Tidak Hadir</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    {record.isFraudulent && (
+                        <div className="flex items-center space-x-2 pt-2">
+                            <Switch
+                                id="removeFraudWarning"
+                                name="removeFraudWarning"
+                                disabled={isPending}
+                            />
+                            <Label htmlFor="removeFraudWarning">Hapus Peringatan Kecurangan</Label>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
+                            Batal
+                        </Button>
+                        <Button type="submit" disabled={isPending}>
+                            {isPending && <Loader scale={0.4} />}
+                            Simpan Perubahan
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 export function Attendance() {
     const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
     const [loading, setLoading] = useState(true);
@@ -57,7 +164,9 @@ export function Attendance() {
     const { toast } = useToast();
     const [settings, setSettings] = useState<any>(null);
 
-    // Listener for settings changes
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
+
     useEffect(() => {
         const settingsRef = doc(db, "settings", "attendance");
         const unsubscribe = onSnapshot(settingsRef, (docSnap) => {
@@ -66,7 +175,6 @@ export function Attendance() {
         return () => unsubscribe();
     }, []);
 
-    // Main logic effect, depends on date and settings
     useEffect(() => {
         if (!date || !settings) return;
         setLoading(true);
@@ -84,7 +192,6 @@ export function Attendance() {
             orderBy("checkInTime", "desc")
         );
         
-        // This listener will react to new/deleted attendance records for the selected day.
         const unsubscribeAttendance = onSnapshot(q, async (querySnapshot) => {
             const fetchedRecords: AttendanceRecord[] = querySnapshot.docs.map(doc => ({
                 id: doc.id,
@@ -93,7 +200,6 @@ export function Attendance() {
             
             let finalRecords = [...fetchedRecords];
 
-            // Now, recalculate absentees using the latest settings
             const now = new Date();
             const selectedDateStr = date.toLocaleDateString('en-US', { weekday: 'long' });
             const isOffDay = settings.offDays.includes(selectedDateStr);
@@ -244,6 +350,20 @@ export function Attendance() {
         setSelectedRecordId(id);
         setIsDeleteDialogOpen(true);
     }
+
+    const openEditDialog = (e: React.MouseEvent, record: AttendanceRecord) => {
+        e.stopPropagation();
+        if (record.id.startsWith('absent-')) {
+            toast({
+                variant: 'destructive',
+                title: 'Tidak Dapat Mengedit',
+                description: 'Catatan "Tidak Hadir" yang dibuat otomatis tidak dapat diedit.',
+            });
+            return;
+        }
+        setEditingRecord(record);
+        setIsEditDialogOpen(true);
+    };
     
     const getBadgeVariant = (record: AttendanceRecord) => {
         switch (record.status) {
@@ -402,6 +522,16 @@ export function Attendance() {
                                         <Button
                                             variant="ghost"
                                             size="icon"
+                                            className="h-7 w-7"
+                                            onClick={(e) => openEditDialog(e, item)}
+                                            disabled={item.id.startsWith('absent-')}
+                                        >
+                                            <Edit className="h-4 w-4" />
+                                            <span className="sr-only">Edit Catatan</span>
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
                                             className="h-7 w-7 text-destructive/70 hover:text-destructive hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-not-allowed"
                                             onClick={(e) => openDeleteDialog(e, item.id)}
                                             disabled={item.id.startsWith('absent-')}
@@ -415,7 +545,7 @@ export function Attendance() {
                                         <AvatarFallback>{item.name.slice(0, 2).toUpperCase()}</AvatarFallback>
                                     </Avatar>
                                     <div className="flex-grow min-w-0">
-                                        <p className="font-semibold text-foreground truncate pr-16">{item.name}</p>
+                                        <p className="font-semibold text-foreground truncate pr-24">{item.name}</p>
                                         <p className="text-sm text-muted-foreground capitalize">{item.role}</p>
                                         <p className="text-xs text-muted-foreground">
                                             {item.status === 'Tidak Hadir'
@@ -591,9 +721,11 @@ export function Attendance() {
                     )}
                 </DialogContent>
             </Dialog>
+            <EditAttendanceDialog record={editingRecord} open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} />
         </div>
     )
 }
 
 
     
+

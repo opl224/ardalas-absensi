@@ -1,6 +1,6 @@
 
 import { z } from "zod";
-import { doc, setDoc, collection, updateDoc, getDoc } from "firebase/firestore"; 
+import { doc, setDoc, collection, updateDoc, getDoc, Timestamp, deleteField } from "firebase/firestore"; 
 import { db } from "@/lib/firebase";
 
 const checkinSchema = z.object({
@@ -305,4 +305,62 @@ export async function updateAvatar(formData: FormData): Promise<AvatarUpdateStat
         const errorMessage = e instanceof Error ? e.message : "Terjadi kesalahan yang tidak terduga.";
         return { error: `Kesalahan server: ${errorMessage}.` };
     }
+}
+
+const updateAttendanceSchema = z.object({
+  attendanceId: z.string().min(1, "ID Kehadiran diperlukan."),
+  checkInTime: z.string().min(1, "Waktu absen masuk diperlukan."),
+  checkOutTime: z.string().optional(),
+  status: z.enum(['Hadir', 'Terlambat', 'Tidak Hadir']),
+  removeFraudWarning: z.preprocess((val) => val === 'on', z.boolean()),
+});
+
+export type AttendanceUpdateState = {
+  success?: boolean;
+  error?: string;
+};
+
+export async function updateAttendanceRecord(formData: FormData): Promise<AttendanceUpdateState> {
+  const validatedFields = updateAttendanceSchema.safeParse({
+    attendanceId: formData.get("attendanceId"),
+    checkInTime: formData.get("checkInTime"),
+    checkOutTime: formData.get("checkOutTime"),
+    status: formData.get("status"),
+    removeFraudWarning: formData.get("removeFraudWarning"),
+  });
+
+  if (!validatedFields.success) {
+    console.error("Validation Error:", validatedFields.error.flatten().fieldErrors);
+    return { error: "Data masukan tidak valid." };
+  }
+
+  const { attendanceId, checkInTime, checkOutTime, status, removeFraudWarning } = validatedFields.data;
+  
+  try {
+    const recordRef = doc(db, "photo_attendances", attendanceId);
+
+    const updateData: any = {
+      status,
+      checkInTime: Timestamp.fromDate(new Date(checkInTime)),
+    };
+
+    if (checkOutTime && checkOutTime.length > 0) {
+      updateData.checkOutTime = Timestamp.fromDate(new Date(checkOutTime));
+    } else {
+      updateData.checkOutTime = deleteField();
+    }
+
+    if (removeFraudWarning) {
+      updateData.isFraudulent = false;
+      updateData.fraudReason = '';
+    }
+
+    await updateDoc(recordRef, updateData);
+    return { success: true };
+
+  } catch (e) {
+    console.error('Error updating attendance record:', e);
+    const errorMessage = e instanceof Error ? e.message : "Terjadi kesalahan yang tidak terduga.";
+    return { error: `Kesalahan server: ${errorMessage}.` };
+  }
 }
