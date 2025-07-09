@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useActionState, useState, useEffect } from 'react';
+import { useState, useEffect, useTransition, useRef } from 'react';
 import { handleCheckout, type CheckoutState } from '@/app/actions';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from '@/components/ui/badge';
 import { BarChart2, CalendarDays, Clock, MapPin, CheckCircle, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useFormStatus } from 'react-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { CenteredLoader, Loader } from '../ui/loader';
 import { collection, query, where, onSnapshot, Timestamp, orderBy, limit, doc, getDoc } from 'firebase/firestore';
@@ -30,8 +29,7 @@ interface TeacherHomeProps {
 
 type CheckinStatus = 'not_checked_in' | 'checked_in' | 'checked_out' | 'tidak_hadir' | 'loading';
 
-function CheckoutButton({ disabled }: { disabled: boolean }) {
-    const { pending } = useFormStatus();
+function CheckoutButton({ disabled, pending }: { disabled: boolean, pending: boolean }) {
     return (
       <Button type="submit" className="w-full" disabled={pending || disabled}>
         {pending && <Loader scale={0.48} />}
@@ -40,8 +38,7 @@ function CheckoutButton({ disabled }: { disabled: boolean }) {
     );
 }
 
-function QuickCheckoutButton({ disabled }: { disabled: boolean }) {
-    const { pending } = useFormStatus();
+function QuickCheckoutButton({ disabled, pending }: { disabled: boolean, pending: boolean }) {
     return (
         <button type="submit" disabled={pending || disabled} className="w-full text-left p-0 rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50">
             <Card className="w-full h-full p-4 flex flex-col items-center justify-center text-center hover:bg-secondary">
@@ -83,8 +80,8 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
     const { userProfile } = useAuth();
     const { toast } = useToast();
 
-    const initialState: CheckoutState = {};
-    const [checkoutState, formAction] = useActionState(handleCheckout, initialState);
+    const [checkoutState, setCheckoutState] = useState<CheckoutState>({});
+    const [isPending, startTransition] = useTransition();
 
     useEffect(() => {
         const updateDateTime = () => {
@@ -200,6 +197,15 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
         }
     }, [checkoutState, toast]);
 
+    const handleCheckoutSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
+        startTransition(async () => {
+            const result = await handleCheckout(formData);
+            setCheckoutState(result);
+        });
+    }
+
     if (!userProfile) {
         return <CenteredLoader />;
     }
@@ -311,10 +317,10 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                                     </div>
                                 </div>
                                 {status === 'checked_in' && (
-                                    <form action={formAction}>
+                                    <form onSubmit={handleCheckoutSubmit}>
                                         <input type="hidden" name="userId" value={userProfile.uid} />
                                         <input type="hidden" name="attendanceId" value={checkinData.attendanceId} />
-                                        <CheckoutButton disabled={!isCheckoutAllowed} />
+                                        <CheckoutButton disabled={!isCheckoutAllowed} pending={isPending} />
                                     </form>
                                 )}
                             </>
@@ -341,10 +347,10 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                             </Card>
                         </button>
                         {status === 'checked_in' && checkinData ? (
-                            <form action={formAction}>
+                            <form onSubmit={handleCheckoutSubmit}>
                                 <input type="hidden" name="userId" value={userProfile.uid} />
                                 <input type="hidden" name="attendanceId" value={checkinData.attendanceId} />
-                                <QuickCheckoutButton disabled={!isCheckoutAllowed} />
+                                <QuickCheckoutButton disabled={!isCheckoutAllowed} pending={isPending} />
                             </form>
                         ) : (
                             <button

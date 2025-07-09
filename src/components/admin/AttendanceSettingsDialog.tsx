@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useEffect, useState, useActionState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,10 +41,10 @@ interface AttendanceSettingsDialogProps {
 
 export function AttendanceSettingsDialog({ open, onOpenChange }: AttendanceSettingsDialogProps) {
     const { toast } = useToast();
-    const initialState: SettingsState = {};
-    const [state, formAction] = useActionState(updateAttendanceSettings, initialState);
+    const [state, setState] = useState<SettingsState>({});
     const [settings, setSettings] = useState<Settings | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isPending, startTransition] = useTransition();
 
     useEffect(() => {
         const fetchSettings = async () => {
@@ -85,6 +86,15 @@ export function AttendanceSettingsDialog({ open, onOpenChange }: AttendanceSetti
             toast({ variant: 'destructive', title: 'Error', description: state.error });
         }
     }, [state, toast, onOpenChange]);
+    
+    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
+        startTransition(async () => {
+            const result = await updateAttendanceSettings(formData);
+            setState(result);
+        });
+    }
 
     if (!open) return null;
 
@@ -102,7 +112,7 @@ export function AttendanceSettingsDialog({ open, onOpenChange }: AttendanceSetti
                         <Loader />
                     </div>
                 ) : (
-                    <form action={formAction}>
+                    <form onSubmit={handleSubmit}>
                         <div className="space-y-4 py-4">
                             <h3 className="font-semibold text-foreground">Jam Absen Masuk</h3>
                             <div className="grid grid-cols-2 gap-4">
@@ -148,8 +158,11 @@ export function AttendanceSettingsDialog({ open, onOpenChange }: AttendanceSetti
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Batal</Button>
-                            <Button type="submit">Simpan</Button>
+                            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>Batal</Button>
+                            <Button type="submit" disabled={isPending}>
+                                {isPending && <Loader scale={0.4} />}
+                                Simpan
+                            </Button>
                         </DialogFooter>
                     </form>
                 )}

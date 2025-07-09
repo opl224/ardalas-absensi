@@ -1,6 +1,4 @@
 
-'use server'
-
 import { supabase } from "@/lib/supabase";
 import { z } from "zod";
 import { doc, setDoc, collection, updateDoc, getDoc } from "firebase/firestore"; 
@@ -23,15 +21,11 @@ export type CheckinState = {
   success?: boolean;
 }
 
-// Helper function to convert data URI to Blob using Buffer for server-side reliability
-function dataURItoBlob(dataURI: string) {
-    const base64 = dataURI.split(',')[1];
-    if (!base64) {
-        throw new Error('Invalid data URI');
-    }
-    const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
-    const buffer = Buffer.from(base64, 'base64');
-    return new Blob([buffer], { type: mimeString });
+// Helper function to convert data URI to Blob using fetch for client-side reliability
+async function dataURItoBlob(dataURI: string): Promise<Blob> {
+    const response = await fetch(dataURI);
+    const blob = await response.blob();
+    return blob;
 }
 
 // This function is still used by other components (e.g., Attendance.tsx)
@@ -60,7 +54,6 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 
 
 export async function handleCheckin(
-  prevState: CheckinState,
   formData: FormData
 ): Promise<CheckinState> {
   try {
@@ -150,7 +143,7 @@ export async function handleCheckin(
     }
 
     // 1. Upload selfie to Supabase
-    const photoBlob = dataURItoBlob(photoDataUri);
+    const photoBlob = await dataURItoBlob(photoDataUri);
     const photoPath = `${userId}/${new Date().toISOString()}.jpg`;
     
     const { error: uploadError } = await supabase.storage
@@ -223,7 +216,7 @@ export type CheckoutState = {
     error?: string;
 };
 
-export async function handleCheckout(prevState: CheckoutState, formData: FormData): Promise<CheckoutState> {
+export async function handleCheckout(formData: FormData): Promise<CheckoutState> {
     try {
         const userId = formData.get("userId") as string;
         const attendanceId = formData.get("attendanceId") as string;
@@ -261,7 +254,7 @@ export type SettingsState = {
   error?: string | null;
 }
 
-export async function updateAttendanceSettings(prevState: SettingsState, formData: FormData): Promise<SettingsState> {
+export async function updateAttendanceSettings(formData: FormData): Promise<SettingsState> {
   try {
     const validatedFields = settingsSchema.safeParse({
       checkInStart: formData.get("checkInStart"),
@@ -300,7 +293,7 @@ export type AvatarUpdateState = {
     newAvatarUrl?: string;
 };
 
-export async function updateAvatar(prevState: AvatarUpdateState, formData: FormData): Promise<AvatarUpdateState> {
+export async function updateAvatar(formData: FormData): Promise<AvatarUpdateState> {
     const validatedFields = avatarUpdateSchema.safeParse({
         userId: formData.get('userId'),
         userRole: formData.get('userRole'),
@@ -315,7 +308,7 @@ export async function updateAvatar(prevState: AvatarUpdateState, formData: FormD
     const { userId, userRole, photoDataUri } = validatedFields.data;
 
     try {
-        const photoBlob = dataURItoBlob(photoDataUri);
+        const photoBlob = await dataURItoBlob(photoDataUri);
         const fileExtension = photoBlob.type.split('/')[1] || 'jpg';
         const photoPath = `avatars/${userId}/${Date.now()}.${fileExtension}`;
 

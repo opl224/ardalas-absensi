@@ -1,8 +1,7 @@
 
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
-import { useFormStatus } from "react-dom";
+import { useEffect, useRef, useState } from "react";
 import { Camera, MapPin, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { Loader } from "../ui/loader";
 import SplitText from "@/components/ui/SplitText";
@@ -20,8 +19,7 @@ interface CheckinCardProps {
   onSuccess?: () => void;
 }
 
-function SubmitButton({ disabled }: { disabled: boolean }) {
-  const { pending } = useFormStatus();
+function SubmitButton({ disabled, pending }: { disabled: boolean; pending: boolean; }) {
   return (
     <Button type="submit" className="w-full" disabled={disabled || pending}>
       {pending && <Loader scale={0.48} />}
@@ -36,8 +34,9 @@ const splitTextTo = { opacity: 1, y: 0 };
 export function CheckinCard({ onSuccess }: CheckinCardProps) {
   const { userProfile } = useAuth();
   const { toast } = useToast();
-  const initialState: CheckinState = {};
-  const [state, formAction] = useActionState(handleCheckin, initialState);
+  
+  const [state, setState] = useState<CheckinState>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -49,6 +48,8 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+
 
   useEffect(() => {
     if (state.error || state.success || state.isFraudulent) {
@@ -142,6 +143,7 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
     setPhotoDataUri(null);
     setLocation(null);
     setResultDialogOpen(false);
+    setState({});
   }
 
   const getStep = () => {
@@ -151,6 +153,17 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
   }
   
   const progressValue = (getStep() - 1) * 50;
+  
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!formRef.current) return;
+    
+    setIsSubmitting(true);
+    const formData = new FormData(formRef.current);
+    const result = await handleCheckin(formData);
+    setState(result);
+    setIsSubmitting(false);
+  };
 
   if (!userProfile) {
     return <Card className="w-full max-w-lg shadow-lg p-8 text-center">Memuat data pengguna...</Card>;
@@ -178,7 +191,7 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
           <Progress value={progressValue} className="mt-2" />
         </CardHeader>
         <CardContent>
-          <form action={formAction}>
+          <form ref={formRef} onSubmit={handleSubmit}>
             <input type="hidden" name="photoDataUri" value={photoDataUri || ""} />
             <input type="hidden" name="latitude" value={location?.latitude || ""} />
             <input type="hidden" name="longitude" value={location?.longitude || ""} />
@@ -249,7 +262,7 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
             )}
             
             <CardFooter className="p-0 pt-6">
-                <SubmitButton disabled={!photoDataUri || !location} />
+                <SubmitButton disabled={!photoDataUri || !location} pending={isSubmitting} />
             </CardFooter>
           </form>
         </CardContent>
