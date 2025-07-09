@@ -6,6 +6,22 @@ const config: CapacitorConfig = {
   webDir: 'out',
   server: {
     androidScheme: 'https'
+  },
+  android: {
+    variables: {
+      minSdkVersion: 22,
+      compileSdkVersion: 33,
+      targetSdkVersion: 33,
+      androidxAppCompatVersion: '1.6.1',
+      androidxCoordinatorLayoutVersion: '1.2.0',
+      androidxCoreVersion: '1.12.0',
+      androidxFragmentVersion: '1.6.2',
+      junitVersion: '4.13.2',
+      androidxJunitVersion: '1.1.5',
+      androidxEspressoCoreVersion: '3.5.1',
+      coreSplashScreenVersion: '1.0.1',
+      androidxWebkitVersion: '1.8.0'
+    }
   }
 };
 
