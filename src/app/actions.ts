@@ -179,7 +179,7 @@ export async function handleCheckin(
 
     if (uploadError) {
       console.error('Supabase Upload Error:', uploadError);
-      const message = `Gagal mengunggah foto. Aksi Diperlukan: Ini kemungkinan besar disebabkan oleh kebijakan (policy) bucket Supabase yang tidak mengizinkan unggahan. Pastikan bucket 'selfies' Anda bersifat publik dan memiliki kebijakan INSERT yang mengizinkan semua pengguna (anon). Cek dokumentasi Supabase untuk contoh kebijakan penyimpanan.`;
+      const message = `Gagal mengunggah foto. Aksi Diperlukan: Ini hampir selalu disebabkan oleh kebijakan (policy) bucket Supabase yang salah. Periksa hal berikut di Dasbor Supabase Anda: 1. Bucket 'selfies' harus bersifat PUBLIK. 2. Harus ada kebijakan INSERT pada bucket 'selfies' yang mengizinkan *semua pengguna (anon)*. Kode server saat ini menggunakan kunci anonim.`;
       return { error: message };
     }
 
@@ -352,7 +352,7 @@ export async function updateAvatar(formData: FormData): Promise<AvatarUpdateStat
 
         if (uploadError) {
             console.error('Supabase Upload Error:', uploadError);
-            const message = `Gagal mengunggah avatar. Aksi Diperlukan: Ini kemungkinan besar disebabkan oleh kebijakan (policy) bucket Supabase yang tidak mengizinkan unggahan. Pastikan bucket 'selfies' Anda bersifat publik dan memiliki kebijakan INSERT/UPDATE untuk pengguna terotentikasi.`;
+            const message = `Gagal mengunggah avatar. Aksi Diperlukan: Ini hampir selalu disebabkan oleh kebijakan (policy) bucket Supabase yang salah. Periksa hal berikut di Dasbor Supabase Anda: 1. Bucket 'selfies' harus bersifat PUBLIK. 2. Harus ada kebijakan INSERT/UPDATE pada bucket 'selfies' yang mengizinkan *semua pengguna (anon)*. Kode server saat ini menggunakan kunci anonim.`;
             return { error: message };
         }
 
