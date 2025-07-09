@@ -12,6 +12,7 @@ import { ThemeToggle } from "../ThemeToggle";
 import { Button } from "../ui/button";
 import { updateAvatar, type AvatarUpdateState } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
     <div className="flex items-center gap-4 py-3">
@@ -23,15 +24,15 @@ const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label:
     </div>
 );
 
-const ClickableRow = ({ icon: Icon, label, onClick }: { icon: React.ElementType, label: string, onClick?: () => void }) => (
+const ClickableRow = ({ icon: Icon, label, onClick, className }: { icon: React.ElementType, label: string, onClick?: () => void, className?: string }) => (
     <button
         onClick={onClick}
-        className="flex items-center justify-between py-3 w-full text-left disabled:opacity-50"
+        className={cn("flex items-center justify-between py-3 w-full text-left disabled:opacity-50 rounded-md", className)}
         disabled={!onClick}
     >
         <div className="flex items-center gap-4">
-            <Icon className="h-6 w-6 text-muted-foreground" />
-            <span className="font-medium text-foreground">{label}</span>
+            <Icon className="h-6 w-6" />
+            <span className="font-medium">{label}</span>
         </div>
         {onClick && <ChevronRight className="h-5 w-5 text-muted-foreground" />}
     </button>
@@ -120,7 +121,7 @@ export function TeacherProfile({ setActiveView }: TeacherProfileProps) {
                         </div>
                         <div className="flex-grow min-w-0">
                             <div className="flex items-start justify-between gap-2">
-                                <div>
+                                <div className="min-w-0">
                                     <p className="text-xl font-bold text-foreground truncate">{userProfile.name}</p>
                                     <p className="text-sm text-muted-foreground capitalize">{userProfile.role}</p>
                                 </div>
@@ -155,15 +156,12 @@ export function TeacherProfile({ setActiveView }: TeacherProfileProps) {
                         </CardHeader>
                         <CardContent className="divide-y divide-border pt-0">
                             <ClickableRow icon={Shield} label="Privasi" onClick={() => setActiveView?.('privacy')} />
-                            <button
+                            <ClickableRow 
+                                icon={LogOut} 
+                                label="Keluar" 
                                 onClick={() => setShowLogoutDialog(true)}
-                                className="flex items-center justify-between py-3 w-full text-left"
-                            >
-                                <div className="flex items-center gap-4 text-destructive">
-                                    <LogOut className="h-6 w-6" />
-                                    <span className="font-medium">Keluar</span>
-                                </div>
-                            </button>
+                                className="text-destructive hover:bg-destructive/10"
+                            />
                         </CardContent>
                     </Card>
                 </div>

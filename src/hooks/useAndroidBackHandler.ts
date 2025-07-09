@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -28,19 +29,20 @@ export const useAndroidBackHandler = ({
     (e: BackButtonListenerEvent) => {
       e.canGoBack = false; // Prevent default webview behavior
 
+      if (showExitDialog) {
+        setShowExitDialog(false);
+        return;
+      }
+
       if (isSubView) {
         onBack();
-      } else if (currentView === profileViewId) {
+      } else if (currentView !== homeViewId) {
         changeView(homeViewId);
-      } else if (mainViews.includes(currentView)) {
-        setShowExitDialog(true);
       } else {
-        // Fallback for any other case, though it shouldn't be reached
-        // with the current logic.
-        changeView(homeViewId);
+        setShowExitDialog(true);
       }
     },
-    [currentView, isSubView, onBack, profileViewId, homeViewId, changeView, mainViews]
+    [currentView, isSubView, onBack, homeViewId, changeView, showExitDialog]
   );
 
   useEffect(() => {

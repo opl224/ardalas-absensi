@@ -115,8 +115,8 @@ export function Profile({ setActiveView }: { setActiveView: (view: string) => vo
                             </Button>
                         </div>
                         <div className="flex-grow min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                                <div>
+                             <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
                                     <p className="text-xl font-bold text-foreground truncate">{userProfile.name}</p>
                                     <p className="text-sm text-muted-foreground capitalize">{userProfile.role}</p>
                                 </div>
@@ -144,9 +144,9 @@ export function Profile({ setActiveView }: { setActiveView: (view: string) => vo
                             <ClickableRow icon={Shield} label="Privasi" onClick={() => setActiveView('privacy')} />
                             <button
                                 onClick={() => setShowLogoutDialog(true)}
-                                className="flex items-center justify-between py-3 w-full text-left"
+                                className="flex items-center justify-between py-3 w-full text-left text-destructive rounded-md hover:bg-destructive/10"
                             >
-                                <div className="flex items-center gap-4 text-destructive">
+                                <div className="flex items-center gap-4">
                                     <LogOut className="h-6 w-6" />
                                     <span className="font-medium">Keluar</span>
                                 </div>
