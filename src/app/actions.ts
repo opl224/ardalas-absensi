@@ -21,12 +21,22 @@ export type CheckinState = {
   success?: boolean;
 }
 
-// Helper function to convert data URI to Blob using fetch for client-side reliability
-async function dataURItoBlob(dataURI: string): Promise<Blob> {
-    const response = await fetch(dataURI);
-    const blob = await response.blob();
-    return blob;
+// Helper function to convert data URI to Buffer for server-side processing
+function dataURIToBuffer(dataURI: string): { buffer: Buffer; mimeType: string; extension: string } {
+    if (!dataURI.includes(',')) {
+        throw new Error('Invalid data URI format');
+    }
+    const dataUriParts = dataURI.split(',');
+    const header = dataUriParts[0];
+    const data = dataUriParts[1];
+
+    const mimeType = header.match(/:(.*?);/)?.[1] || 'application/octet-stream';
+    const extension = mimeType.split('/')[1] || 'bin';
+    
+    const buffer = Buffer.from(data, 'base64');
+    return { buffer, mimeType, extension };
 }
+
 
 // This function is still used by other components (e.g., Attendance.tsx)
 function getTodayAtTime(timeString: string): Date {
@@ -56,6 +66,14 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 export async function handleCheckin(
   formData: FormData
 ): Promise<CheckinState> {
+  // Check for Supabase config first
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.trim() === '' || supabaseAnonKey.trim() === '') {
+      console.error("Supabase environment variables are missing.");
+      return { error: 'Konfigurasi server untuk penyimpanan gambar tidak lengkap. Harap hubungi administrator.' };
+  }
+
   try {
     const validatedFields = checkinSchema.safeParse({
       photoDataUri: formData.get("photoDataUri"),
@@ -148,14 +166,15 @@ export async function handleCheckin(
     }
 
     // 1. Upload selfie to Supabase
-    const photoBlob = await dataURItoBlob(photoDataUri);
+    const { buffer, mimeType } = dataURIToBuffer(photoDataUri);
     const photoPath = `${userId}/${new Date().toISOString()}.jpg`;
     
     const { error: uploadError } = await supabase.storage
       .from('selfies')
-      .upload(photoPath, photoBlob, {
+      .upload(photoPath, buffer, {
         cacheControl: '3600',
         upsert: false,
+        contentType: mimeType,
       });
 
     if (uploadError) {
@@ -297,6 +316,14 @@ export type AvatarUpdateState = {
 };
 
 export async function updateAvatar(formData: FormData): Promise<AvatarUpdateState> {
+    // Check for Supabase config first
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.trim() === '' || supabaseAnonKey.trim() === '') {
+        console.error("Supabase environment variables are missing.");
+        return { error: 'Konfigurasi server untuk penyimpanan gambar tidak lengkap. Harap hubungi administrator.' };
+    }
+
     const validatedFields = avatarUpdateSchema.safeParse({
         userId: formData.get('userId'),
         userRole: formData.get('userRole'),
@@ -311,15 +338,15 @@ export async function updateAvatar(formData: FormData): Promise<AvatarUpdateStat
     const { userId, userRole, photoDataUri } = validatedFields.data;
 
     try {
-        const photoBlob = await dataURItoBlob(photoDataUri);
-        const fileExtension = photoBlob.type.split('/')[1] || 'jpg';
-        const photoPath = `avatars/${userId}/${Date.now()}.${fileExtension}`;
+        const { buffer, mimeType, extension } = dataURIToBuffer(photoDataUri);
+        const photoPath = `avatars/${userId}/${Date.now()}.${extension}`;
 
         const { error: uploadError } = await supabase.storage
           .from('selfies')
-          .upload(photoPath, photoBlob, {
+          .upload(photoPath, buffer, {
             cacheControl: '3600',
             upsert: true,
+            contentType: mimeType,
           });
 
         if (uploadError) {
