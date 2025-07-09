@@ -107,16 +107,28 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
       requestLocation();
     }
 
-    const listener = App.addListener('resume', () => {
-      // Saat aplikasi kembali aktif (misalnya setelah pengguna memberikan izin di pengaturan),
-      // coba dapatkan lokasi lagi jika kita belum memilikinya.
-      if (!location && !isGettingLocation) {
-        requestLocation();
-      }
-    });
+    // Define an async function to set up the listener
+    const setupListener = async () => {
+      return await App.addListener('resume', () => {
+        // Saat aplikasi kembali aktif (misalnya setelah pengguna memberikan izin di pengaturan),
+        // coba dapatkan lokasi lagi jika kita belum memilikinya.
+        if (!location && !isGettingLocation) {
+          requestLocation();
+        }
+      });
+    };
 
+    // Set up the listener and get a promise for the handle
+    const listenerPromise = setupListener();
+
+    // Return a cleanup function
     return () => {
-      listener.remove();
+      // When the component unmounts, resolve the promise and remove the listener
+      const removeListener = async () => {
+        const listener = await listenerPromise;
+        await listener.remove();
+      };
+      removeListener();
     };
   }, [requestLocation, location, isGettingLocation]);
   
