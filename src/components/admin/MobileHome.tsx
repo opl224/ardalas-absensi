@@ -21,7 +21,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { App, Capacitor } from "@capacitor/core";
+import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 
 type ActiveView = 'home' | 'profile' | 'users' | 'reports' | 'attendance';
 
@@ -290,3 +291,5 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
         </div>
     );
 }
+
+    

@@ -1,4 +1,3 @@
-
 'use client'
 
 import { useState, useEffect, useMemo, useRef, useTransition } from 'react';
@@ -30,7 +29,8 @@ import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Switch } from '../ui/switch';
-import { App, Capacitor } from '@capacitor/core';
+import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 
 
@@ -784,3 +784,6 @@ export function Attendance() {
 
 
 
+
+
+    

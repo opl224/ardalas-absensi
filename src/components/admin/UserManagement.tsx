@@ -28,7 +28,8 @@ import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { App, Capacitor } from '@capacitor/core';
+import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 
 interface User {
@@ -547,3 +548,5 @@ export function UserManagement() {
     </Dialog>
   );
 }
+
+    

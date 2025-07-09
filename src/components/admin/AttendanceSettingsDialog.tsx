@@ -13,7 +13,8 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader } from '../ui/loader';
 import { Separator } from '../ui/separator';
-import { App, Capacitor } from '@capacitor/core';
+import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 
 const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const daysOfWeekIndonesian: { [key: string]: string } = {
@@ -183,3 +184,5 @@ export function AttendanceSettingsDialog({ open, onOpenChange }: AttendanceSetti
         </Dialog>
     );
 }
+
+    

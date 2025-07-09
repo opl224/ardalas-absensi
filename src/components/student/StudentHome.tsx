@@ -21,7 +21,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { App, Capacitor } from '@capacitor/core';
+import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 
 interface StudentHomeProps {
   setActiveView: (view: 'home' | 'history' | 'profile' | 'checkin') => void;
@@ -361,3 +362,5 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
         </div>
     );
 }
+
+    
