@@ -22,12 +22,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Checkbox } from '@/components/ui/checkbox';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [showAccessDeniedDialog, setShowAccessDeniedDialog] = useState(false);
   const [showDesktopAccessDeniedDialog, setShowDesktopAccessDeniedDialog] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
@@ -40,6 +42,16 @@ export default function LoginPage() {
     };
     checkDeviceSize();
     window.addEventListener('resize', checkDeviceSize);
+
+    // Load saved credentials from localStorage
+    const savedEmail = localStorage.getItem('rememberedEmail');
+    const savedPassword = localStorage.getItem('rememberedPassword');
+    if (savedEmail && savedPassword) {
+      setEmail(savedEmail);
+      setPassword(savedPassword);
+      setRememberMe(true);
+    }
+
     return () => window.removeEventListener('resize', checkDeviceSize);
   }, []);
 
@@ -61,6 +73,15 @@ export default function LoginPage() {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
+
+      // Handle "Remember Me" logic
+      if (rememberMe) {
+        localStorage.setItem('rememberedEmail', email);
+        localStorage.setItem('rememberedPassword', password);
+      } else {
+        localStorage.removeItem('rememberedEmail');
+        localStorage.removeItem('rememberedPassword');
+      }
 
       const userDocRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
@@ -176,6 +197,12 @@ export default function LoginPage() {
                       {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </Button>
                   </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Checkbox id="remember-me" checked={rememberMe} onCheckedChange={(checked) => setRememberMe(checked as boolean)} />
+                    <Label htmlFor="remember-me" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        Ingatkan Saya
+                    </Label>
                 </div>
                 <Button type="submit" className="w-full !mt-6" size="lg" disabled={loading}>
                   Masuk
