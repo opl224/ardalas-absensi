@@ -36,6 +36,20 @@ interface MobileHomeProps {
     setShowSettingsDialog: (isOpen: boolean) => void;
 }
 
+const isCheckinTimeOver = (settings: any): boolean => {
+    if (!settings || !settings.checkInEnd) return false;
+
+    const now = new Date();
+    const [endHours, endMinutes] = settings.checkInEnd.split(':').map(Number);
+    const gracePeriodMinutes = Number(settings.gracePeriod) || 0;
+
+    const deadline = new Date();
+    deadline.setHours(endHours, endMinutes, 0, 0);
+    deadline.setMinutes(deadline.getMinutes() + gracePeriodMinutes);
+
+    return now > deadline;
+};
+
 const splitTextFrom = { opacity: 0, y: 20 };
 const splitTextTo = { opacity: 1, y: 0 };
 
@@ -112,18 +126,27 @@ export function MobileHome({ setActiveView, setShowSettingsDialog }: MobileHomeP
             collection(db, "photo_attendances"),
             where("role", "==", "guru"),
             where("checkInTime", ">=", startOfToday),
-            where("checkInTime", "<", endOfToday),
-            where("status", "in", ["Hadir", "Terlambat"])
+            where("checkInTime", "<", endOfToday)
         );
 
         const unsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
-            const allAttendancesToday = snapshot.docs.map(doc => doc.data());
-
-            const presentCount = allAttendancesToday.filter(a => a.status === 'Hadir').length;
-            const lateCount = allAttendancesToday.filter(a => a.status === 'Terlambat').length;
+            const allTodaysRecords = snapshot.docs.map(doc => doc.data());
+            
+            // Filter only for active attendances for the table and counts
+            const activeAttendances = allTodaysRecords.filter(
+                a => a.status === 'Hadir' || a.status === 'Terlambat'
+            );
+            
+            const presentCount = activeAttendances.filter(a => a.status === 'Hadir').length;
+            const lateCount = activeAttendances.filter(a => a.status === 'Terlambat').length;
             const totalWithRecords = presentCount + lateCount;
 
-            const absentCount = totalGurus - totalWithRecords;
+            let absentCount = 0;
+            // Only mark as absent if the check-in time is over
+            if (isCheckinTimeOver(settings)) {
+                absentCount = totalGurus - totalWithRecords;
+            }
+
             const attendanceRate = totalGurus > 0 ? Math.round((totalWithRecords / totalGurus) * 100) : 0;
             
             setStats({
