@@ -30,7 +30,7 @@ const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label:
     </div>
 );
 
-const ClickableRow = ({ icon: Icon, label, onClick, className }: { icon: React.ElementType, label: string, onClick?: () => void, className?: string }) => (
+const ClickableRow = ({ icon: Icon, label, onClick, className, showChevron = true }: { icon: React.ElementType, label: string, onClick?: () => void, className?: string, showChevron?: boolean }) => (
     <button
         onClick={onClick}
         className={cn("flex items-center justify-between py-3 w-full text-left disabled:opacity-50 rounded-md", className)}
@@ -40,7 +40,7 @@ const ClickableRow = ({ icon: Icon, label, onClick, className }: { icon: React.E
             <Icon className="h-6 w-6 text-muted-foreground" />
             <span className="font-medium text-foreground">{label}</span>
         </div>
-        {onClick && <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+        {onClick && showChevron && <ChevronRight className="h-5 w-5 text-muted-foreground" />}
     </button>
 );
 
@@ -147,7 +147,7 @@ export function Profile({ setActiveView, dialogStates, setDialogState }: Profile
                             <CardTitle className="text-lg">Pengaturan</CardTitle>
                         </CardHeader>
                         <CardContent className="divide-y divide-border pt-0">
-                            <ClickableRow icon={Shield} label="Privasi" onClick={() => setActiveView('privacy')} />
+                            <ClickableRow icon={Shield} label="Privasi" onClick={() => setActiveView('privacy')} showChevron={false} />
                         </CardContent>
                     </Card>
                     
