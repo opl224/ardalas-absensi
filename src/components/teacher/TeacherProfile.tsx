@@ -162,7 +162,7 @@ export function TeacherProfile({ setActiveView, dialogStates, setDialogState }: 
 
                     <Card>
                         <CardContent className="p-2">
-                            <Button 
+                             <Button 
                                 variant="ghost" 
                                 className="w-full justify-center text-destructive hover:bg-destructive/10 hover:text-destructive"
                                 onClick={() => setDialogState?.('logout', true)}
