@@ -180,7 +180,7 @@ export default function LoginPage() {
                 </div>
                 <Button type="submit" className="w-full !mt-6" size="lg" disabled={loading}>
                   {loading && <Loader scale={0.48} />}
-                  <span className={loading ? 'invisible' : 'visible'}>Masuk</span>
+                  <span>Masuk</span>
                 </Button>
               </form>
             </CardContent>

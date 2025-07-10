@@ -157,11 +157,11 @@ export function AttendanceSettingsDialog({ open, onOpenChange }: AttendanceSetti
                                 ))}
                             </div>
                         </div>
-                        <DialogFooter>
+                        <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 gap-y-2 sm:gap-y-0">
                             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>Batal</Button>
                             <Button type="submit" disabled={isPending}>
                                 {isPending && <Loader scale={0.48} />}
-                                <span className={isPending ? 'invisible' : 'visible'}>Simpan</span>
+                                <span>Simpan</span>
                             </Button>
                         </DialogFooter>
                     </form>

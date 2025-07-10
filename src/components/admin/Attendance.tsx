@@ -71,25 +71,20 @@ function EditAttendanceDialog({ record, open, onOpenChange }: { record: Attendan
     const formRef = useRef<HTMLFormElement>(null);
 
     useEffect(() => {
+        let listener: PluginListenerHandle | null = null;
         const setupBackButtonListener = async () => {
             if (Capacitor.isNativePlatform() && open) {
-                const listener = await CapacitorApp.addListener('backButton', (e) => {
+                listener = await CapacitorApp.addListener('backButton', (e) => {
                     e.canGoBack = false;
                     onOpenChange(false);
                 });
-                return listener;
             }
-            return null;
         };
 
-        const listenerPromise = setupBackButtonListener();
+        setupBackButtonListener();
 
         return () => {
-            listenerPromise.then(listener => {
-                if (listener) {
-                    listener.remove();
-                }
-            });
+            listener?.remove();
         };
     }, [open, onOpenChange]);
 
@@ -175,13 +170,13 @@ function EditAttendanceDialog({ record, open, onOpenChange }: { record: Attendan
                             <Label htmlFor="removeFraudWarning">Hapus Peringatan Kecurangan</Label>
                         </div>
                     )}
-                    <DialogFooter className='pt-4 gap-y-2 sm:gap-y-0'>
+                    <DialogFooter className='pt-4 flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2'>
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
                             Batal
                         </Button>
                         <Button type="submit" disabled={isPending}>
                             {isPending && <Loader scale={0.48} />}
-                            <span className={isPending ? 'invisible' : 'visible'}>Simpan Perubahan</span>
+                            <span>Simpan Perubahan</span>
                         </Button>
                     </DialogFooter>
                 </form>
