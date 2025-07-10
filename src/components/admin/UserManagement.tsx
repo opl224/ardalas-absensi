@@ -20,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { collection, getDocs, query, where, doc, getDoc, orderBy, limit, startAfter, QueryDocumentSnapshot, collectionGroup, endBefore, limitToLast } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, getDoc, orderBy, limit, startAfter, QueryDocumentSnapshot, endBefore, limitToLast, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader } from '../ui/loader';
 import { Separator } from '../ui/separator';
@@ -78,6 +78,7 @@ export default function UserManagement() {
   const [backButtonListener, setBackButtonListener] = useState<PluginListenerHandle | null>(null);
 
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+  const initialFetchDone = useRef(false);
 
   const removeListener = useCallback(() => {
     if (backButtonListener) {
@@ -105,62 +106,72 @@ export default function UserManagement() {
     return () => { removeListener() };
   }, [handleBackButton, removeListener]);
 
-  const fetchUsers = useCallback(async (page = 1, searchQuery = '') => {
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-        if (page === 1) {
-            const adminQuery = query(collection(db, "users"), where('role', '==', 'admin'));
-            const teacherQuery = collection(db, "teachers");
+        const adminQuery = query(collection(db, "users"), where('role', '==', 'admin'));
+        const teacherQuery = query(collection(db, "teachers"));
 
-            const [adminSnapshot, teacherSnapshot] = await Promise.all([
-                getDocs(adminQuery),
-                getDocs(teacherQuery)
-            ]);
-
-            const combinedUserMap = new Map();
-            // Admins take priority if there's an ID conflict
-            teacherSnapshot.forEach(doc => combinedUserMap.set(doc.id, { ...doc.data(), id: doc.id, role: 'Guru' }));
-            adminSnapshot.forEach(doc => combinedUserMap.set(doc.id, { ...doc.data(), id: doc.id, role: 'Admin' }));
-            
-            let allDocs = Array.from(combinedUserMap.values());
-            
-            if (searchQuery) {
-                allDocs = allDocs.filter(doc => doc.name && doc.name.toLowerCase().includes(searchQuery.toLowerCase()));
-            }
-
-            allDocs.sort((a, b) => {
-                if (a.role === 'Admin' && b.role !== 'Admin') return -1;
-                if (a.role !== 'Admin' && b.role === 'Admin') return 1;
-                return (a.name || '').localeCompare(b.name || '');
-            });
-            
-            setAllUserDocs(allDocs);
-            setTotalUsers(allDocs.length);
-        }
+        const [adminSnapshot, teacherSnapshot] = await Promise.all([
+            getDocs(adminQuery),
+            getDocs(teacherQuery)
+        ]);
         
-        const startIndex = (page - 1) * USERS_PER_PAGE;
-        const endIndex = startIndex + USERS_PER_PAGE;
-        const paginatedUsersData = allUserDocs.slice(startIndex, endIndex);
+        const allDocs = [
+            ...adminSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Admin' })),
+            ...teacherSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Guru' }))
+        ];
 
-        if (paginatedUsersData.length === 0 && page > 1) {
-            setLoading(false);
-            return;
-        }
-
-        const paginatedUserIds = paginatedUsersData.map(u => u.id).filter(Boolean);
-
-        let attendanceStatusMap = new Map<string, any>();
-        if (paginatedUserIds.length > 0) {
-            const todayStart = new Date();
-            todayStart.setHours(0, 0, 0, 0);
-            const attendanceQuery = query(collection(db, "photo_attendances"), where("checkInTime", ">=", todayStart), where('userId', 'in', paginatedUserIds));
-            const attendanceSnapshot = await getDocs(attendanceQuery);
-            attendanceSnapshot.forEach(doc => {
-                const data = doc.data();
-                attendanceStatusMap.set(data.userId, { status: data.status, isFraudulent: data.isFraudulent });
-            });
-        }
+        allDocs.sort((a, b) => {
+            if (a.role === 'Admin' && b.role !== 'Admin') return -1;
+            if (a.role !== 'Admin' && b.role === 'Admin') return 1;
+            return (a.name || '').localeCompare(b.name || '');
+        });
         
+        setAllUserDocs(allDocs);
+        setTotalUsers(allDocs.length);
+        initialFetchDone.current = true; // Mark initial fetch as complete
+
+    } catch (error) {
+        console.error("Error fetching users:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat data pengguna.' });
+    } finally {
+        setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+      fetchUsers();
+  }, [fetchUsers]);
+  
+  useEffect(() => {
+    if (!initialFetchDone.current) return;
+
+    setLoading(true);
+    let filteredUsers = allUserDocs;
+    if (searchTerm) {
+        filteredUsers = allUserDocs.filter(doc => doc.name && doc.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    }
+    
+    const startIndex = (currentPage - 1) * USERS_PER_PAGE;
+    const endIndex = startIndex + USERS_PER_PAGE;
+    const paginatedUsersData = filteredUsers.slice(startIndex, endIndex);
+
+    setTotalUsers(filteredUsers.length);
+    setFirstVisible(startIndex > 0);
+    setLastVisible(filteredUsers.length > endIndex);
+
+    if (paginatedUsersData.length === 0) {
+        setUsers([]);
+        setLoading(false);
+        return;
+    }
+    
+    const paginatedUserIds = paginatedUsersData.map(u => u.id).filter(Boolean);
+    
+    let unsubscribe = () => {};
+
+    const processAndSetUsers = async (attendanceStatusMap: Map<string, any>) => {
         const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
         const settings = settingsDoc.exists() ? settingsDoc.data() : {};
         const now = new Date();
@@ -195,32 +206,42 @@ export default function UserManagement() {
                 isFraudulent: attendanceInfo?.isFraudulent ?? false,
             } as User;
         });
-        
+
         setUsers(finalUsers);
-        setFirstVisible(startIndex > 0);
-        setLastVisible(allUserDocs.length > endIndex);
-
-    } catch (error) {
-        console.error("Error fetching users:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat data pengguna.' });
-    } finally {
         setLoading(false);
-    }
-  }, [toast, allUserDocs]);
+    };
 
-  useEffect(() => {
-    if (searchTimeout.current) {
-        clearTimeout(searchTimeout.current);
+    if (paginatedUserIds.length > 0) {
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const attendanceQuery = query(collection(db, "photo_attendances"), where("checkInTime", ">=", todayStart), where('userId', 'in', paginatedUserIds));
+        
+        unsubscribe = onSnapshot(attendanceQuery, async (attendanceSnapshot) => {
+            const attendanceStatusMap = new Map<string, any>();
+            attendanceSnapshot.forEach(doc => {
+                const data = doc.data();
+                attendanceStatusMap.set(data.userId, { status: data.status, isFraudulent: data.isFraudulent });
+            });
+            await processAndSetUsers(attendanceStatusMap);
+        }, (error) => {
+            console.error("Error with real-time listener:", error);
+            setLoading(false);
+        });
+    } else {
+        processAndSetUsers(new Map());
     }
-    searchTimeout.current = setTimeout(() => {
-        setCurrentPage(1);
-        fetchUsers(1, searchTerm);
-    }, 500);
-  }, [searchTerm, fetchUsers]);
+    
+    return () => unsubscribe();
 
-  useEffect(() => {
-      fetchUsers(currentPage, searchTerm);
-  }, [currentPage, fetchUsers, searchTerm])
+  }, [allUserDocs, currentPage, searchTerm, toast]);
+
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const term = e.target.value;
+      setSearchTerm(term);
+      setCurrentPage(1); // Reset to first page on new search
+  };
+
 
   const handleNextPage = () => {
     setCurrentPage(prev => prev + 1);
@@ -250,15 +271,7 @@ export default function UserManagement() {
     toast({ title: 'Mempersiapkan Unduhan...', description: 'Ini bisa memakan waktu beberapa saat.' });
 
     try {
-        const [teachersSnapshot, adminsSnapshot] = await Promise.all([
-            getDocs(query(collection(db, 'teachers'))),
-            getDocs(query(collection(db, 'users'), where('role', '==', 'admin')))
-        ]);
-
-        let allUsersData: any[] = [
-            ...adminsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })),
-            ...teachersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-        ];
+        let allUsersData: any[] = allUserDocs;
 
         if (allUsersData.length === 0) {
             toast({ variant: 'destructive', title: 'Gagal Mengunduh', description: 'Tidak ada data pengguna untuk diunduh.' });
@@ -372,7 +385,7 @@ export default function UserManagement() {
                   placeholder="Cari pengguna..." 
                   className="pl-10 w-full" 
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={handleSearchChange}
                 />
             </div>
             <DropdownMenu>
@@ -393,7 +406,7 @@ export default function UserManagement() {
             </DropdownMenu>
           </div>
 
-          {loading && !users.length ? (
+          {loading ? (
               <div className="flex justify-center items-center h-64">
                   <Loader scale={1.6} />
               </div>
