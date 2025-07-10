@@ -52,9 +52,6 @@ interface AttendanceProps {
   setDialogState?: (dialog: string, isOpen: boolean) => void;
 }
 
-const RECORDS_PER_PAGE = 10;
-const filterOptions = ['Semua Kehadiran', 'Hadir', 'Terlambat', 'Kecurangan', 'Tidak Hadir'];
-
 function EditAttendanceDialog({ record, open, onOpenChange }: { record: AttendanceRecord | null, open: boolean, onOpenChange: (open: boolean) => void }) {
     const [state, setState] = useState<AttendanceUpdateState>({});
     const [isPending, startTransition] = useTransition();
@@ -157,27 +154,18 @@ function EditAttendanceDialog({ record, open, onOpenChange }: { record: Attendan
     );
 }
 
-export function Attendance({ setDialogState }: AttendanceProps) {
+export function Attendance({ dialogStates, setDialogState }: AttendanceProps) {
     const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     const [date, setDate] = useState<Date | undefined>(new Date());
     const [statusFilter, setStatusFilter] = useState('Semua Kehadiran');
-    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
-    const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
     const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null);
     const { toast } = useToast();
     const [settings, setSettings] = useState<any>(null);
 
-    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
-    
-    useEffect(() => {
-      setDialogState?.('delete', isDeleteDialogOpen);
-      setDialogState?.('view', isViewDialogOpen);
-      setDialogState?.('edit', isEditDialogOpen);
-    }, [isDeleteDialogOpen, isViewDialogOpen, isEditDialogOpen, setDialogState]);
 
     useEffect(() => {
         const settingsRef = doc(db, "settings", "attendance");
@@ -376,20 +364,20 @@ export function Attendance({ setDialogState }: AttendanceProps) {
                 variant: "destructive",
             });
         } finally {
-            setIsDeleteDialogOpen(false);
+            setDialogState?.('delete', false);
             setSelectedRecordId(null);
         }
     };
     
     const openViewDialog = (record: AttendanceRecord) => {
         setSelectedRecord(record);
-        setIsViewDialogOpen(true);
+        setDialogState?.('view', true);
     };
 
     const openDeleteDialog = (e: React.MouseEvent, id: string) => {
         e.stopPropagation(); // prevent view dialog
         setSelectedRecordId(id);
-        setIsDeleteDialogOpen(true);
+        setDialogState?.('delete', true);
     }
 
     const openEditDialog = (e: React.MouseEvent, record: AttendanceRecord) => {
@@ -403,7 +391,7 @@ export function Attendance({ setDialogState }: AttendanceProps) {
             return;
         }
         setEditingRecord(record);
-        setIsEditDialogOpen(true);
+        setDialogState?.('edit', true);
     };
     
     const getBadgeVariant = (record: AttendanceRecord) => {
@@ -655,7 +643,7 @@ export function Attendance({ setDialogState }: AttendanceProps) {
                     </>
                 )}
             </div>
-            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialog open={dialogStates?.delete} onOpenChange={(isOpen) => setDialogState?.('delete', isOpen)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Apakah Anda yakin ingin menghapus?</AlertDialogTitle>
@@ -676,7 +664,7 @@ export function Attendance({ setDialogState }: AttendanceProps) {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-            <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+            <Dialog open={dialogStates?.view} onOpenChange={(isOpen) => setDialogState?.('view', isOpen)}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>{selectedRecord?.name}</DialogTitle>
@@ -762,7 +750,7 @@ export function Attendance({ setDialogState }: AttendanceProps) {
                     )}
                 </DialogContent>
             </Dialog>
-            <EditAttendanceDialog record={editingRecord} open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} />
+            <EditAttendanceDialog record={editingRecord} open={!!dialogStates?.edit} onOpenChange={(isOpen) => setDialogState?.('edit', isOpen)} />
         </div>
     )
 }
@@ -776,4 +764,5 @@ export function Attendance({ setDialogState }: AttendanceProps) {
 
 
     
+
 

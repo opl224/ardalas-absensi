@@ -11,6 +11,7 @@ import { Privacy } from "./Privacy";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAndroidBackHandler } from "@/hooks/useAndroidBackHandler";
 import { ExitAppDialog } from "../ExitAppDialog";
+import { AttendanceSettingsDialog } from "./AttendanceSettingsDialog";
 
 
 type MainViewID = 'home' | 'users' | 'reports' | 'attendance' | 'profile';
@@ -57,7 +58,15 @@ export function MobileAdminDashboard() {
     direction: 0,
     index: 0,
   });
-  const [dialogStates, setDialogStates] = useState<{[key: string]: boolean}>({});
+  const [dialogStates, setDialogStates] = useState<{[key: string]: boolean}>({
+    delete: false,
+    view: false,
+    edit: false,
+    detail: false,
+    logout: false,
+    settings: false,
+    avatar: false,
+  });
 
   const setDialogState = useCallback((dialog: string, isOpen: boolean) => {
     setDialogStates(prev => ({...prev, [dialog]: isOpen}));
@@ -220,6 +229,10 @@ export function MobileAdminDashboard() {
         onOpenChange={setShowExitDialog}
         onConfirm={handleConfirmExit}
       />
+      
+      {/* Settings Dialog is controlled at the dashboard level for back button handling */}
+      <AttendanceSettingsDialog open={dialogStates.settings} onOpenChange={(isOpen) => setDialogState('settings', isOpen)} />
+
     </div>
   );
 }

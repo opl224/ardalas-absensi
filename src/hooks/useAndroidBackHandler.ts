@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -10,7 +9,7 @@ interface UseAndroidBackHandlerProps {
   onBack: () => void;
   homeViewId: string;
   changeView: (view: any) => void;
-  onDialogClose?: () => boolean;
+  onDialogClose?: () => boolean; // Return true if a dialog was closed, false otherwise
 }
 
 export const useAndroidBackHandler = ({
@@ -27,10 +26,12 @@ export const useAndroidBackHandler = ({
     (e: BackButtonListenerEvent) => {
       e.canGoBack = false; // Prevent default webview behavior
 
+      // If a dialog is open and the callback closes it, stop further processing.
       if (onDialogClose && onDialogClose()) {
         return;
       }
       
+      // If the exit dialog is open, the back button should close it.
       if (showExitDialog) {
         setShowExitDialog(false);
         return;

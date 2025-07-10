@@ -1,4 +1,3 @@
-
 'use client'
 
 import { useState, useEffect, useMemo } from 'react';
@@ -48,6 +47,7 @@ interface User {
 }
 
 interface UserManagementProps {
+    dialogStates?: { [key: string]: boolean };
     setDialogState?: (dialog: string, isOpen: boolean) => void;
 }
 
@@ -65,18 +65,13 @@ const DetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, lab
     );
 };
 
-export function UserManagement({ setDialogState }: UserManagementProps) {
+export function UserManagement({ dialogStates, setDialogState }: UserManagementProps) {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const { toast } = useToast();
-  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
-
-  useEffect(() => {
-    setDialogState?.('detail', isDetailDialogOpen);
-  }, [isDetailDialogOpen, setDialogState]);
 
   useEffect(() => {
     const fetchUsersAndListenForStatus = async () => {
@@ -366,6 +361,16 @@ export function UserManagement({ setDialogState }: UserManagementProps) {
     }
   };
 
+  const handleOpenDetailDialog = (user: User) => {
+    setSelectedUser(user);
+    setDialogState?.('detail', true);
+  };
+
+  const handleCloseDetailDialog = () => {
+    setDialogState?.('detail', false);
+    setSelectedUser(null);
+  };
+
 
   return (
     <>
@@ -433,7 +438,7 @@ export function UserManagement({ setDialogState }: UserManagementProps) {
                                   </div>
                               </div>
                               <div className="flex gap-2">
-                                  <Button variant="ghost" size="icon" className="h-9 w-9 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200" onClick={() => { setSelectedUser(user); setIsDetailDialogOpen(true); }}>
+                                  <Button variant="ghost" size="icon" className="h-9 w-9 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200" onClick={() => handleOpenDetailDialog(user)}>
                                     <Eye className="h-4 w-4" />
                                   </Button>
                               </div>
@@ -493,10 +498,7 @@ export function UserManagement({ setDialogState }: UserManagementProps) {
           )}
         </div>
       </div>
-      <Dialog open={isDetailDialogOpen} onOpenChange={(open) => {
-        setIsDetailDialogOpen(open);
-        if (!open) setSelectedUser(null);
-      }}>
+      <Dialog open={dialogStates?.detail} onOpenChange={handleCloseDetailDialog}>
         <DialogContent className="sm:max-w-md">
             <DialogHeader>
             <DialogTitle>Detail Pengguna</DialogTitle>

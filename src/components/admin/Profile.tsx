@@ -1,4 +1,3 @@
-
 'use client'
 
 import { useState, useRef, useEffect, useTransition } from "react";
@@ -12,10 +11,12 @@ import { ThemeToggle } from "../ThemeToggle";
 import { Button } from "../ui/button";
 import { updateAvatar, type AvatarUpdateState } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface ProfileProps {
     setActiveView: (view: string) => void;
-    setDialogState: (dialog: string, isOpen: boolean) => void;
+    dialogStates?: { [key: string]: boolean };
+    setDialogState?: (dialog: string, isOpen: boolean) => void;
 }
 
 const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
@@ -28,10 +29,10 @@ const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label:
     </div>
 );
 
-const ClickableRow = ({ icon: Icon, label, onClick }: { icon: React.ElementType, label: string, onClick?: () => void }) => (
+const ClickableRow = ({ icon: Icon, label, onClick, className }: { icon: React.ElementType, label: string, onClick?: () => void, className?: string }) => (
     <button
         onClick={onClick}
-        className="flex items-center justify-between py-3 w-full text-left disabled:opacity-50"
+        className={cn("flex items-center justify-between py-3 w-full text-left disabled:opacity-50 rounded-md", className)}
         disabled={!onClick}
     >
         <div className="flex items-center gap-4">
@@ -43,18 +44,13 @@ const ClickableRow = ({ icon: Icon, label, onClick }: { icon: React.ElementType,
 );
 
 
-export function Profile({ setActiveView, setDialogState }: ProfileProps) {
+export function Profile({ setActiveView, dialogStates, setDialogState }: ProfileProps) {
     const { userProfile, logout } = useAuth();
-    const [showLogoutDialog, setShowLogoutDialog] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
 
     const [state, setState] = useState<AvatarUpdateState>({});
-
-    useEffect(() => {
-        setDialogState?.('logout', showLogoutDialog);
-    }, [showLogoutDialog, setDialogState]);
 
     const handleAvatarClick = () => {
         if (isPending) return;
@@ -151,20 +147,17 @@ export function Profile({ setActiveView, setDialogState }: ProfileProps) {
                         </CardHeader>
                         <CardContent className="divide-y divide-border pt-0">
                             <ClickableRow icon={Shield} label="Privasi" onClick={() => setActiveView('privacy')} />
-                            <button
-                                onClick={() => setShowLogoutDialog(true)}
-                                className="flex items-center justify-between py-3 w-full text-left text-destructive rounded-md hover:bg-destructive/10"
-                            >
-                                <div className="flex items-center gap-4">
-                                    <LogOut className="h-6 w-6" />
-                                    <span className="font-medium">Keluar</span>
-                                </div>
-                            </button>
+                            <ClickableRow 
+                                icon={LogOut} 
+                                label="Keluar" 
+                                onClick={() => setDialogState?.('logout', true)}
+                                className="text-destructive hover:bg-destructive/10"
+                            />
                         </CardContent>
                     </Card>
                 </div>
             </div>
-            <LogoutDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog} onConfirm={logout} />
+            <LogoutDialog open={!!dialogStates?.logout} onOpenChange={(isOpen) => setDialogState?.('logout', isOpen)} onConfirm={logout} />
         </>
     );
 }

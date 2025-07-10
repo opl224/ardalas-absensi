@@ -1,4 +1,3 @@
-
 'use client'
 
 import { useState, useEffect } from "react";
@@ -9,7 +8,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader } from "@/components/ui/loader";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, onSnapshot, Timestamp, doc, getDoc } from "firebase/firestore";
-import { AttendanceSettingsDialog } from "./AttendanceSettingsDialog";
 import { Button } from "../ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import SplitText from "../ui/SplitText";
@@ -34,25 +32,19 @@ interface Stats {
 
 interface MobileHomeProps {
     setActiveView: (view: ActiveView) => void;
-    setDialogState: (dialog: string, isOpen: boolean) => void;
+    dialogStates?: { [key: string]: boolean };
+    setDialogState?: (dialog: string, isOpen: boolean) => void;
 }
 
 const splitTextFrom = { opacity: 0, y: 20 };
 const splitTextTo = { opacity: 1, y: 0 };
 
-export function MobileHome({ setActiveView, setDialogState }: MobileHomeProps) {
+export function MobileHome({ setActiveView, dialogStates, setDialogState }: MobileHomeProps) {
     const { userProfile } = useAuth();
     const [dateTime, setDateTime] = useState({ date: '', time: '' });
     const [stats, setStats] = useState<Stats>({ present: 0, absent: 0, late: 0, total: 0, rate: 0 });
     const [loading, setLoading] = useState(true);
-    const [showSettingsDialog, setShowSettingsDialog] = useState(false);
     const [settings, setSettings] = useState<any | null>(null);
-    const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
-
-    useEffect(() => {
-        setDialogState?.('settings', showSettingsDialog);
-        setDialogState?.('avatar', isAvatarDialogOpen);
-    }, [showSettingsDialog, isAvatarDialogOpen, setDialogState]);
 
     useEffect(() => {
         const updateDateTime = () => {
@@ -195,7 +187,7 @@ export function MobileHome({ setActiveView, setDialogState }: MobileHomeProps) {
                     <p className="text-sm text-muted-foreground">Administrator Sistem</p>
                 </div>
                 {isCustomAvatar ? (
-                    <Dialog open={isAvatarDialogOpen} onOpenChange={setIsAvatarDialogOpen}>
+                    <Dialog open={dialogStates?.avatar} onOpenChange={(isOpen) => setDialogState?.('avatar', isOpen)}>
                         <DialogTrigger asChild>
                             <Avatar className="h-14 w-14 cursor-pointer">
                                 <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait" />
@@ -231,7 +223,7 @@ export function MobileHome({ setActiveView, setDialogState }: MobileHomeProps) {
                             <span className="font-medium text-sm text-foreground">{dateTime.time || 'Memuat waktu...'}</span>
                         </div>
                     </CardContent>
-                    <button className="button-89" role="button" onClick={() => setShowSettingsDialog(true)}>
+                    <button className="button-89" role="button" onClick={() => setDialogState?.('settings', true)}>
                       Atur
                     </button>
                 </div>
@@ -282,7 +274,6 @@ export function MobileHome({ setActiveView, setDialogState }: MobileHomeProps) {
                     <p className="mt-2 font-medium text-sm text-foreground">Lihat Laporan</p>
                 </Card>
             </div>
-            <AttendanceSettingsDialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog} />
         </div>
     );
 }
