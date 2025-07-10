@@ -35,9 +35,7 @@ interface User {
   name: string;
   email: string;
   role: 'Guru' | 'Admin';
-  status: 'Hadir' | 'Terlambat' | 'Tidak Hadir' | 'Libur' | 'Belum Absen' | 'Admin';
-  avatar: string;
-  isFraudulent?: boolean;
+  avatar?: string;
   nip?: string;
   subject?: string;
   class?: string;
@@ -47,8 +45,13 @@ interface User {
   address?: string;
 }
 
+interface ProcessedUser extends User {
+  status: 'Hadir' | 'Terlambat' | 'Tidak Hadir' | 'Libur' | 'Belum Absen' | 'Admin';
+  isFraudulent?: boolean;
+}
+
 interface AttendanceStatus {
-    status: User['status'];
+    status: ProcessedUser['status'];
     isFraudulent: boolean;
 }
 
@@ -68,6 +71,7 @@ const DetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, lab
 
 export default function UserManagement() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [processedUsers, setProcessedUsers] = useState<ProcessedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -75,7 +79,7 @@ export default function UserManagement() {
   const [attendanceStatusMap, setAttendanceStatusMap] = useState<Map<string, AttendanceStatus>>(new Map());
   const [settings, setSettings] = useState<any>(null);
 
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUser, setSelectedUser] = useState<ProcessedUser | null>(null);
   const { toast } = useToast();
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [backButtonListener, setBackButtonListener] = useState<PluginListenerHandle | null>(null);
@@ -106,20 +110,55 @@ export default function UserManagement() {
     return () => { removeListener() };
   }, [handleBackButton, removeListener]);
 
-  // Effect to listen to settings and today's attendance in real-time
+  // Effect to listen for settings
   useEffect(() => {
     const settingsRef = doc(db, "settings", "attendance");
-    const settingsUnsubscribe = onSnapshot(settingsRef, (docSnap) => {
+    const unsubscribe = onSnapshot(settingsRef, (docSnap) => {
         setSettings(docSnap.exists() ? docSnap.data() : {});
     }, (error) => {
         console.error("Error fetching settings: ", error);
         toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat pengaturan.' });
     });
+    return () => unsubscribe();
+  }, [toast]);
 
+  // Effect for real-time user updates
+  useEffect(() => {
+    setLoading(true);
+    const adminQuery = query(collection(db, "users"), where('role', '==', 'admin'));
+    const teacherQuery = query(collection(db, "teachers"));
+
+    let adminUsers: User[] = [];
+    let teacherUsers: User[] = [];
+
+    const combineUsers = () => {
+        const combined = [...adminUsers, ...teacherUsers];
+        const uniqueUsers = Array.from(new Map(combined.map(u => [u.id, u])).values());
+        setAllUsers(uniqueUsers.sort((a,b) => (a.name || '').localeCompare(b.name || '')));
+    };
+
+    const unsubAdmins = onSnapshot(adminQuery, (adminSnapshot) => {
+        adminUsers = adminSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Admin' } as User));
+        combineUsers();
+    });
+
+    const unsubTeachers = onSnapshot(teacherQuery, (teacherSnapshot) => {
+        teacherUsers = teacherSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Guru' } as User));
+        combineUsers();
+    });
+
+    return () => {
+        unsubAdmins();
+        unsubTeachers();
+    };
+  }, []);
+
+  // Effect to listen to today's attendance in real-time
+  useEffect(() => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const attendanceQuery = query(collection(db, "photo_attendances"), where("checkInTime", ">=", todayStart));
-    const attendanceUnsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
+    const unsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
         const newMap = new Map<string, AttendanceStatus>();
         snapshot.forEach(doc => {
             const data = doc.data();
@@ -131,44 +170,15 @@ export default function UserManagement() {
         toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat data kehadiran.' });
     });
 
-    return () => {
-        settingsUnsubscribe();
-        attendanceUnsubscribe();
-    };
+    return () => unsubscribe();
   }, [toast]);
-  
-  // Effect for real-time user updates
+
+  // Effect to combine all data sources into processedUsers
   useEffect(() => {
-    setLoading(true);
-    const adminQuery = query(collection(db, "users"), where('role', '==', 'admin'));
-    const teacherQuery = query(collection(db, "teachers"));
-
-    const unsubAdmins = onSnapshot(adminQuery, (adminSnapshot) => {
-        const adminUsers = adminSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Admin' } as User));
-        setAllUsers(prevUsers => {
-            const otherUsers = prevUsers.filter(u => u.role !== 'Admin');
-            return [...adminUsers, ...otherUsers].sort((a,b) => (a.name || '').localeCompare(b.name || ''));
-        });
-        setLoading(false);
-    });
-
-    const unsubTeachers = onSnapshot(teacherQuery, (teacherSnapshot) => {
-        const teacherUsers = teacherSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Guru' } as User));
-        setAllUsers(prevUsers => {
-            const otherUsers = prevUsers.filter(u => u.role !== 'Guru');
-            return [...teacherUsers, ...otherUsers].sort((a,b) => (a.name || '').localeCompare(b.name || ''));
-        });
-        setLoading(false);
-    });
-
-    return () => {
-        unsubAdmins();
-        unsubTeachers();
-    };
-  }, []);
-
-  const processedUsers = useMemo(() => {
-    if (!settings) return [];
+    if (!settings || allUsers.length === 0) {
+        if (!settings) setLoading(true);
+        return;
+    }
 
     const now = new Date();
     const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
@@ -181,8 +191,8 @@ export default function UserManagement() {
     const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
     const isPastAbsentDeadline = now > checkInGraceEnd;
 
-    return allUsers.map(user => {
-      let status: User['status'];
+    const usersWithStatus: ProcessedUser[] = allUsers.map(user => {
+      let status: ProcessedUser['status'];
       const attendanceInfo = attendanceStatusMap.get(user.id);
       
       if (user.role === 'Admin') {
@@ -207,7 +217,10 @@ export default function UserManagement() {
         if (a.role !== 'Admin' && b.role === 'Admin') return 1;
         return (a.name || '').localeCompare(b.name || '');
     });
-  }, [allUsers, attendanceStatusMap, settings]);
+
+    setProcessedUsers(usersWithStatus);
+    if (loading) setLoading(false);
+  }, [allUsers, attendanceStatusMap, settings, loading]);
 
   const displayedUsers = useMemo(() => {
     const filtered = searchTerm
@@ -242,7 +255,7 @@ export default function UserManagement() {
     }
   };
 
-  const getBadgeVariant = (status: User['status']) => {
+  const getBadgeVariant = (status: ProcessedUser['status']) => {
     switch (status) {
         case 'Hadir': return 'success';
         case 'Terlambat': return 'warning';
@@ -260,17 +273,18 @@ export default function UserManagement() {
     toast({ title: 'Mempersiapkan Unduhan...', description: 'Ini bisa memakan waktu beberapa saat.' });
 
     try {
-        if (allUsers.length === 0) {
+        if (processedUsers.length === 0) {
             toast({ variant: 'destructive', title: 'Gagal Mengunduh', description: 'Tidak ada data pengguna untuk diunduh.' });
             return;
         }
 
-        const headers = ['ID', 'Nama', 'Email', 'Peran', 'NIP', 'Mata Pelajaran', 'Kelas', 'Jenis Kelamin', 'Telepon', 'Agama', 'Alamat'];
-        const data = allUsers.map(user => [
+        const headers = ['ID', 'Nama', 'Email', 'Peran', 'Status Hari Ini', 'NIP', 'Mata Pelajaran', 'Kelas', 'Jenis Kelamin', 'Telepon', 'Agama', 'Alamat'];
+        const data = processedUsers.map(user => [
             user.id,
             user.name,
             user.email,
             user.role,
+            user.status,
             user.nip || '',
             user.subject || '',
             user.class || '',
@@ -347,7 +361,7 @@ export default function UserManagement() {
     }
   };
 
-  const handleOpenDetailDialog = (user: User) => {
+  const handleOpenDetailDialog = (user: ProcessedUser) => {
     setSelectedUser(user);
     setIsDetailOpen(true);
   };
