@@ -23,10 +23,10 @@ import dynamic from 'next/dynamic';
 const DashboardHome = dynamic(() => import('@/components/admin/DashboardHome').then(mod => mod.DashboardHome), {
   loading: () => <CenteredLoader />,
 });
-const UserManagement = dynamic(() => import('@/components/admin/UserManagement').then(mod => mod.default), {
+const UserManagement = dynamic(() => import('@/components/admin/UserManagement'), {
   loading: () => <CenteredLoader />,
 });
-const Reports = dynamic(() => import('@/components/admin/Reports').then(mod => mod.Reports), {
+const Reports = dynamic(() => import('@/components/admin/Reports'), {
   loading: () => <CenteredLoader />,
 });
 const Attendance = dynamic(() => import('@/components/admin/Attendance'), {

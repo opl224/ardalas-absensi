@@ -11,13 +11,13 @@ import { AttendanceSettingsDialog } from "./AttendanceSettingsDialog";
 import dynamic from 'next/dynamic';
 import { CenteredLoader } from "../ui/loader";
 
-const UserManagement = dynamic(() => import('./UserManagement').then(mod => mod.default), {
+const UserManagement = dynamic(() => import('./UserManagement'), {
   loading: () => <CenteredLoader />,
 });
-const Reports = dynamic(() => import('./Reports').then(mod => mod.Reports), {
+const Reports = dynamic(() => import('./Reports'), {
   loading: () => <CenteredLoader />,
 });
-const Attendance = dynamic(() => import('./Attendance').then(mod => mod.default), {
+const Attendance = dynamic(() => import('./Attendance'), {
   loading: () => <CenteredLoader />,
 });
 const Profile = dynamic(() => import('./Profile').then(mod => mod.Profile), {

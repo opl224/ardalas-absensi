@@ -93,7 +93,7 @@ const AttendanceRateChart = ({ rate, change }: { rate: number, change: number })
 };
 
 
-export function Reports() {
+export default function Reports() {
     const [stats, setStats] = useState<ReportStats | null>(null);
     const [reportData, setReportData] = useState<AttendanceReportRecord[]>([]);
     const [loading, setLoading] = useState(true);
@@ -127,7 +127,7 @@ export function Reports() {
                 startDate.setHours(0, 0, 0, 0);
                 endDate.setHours(23, 59, 59, 999);
                 
-                const gurusQuery = query(collection(db, 'users'), where('role', '==', 'guru'));
+                const gurusQuery = query(collection(db, 'teachers'));
                 const gurusSnapshot = await getDocs(gurusQuery);
                 const totalGurus = gurusSnapshot.size;
 
