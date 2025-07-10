@@ -176,7 +176,7 @@ export default function UserManagement() {
     return () => unsubscribe();
   }, [toast]);
 
-  // Effect to combine all data sources into processedUsers
+  // Effect to combine all data sources into processedUsers and absentUsers
   useEffect(() => {
     if (!settings || allUsers.length === 0) {
         if (allUsers.length > 0) setLoading(false);
@@ -212,8 +212,13 @@ export default function UserManagement() {
         return (a.name || '').localeCompare(b.name || '');
     });
 
+    // Correctly calculate users who have not checked in yet
     const notCheckedInUsers = allUsers.filter(user => {
-        if (user.role === 'Admin' || isOffDay) return false;
+        // Exclude Admins and users on an off day
+        if (user.role === 'Admin' || isOffDay) {
+            return false;
+        }
+        // Include only if their ID is NOT in the attendance map
         return !attendanceStatusMap.has(user.id);
     });
 
@@ -555,5 +560,3 @@ export default function UserManagement() {
     </>
   );
 }
-
-    
