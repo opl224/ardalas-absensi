@@ -64,9 +64,7 @@ export function MobileAdminDashboard() {
     view: false,
     edit: false,
     detail: false,
-    logout: false,
     settings: false,
-    avatar: false,
   });
 
   const setDialogState = useCallback((dialog: string, isOpen: boolean) => {

@@ -5,7 +5,7 @@ import { useState, useRef, useEffect, useTransition } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { User, Mail, Building2, Shield, ChevronRight, Camera } from "lucide-react";
-import { ExitAppDialog } from "../ExitAppDialog";
+import { LogoutDialog } from "./LogoutDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { CenteredLoader } from "../ui/loader";
 import { ThemeToggle } from "../ThemeToggle";
@@ -16,8 +16,6 @@ import { cn } from "@/lib/utils";
 
 interface ProfileProps {
     setActiveView: (view: string) => void;
-    dialogStates?: { [key: string]: boolean };
-    setDialogState?: (dialog: string, isOpen: boolean) => void;
 }
 
 const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
@@ -44,13 +42,12 @@ const ClickableRow = ({ icon: Icon, label, onClick, className, showChevron = tru
     </button>
 );
 
-
-export function Profile({ setActiveView, dialogStates, setDialogState }: ProfileProps) {
+export function Profile({ setActiveView }: ProfileProps) {
     const { userProfile, logout } = useAuth();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
-
+    const [showLogoutDialog, setShowLogoutDialog] = useState(false);
     const [state, setState] = useState<AvatarUpdateState>({});
 
     const handleAvatarClick = () => {
@@ -116,7 +113,7 @@ export function Profile({ setActiveView, dialogStates, setDialogState }: Profile
                                 onClick={handleAvatarClick}
                                 disabled={isPending}
                             >
-                                {isPending ? <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div> : <Camera className="h-4 w-4" />}
+                                <Camera className="h-4 w-4" />
                                 <span className="sr-only">Ubah Avatar</span>
                             </Button>
                         </div>
@@ -156,7 +153,7 @@ export function Profile({ setActiveView, dialogStates, setDialogState }: Profile
                             <Button 
                                 variant="ghost" 
                                 className="w-full justify-center text-destructive h-full py-3 hover:bg-destructive/10 hover:text-destructive"
-                                onClick={() => setDialogState?.('logout', true)}
+                                onClick={() => setShowLogoutDialog(true)}
                             >
                                 Keluar
                             </Button>
@@ -164,7 +161,7 @@ export function Profile({ setActiveView, dialogStates, setDialogState }: Profile
                     </Card>
                 </div>
             </div>
-            <ExitAppDialog open={!!dialogStates?.logout} onOpenChange={(isOpen) => setDialogState?.('logout', isOpen)} onConfirm={() => logout("Anda telah berhasil keluar.")} />
+            <LogoutDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog} onConfirm={() => logout("Anda telah berhasil keluar.")} />
         </>
     );
 }
