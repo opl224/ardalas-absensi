@@ -13,7 +13,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -29,7 +28,6 @@ import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Capacitor } from '@capacitor/core';
-import { App } from '@capacitor/app';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 
 interface User {
@@ -49,6 +47,10 @@ interface User {
   address?: string;
 }
 
+interface UserManagementProps {
+    setDialogState?: (dialog: string, isOpen: boolean) => void;
+}
+
 const USERS_PER_PAGE = 10;
 
 const DetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value?: string }) => {
@@ -63,7 +65,7 @@ const DetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, lab
     );
 };
 
-export function UserManagement() {
+export function UserManagement({ setDialogState }: UserManagementProps) {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -73,16 +75,8 @@ export function UserManagement() {
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
 
   useEffect(() => {
-    if (Capacitor.isNativePlatform() && isDetailDialogOpen) {
-      const listener = App.addListener('backButton', (e) => {
-        e.canGoBack = false;
-        setIsDetailDialogOpen(false);
-      });
-      return () => {
-        listener.remove();
-      };
-    }
-  }, [isDetailDialogOpen]);
+    setDialogState?.('detail', isDetailDialogOpen);
+  }, [isDetailDialogOpen, setDialogState]);
 
   useEffect(() => {
     const fetchUsersAndListenForStatus = async () => {
@@ -374,10 +368,7 @@ export function UserManagement() {
 
 
   return (
-    <Dialog open={isDetailDialogOpen} onOpenChange={(open) => {
-      setIsDetailDialogOpen(open);
-      if (!open) setSelectedUser(null);
-    }}>
+    <>
       <div className="bg-gray-50 dark:bg-zinc-900">
         <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <h1 className="text-xl font-bold text-foreground">Manajemen Pengguna</h1>
@@ -442,11 +433,9 @@ export function UserManagement() {
                                   </div>
                               </div>
                               <div className="flex gap-2">
-                                <DialogTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-9 w-9 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200" onClick={() => setSelectedUser(user)}>
+                                  <Button variant="ghost" size="icon" className="h-9 w-9 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200" onClick={() => { setSelectedUser(user); setIsDetailDialogOpen(true); }}>
                                     <Eye className="h-4 w-4" />
                                   </Button>
-                                </DialogTrigger>
                               </div>
                           </div>
                       </Card>
@@ -504,48 +493,53 @@ export function UserManagement() {
           )}
         </div>
       </div>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Detail Pengguna</DialogTitle>
-        </DialogHeader>
-        {selectedUser && (
-          <ScrollArea className="max-h-[70vh] pr-4">
-            <div className="flex flex-col gap-4 py-4">
-              <div className="flex items-center gap-4">
-                  <Avatar className="h-16 w-16">
-                      <AvatarImage src={selectedUser.avatar} alt={selectedUser.name} />
-                      <AvatarFallback>{selectedUser.name?.slice(0,2).toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                      <p className="text-xl font-bold text-foreground">{selectedUser.name}</p>
-                      <p className="text-sm text-muted-foreground capitalize">{selectedUser.role}</p>
-                      <p className="text-sm text-muted-foreground">{selectedUser.email}</p>
-                  </div>
-              </div>
-              <Separator />
-              <div className="space-y-3 text-sm">
-                  <h3 className="font-semibold text-md mb-2">Informasi Pribadi</h3>
-                  {selectedUser.role === 'Guru' && <DetailItem icon={Fingerprint} label="NIP" value={selectedUser.nip} />}
-                  <DetailItem icon={VenetianMask} label="Jenis Kelamin" value={selectedUser.gender} />
-                  <DetailItem icon={Phone} label="No. Telepon" value={selectedUser.phone} />
-                  <DetailItem icon={BookMarked} label="Agama" value={selectedUser.religion} />
-                  <DetailItem icon={Home} label="Alamat" value={selectedUser.address} />
-              </div>
-              {selectedUser.role === 'Guru' && (
-                <>
-                  <Separator />
-                  <div className="space-y-3 text-sm">
-                      <h3 className="font-semibold text-md mb-2">Informasi Akademik</h3>
-                      <DetailItem icon={BookCopy} label="Mata Pelajaran" value={selectedUser.subject} />
-                      <DetailItem icon={Briefcase} label="Mengajar Kelas" value={selectedUser.class} />
-                  </div>
-                </>
-              )}
-            </div>
-          </ScrollArea>
-        )}
-      </DialogContent>
-    </Dialog>
+      <Dialog open={isDetailDialogOpen} onOpenChange={(open) => {
+        setIsDetailDialogOpen(open);
+        if (!open) setSelectedUser(null);
+      }}>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+            <DialogTitle>Detail Pengguna</DialogTitle>
+            </DialogHeader>
+            {selectedUser && (
+            <ScrollArea className="max-h-[70vh] pr-4">
+                <div className="flex flex-col gap-4 py-4">
+                <div className="flex items-center gap-4">
+                    <Avatar className="h-16 w-16">
+                        <AvatarImage src={selectedUser.avatar} alt={selectedUser.name} />
+                        <AvatarFallback>{selectedUser.name?.slice(0,2).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                        <p className="text-xl font-bold text-foreground">{selectedUser.name}</p>
+                        <p className="text-sm text-muted-foreground capitalize">{selectedUser.role}</p>
+                        <p className="text-sm text-muted-foreground">{selectedUser.email}</p>
+                    </div>
+                </div>
+                <Separator />
+                <div className="space-y-3 text-sm">
+                    <h3 className="font-semibold text-md mb-2">Informasi Pribadi</h3>
+                    {selectedUser.role === 'Guru' && <DetailItem icon={Fingerprint} label="NIP" value={selectedUser.nip} />}
+                    <DetailItem icon={VenetianMask} label="Jenis Kelamin" value={selectedUser.gender} />
+                    <DetailItem icon={Phone} label="No. Telepon" value={selectedUser.phone} />
+                    <DetailItem icon={BookMarked} label="Agama" value={selectedUser.religion} />
+                    <DetailItem icon={Home} label="Alamat" value={selectedUser.address} />
+                </div>
+                {selectedUser.role === 'Guru' && (
+                    <>
+                    <Separator />
+                    <div className="space-y-3 text-sm">
+                        <h3 className="font-semibold text-md mb-2">Informasi Akademik</h3>
+                        <DetailItem icon={BookCopy} label="Mata Pelajaran" value={selectedUser.subject} />
+                        <DetailItem icon={Briefcase} label="Mengajar Kelas" value={selectedUser.class} />
+                    </div>
+                    </>
+                )}
+                </div>
+            </ScrollArea>
+            )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

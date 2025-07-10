@@ -13,6 +13,11 @@ import { Button } from "../ui/button";
 import { updateAvatar, type AvatarUpdateState } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 
+interface ProfileProps {
+    setActiveView: (view: string) => void;
+    setDialogState: (dialog: string, isOpen: boolean) => void;
+}
+
 const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
     <div className="flex items-center gap-4 py-3">
         <Icon className="h-6 w-6 text-muted-foreground" />
@@ -38,7 +43,7 @@ const ClickableRow = ({ icon: Icon, label, onClick }: { icon: React.ElementType,
 );
 
 
-export function Profile({ setActiveView }: { setActiveView: (view: string) => void }) {
+export function Profile({ setActiveView, setDialogState }: ProfileProps) {
     const { userProfile, logout } = useAuth();
     const [showLogoutDialog, setShowLogoutDialog] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -46,6 +51,10 @@ export function Profile({ setActiveView }: { setActiveView: (view: string) => vo
     const { toast } = useToast();
 
     const [state, setState] = useState<AvatarUpdateState>({});
+
+    useEffect(() => {
+        setDialogState?.('logout', showLogoutDialog);
+    }, [showLogoutDialog, setDialogState]);
 
     const handleAvatarClick = () => {
         if (isPending) return;

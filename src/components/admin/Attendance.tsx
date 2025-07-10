@@ -30,7 +30,6 @@ import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Switch } from '../ui/switch';
 import { Capacitor } from '@capacitor/core';
-import { App } from '@capacitor/app';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 
 
@@ -46,6 +45,11 @@ interface AttendanceRecord {
     isFraudulent?: boolean;
     fraudReason?: string;
     checkInLocation?: { latitude: number, longitude: number };
+}
+
+interface AttendanceProps {
+  dialogStates?: { [key: string]: boolean };
+  setDialogState?: (dialog: string, isOpen: boolean) => void;
 }
 
 const RECORDS_PER_PAGE = 10;
@@ -153,7 +157,7 @@ function EditAttendanceDialog({ record, open, onOpenChange }: { record: Attendan
     );
 }
 
-export function Attendance() {
+export function Attendance({ setDialogState }: AttendanceProps) {
     const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
@@ -168,6 +172,12 @@ export function Attendance() {
 
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
+    
+    useEffect(() => {
+      setDialogState?.('delete', isDeleteDialogOpen);
+      setDialogState?.('view', isViewDialogOpen);
+      setDialogState?.('edit', isEditDialogOpen);
+    }, [isDeleteDialogOpen, isViewDialogOpen, isEditDialogOpen, setDialogState]);
 
     useEffect(() => {
         const settingsRef = doc(db, "settings", "attendance");
@@ -176,27 +186,6 @@ export function Attendance() {
         });
         return () => unsubscribe();
     }, []);
-
-    useEffect(() => {
-        if (Capacitor.isNativePlatform()) {
-            // Prioritize the top-most dialog
-            if (isEditDialogOpen || isDeleteDialogOpen || isViewDialogOpen) {
-              const listener = App.addListener('backButton', (e) => {
-                  e.canGoBack = false;
-                  if (isEditDialogOpen) {
-                    setIsEditDialogOpen(false);
-                  } else if (isDeleteDialogOpen) {
-                    setIsDeleteDialogOpen(false);
-                  } else if (isViewDialogOpen) {
-                      setIsViewDialogOpen(false);
-                  }
-              });
-              return () => {
-                listener.remove();
-              };
-            }
-        }
-    }, [isEditDialogOpen, isDeleteDialogOpen, isViewDialogOpen]);
 
     useEffect(() => {
         if (!date || !settings) return;
@@ -787,3 +776,4 @@ export function Attendance() {
 
 
     
+

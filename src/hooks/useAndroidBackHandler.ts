@@ -8,20 +8,18 @@ interface UseAndroidBackHandlerProps {
   currentView: string;
   isSubView: boolean;
   onBack: () => void;
-  profileViewId: string;
   homeViewId: string;
   changeView: (view: any) => void;
-  mainViews: string[];
+  onDialogClose?: () => boolean;
 }
 
 export const useAndroidBackHandler = ({
   currentView,
   isSubView,
   onBack,
-  profileViewId,
   homeViewId,
   changeView,
-  mainViews
+  onDialogClose
 }: UseAndroidBackHandlerProps) => {
   const [showExitDialog, setShowExitDialog] = useState(false);
 
@@ -29,6 +27,10 @@ export const useAndroidBackHandler = ({
     (e: BackButtonListenerEvent) => {
       e.canGoBack = false; // Prevent default webview behavior
 
+      if (onDialogClose && onDialogClose()) {
+        return;
+      }
+      
       if (showExitDialog) {
         setShowExitDialog(false);
         return;
@@ -42,7 +44,7 @@ export const useAndroidBackHandler = ({
         setShowExitDialog(true);
       }
     },
-    [currentView, isSubView, onBack, homeViewId, changeView, showExitDialog]
+    [currentView, isSubView, onBack, homeViewId, changeView, showExitDialog, onDialogClose]
   );
 
   useEffect(() => {

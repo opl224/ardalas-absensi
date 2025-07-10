@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { Home, User as UserIcon, Users2, LineChart, CheckSquare } from "lucide-react";
 import { UserManagement } from "./UserManagement";
 import { Reports } from "./Reports";
@@ -57,6 +57,11 @@ export function MobileAdminDashboard() {
     direction: 0,
     index: 0,
   });
+  const [dialogStates, setDialogStates] = useState<{[key: string]: boolean}>({});
+
+  const setDialogState = useCallback((dialog: string, isOpen: boolean) => {
+    setDialogStates(prev => ({...prev, [dialog]: isOpen}));
+  }, []);
 
   const NavLink = ({
       index,
@@ -141,19 +146,29 @@ export function MobileAdminDashboard() {
   const ComponentToRender = viewComponents[page.view];
   const onBack = () => changeView('profile');
 
+  const onDialogClose = useCallback(() => {
+    const openDialogKey = Object.keys(dialogStates).find(key => dialogStates[key]);
+    if (openDialogKey) {
+        setDialogState(openDialogKey, false);
+        return true;
+    }
+    return false;
+  }, [dialogStates, setDialogState]);
+
   const { showExitDialog, setShowExitDialog, handleConfirmExit } = useAndroidBackHandler({
     currentView: page.view,
     isSubView,
     onBack,
-    profileViewId: 'profile',
+    onDialogClose,
     homeViewId: 'home',
     changeView,
-    mainViews,
   });
 
   const props = {
       setActiveView: changeView,
       onBack: onBack,
+      setDialogState: setDialogState,
+      dialogStates: dialogStates,
   };
 
   return (

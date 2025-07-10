@@ -21,8 +21,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Capacitor } from '@capacitor/core';
-import { App } from '@capacitor/app';
 
 type ActiveView = 'home' | 'profile' | 'users' | 'reports' | 'attendance';
 
@@ -34,10 +32,15 @@ interface Stats {
     rate: number;
 }
 
+interface MobileHomeProps {
+    setActiveView: (view: ActiveView) => void;
+    setDialogState: (dialog: string, isOpen: boolean) => void;
+}
+
 const splitTextFrom = { opacity: 0, y: 20 };
 const splitTextTo = { opacity: 1, y: 0 };
 
-export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView) => void }) {
+export function MobileHome({ setActiveView, setDialogState }: MobileHomeProps) {
     const { userProfile } = useAuth();
     const [dateTime, setDateTime] = useState({ date: '', time: '' });
     const [stats, setStats] = useState<Stats>({ present: 0, absent: 0, late: 0, total: 0, rate: 0 });
@@ -47,17 +50,9 @@ export function MobileHome({ setActiveView }: { setActiveView: (view: ActiveView
     const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
 
     useEffect(() => {
-        if (Capacitor.isNativePlatform() && (showSettingsDialog || isAvatarDialogOpen)) {
-          const listener = App.addListener('backButton', (e) => {
-            e.canGoBack = false;
-            if (showSettingsDialog) setShowSettingsDialog(false);
-            if (isAvatarDialogOpen) setIsAvatarDialogOpen(false);
-          });
-          return () => {
-            listener.remove();
-          };
-        }
-      }, [showSettingsDialog, isAvatarDialogOpen]);
+        setDialogState?.('settings', showSettingsDialog);
+        setDialogState?.('avatar', isAvatarDialogOpen);
+    }, [showSettingsDialog, isAvatarDialogOpen, setDialogState]);
 
     useEffect(() => {
         const updateDateTime = () => {
