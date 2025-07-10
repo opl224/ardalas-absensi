@@ -20,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { collection, getDocs, query, where, doc, getDoc, orderBy, limit, startAfter, QueryDocumentSnapshot, collectionGroup } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, getDoc, orderBy, limit, startAfter, QueryDocumentSnapshot, collectionGroup, endBefore, limitToLast } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader } from '../ui/loader';
 import { Separator } from '../ui/separator';
@@ -61,13 +61,14 @@ const DetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, lab
     );
 };
 
-export function UserManagement() {
+export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
   const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot | null>(null);
   const [firstVisible, setFirstVisible] = useState<QueryDocumentSnapshot | null>(null);
+  const [pageHistory, setPageHistory] = useState<(QueryDocumentSnapshot | null)[]>([null]);
   const [currentPage, setCurrentPage] = useState(1);
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -103,35 +104,41 @@ export function UserManagement() {
     return () => { removeListener() };
   }, [handleBackButton, removeListener]);
 
-  const fetchUsers = useCallback(async (direction: 'next' | 'prev' | null = null, searchQuery = searchTerm) => {
+  const fetchUsers = useCallback(async (direction: 'next' | 'prev' | 'first' = 'first', searchQuery = searchTerm) => {
     setLoading(true);
-
     try {
-        const [teachersSnapshot, adminsSnapshot] = await Promise.all([
-            getDocs(query(collection(db, 'teachers'), orderBy('name'))),
-            getDocs(query(collection(db, 'users'), where('role', '==', 'admin'), orderBy('name')))
-        ]);
+        const fetchCollection = async (collectionName: string, role: 'Admin' | 'Guru') => {
+            let q = query(collection(db, collectionName), orderBy('name'));
+            if (searchQuery) {
+                q = query(q, where('name', '>=', searchQuery), where('name', '<=', searchQuery + '\uf8ff'));
+            }
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role })) as Omit<User, 'status' | 'isFraudulent'>[];
+        };
 
         let combinedUsers = [
-            ...adminsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Admin' })),
-            ...teachersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Guru' }))
-        ] as Omit<User, 'status' | 'isFraudulent'>[];
+            ...await fetchCollection('users', 'Admin'),
+            ...await fetchCollection('teachers', 'Guru'),
+        ];
         
-        if (searchQuery) {
-            combinedUsers = combinedUsers.filter(user => user.name.toLowerCase().includes(searchQuery.toLowerCase()));
-        }
-
+        // Manual sort after fetching as Firestore can't orderBy across different collections
         combinedUsers.sort((a, b) => {
             if (a.role === 'Admin' && b.role !== 'Admin') return -1;
             if (a.role !== 'Admin' && b.role === 'Admin') return 1;
             return a.name.localeCompare(b.name);
         });
 
-        const paginatedUserIds = combinedUsers.slice((currentPage - 1) * USERS_PER_PAGE, currentPage * USERS_PER_PAGE).map(u => u.id);
-        
+        // Manual pagination
+        const startIndex = (currentPage - 1) * USERS_PER_PAGE;
+        const endIndex = startIndex + USERS_PER_PAGE;
+        const paginatedUsersData = combinedUsers.slice(startIndex, endIndex);
+        const paginatedUserIds = paginatedUsersData.map(u => u.id);
+
         if (paginatedUserIds.length === 0) {
             setUsers([]);
             setLoading(false);
+            setLastVisible(null);
+            setFirstVisible(currentPage > 1 ? new (class {}) as QueryDocumentSnapshot : null); // Still allow going back
             return;
         }
 
@@ -159,7 +166,7 @@ export function UserManagement() {
         const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
         const isPastAbsentDeadline = now > checkInGraceEnd;
 
-        const finalUsers = combinedUsers.slice((currentPage - 1) * USERS_PER_PAGE, currentPage * USERS_PER_PAGE).map(user => {
+        const finalUsers = paginatedUsersData.map(user => {
             let status: User['status'];
             const attendanceInfo = attendanceStatusMap.get(user.id);
             if (user.role === 'Admin') {
@@ -182,8 +189,8 @@ export function UserManagement() {
         });
 
         setUsers(finalUsers);
-        setLastVisible(finalUsers.length === USERS_PER_PAGE ? new (class {}) as QueryDocumentSnapshot : null); 
-        setFirstVisible(currentPage > 1 ? new (class {}) as QueryDocumentSnapshot : null);
+        setLastVisible(combinedUsers.length > endIndex ? new (class {}) as QueryDocumentSnapshot : null);
+        setFirstVisible(startIndex > 0 ? new (class {}) as QueryDocumentSnapshot : null);
 
     } catch (error) {
         console.error("Error fetching users:", error);
@@ -195,23 +202,14 @@ export function UserManagement() {
 
   useEffect(() => {
     setCurrentPage(1); // Reset page on new search
-    if (searchTimeout.current) {
-        clearTimeout(searchTimeout.current);
-    }
-    searchTimeout.current = setTimeout(() => {
-        fetchUsers(null, searchTerm);
-    }, 500);
-    
-    return () => {
-        if (searchTimeout.current) clearTimeout(searchTimeout.current);
-    }
+    fetchUsers('first', searchTerm);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm]);
 
   useEffect(() => {
       fetchUsers();
-  }, [currentPage, fetchUsers])
-
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage])
 
   const handleNextPage = () => {
     setCurrentPage(prev => prev + 1);
@@ -221,6 +219,7 @@ export function UserManagement() {
         setCurrentPage(prev => prev - 1);
     }
   };
+
 
   const getBadgeVariant = (status: User['status']) => {
     switch (status) {
@@ -425,16 +424,18 @@ export function UserManagement() {
                   )}
               </div>
               
-              <div className="flex items-center justify-center space-x-2 mt-6">
-                <Button variant="outline" onClick={handlePrevPage} disabled={currentPage === 1 || loading}>
-                    <ChevronLeft className="h-4 w-4 mr-1" />
-                    Sebelumnya
-                </Button>
-                <Button variant="outline" onClick={handleNextPage} disabled={!lastVisible || loading}>
-                    Berikutnya
-                    <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              </div>
+              {(currentPage > 1 || lastVisible) && (
+                <div className="flex items-center justify-center space-x-2 mt-6">
+                    <Button variant="outline" onClick={handlePrevPage} disabled={currentPage === 1 || loading}>
+                        <ChevronLeft className="h-4 w-4 mr-1" />
+                        Sebelumnya
+                    </Button>
+                    <Button variant="outline" onClick={handleNextPage} disabled={!lastVisible || loading}>
+                        Berikutnya
+                        <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                </div>
+              )}
 
               </>
           )}

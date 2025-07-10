@@ -84,6 +84,7 @@ function EditAttendanceDialog({ record, open, onOpenChange }: { record: Attendan
         event.preventDefault();
         if (!formRef.current) return;
         const formData = new FormData(formRef.current);
+        // The Switch component handles its own value, so we need to add it manually if checked.
         if (removeFraud) {
             formData.append('removeFraudWarning', 'on');
         }
@@ -145,7 +146,6 @@ function EditAttendanceDialog({ record, open, onOpenChange }: { record: Attendan
                         <div className="flex items-center space-x-2 pt-2">
                             <Switch
                                 id="removeFraudWarning"
-                                name="removeFraudWarning"
                                 checked={removeFraud}
                                 onCheckedChange={setRemoveFraud}
                                 disabled={isPending}
@@ -237,13 +237,15 @@ export default function Attendance() {
                 }
             }
             
-            q = query(q, orderBy("checkInTime", "desc"), limit(RECORDS_PER_PAGE));
+            q = query(q, orderBy("checkInTime", "desc"));
 
             if (pageDirection === 'next' && lastVisible) {
-                q = query(q, startAfter(lastVisible));
+                q = query(q, startAfter(lastVisible), limit(RECORDS_PER_PAGE));
             } else if (pageDirection === 'prev' && firstVisible) {
                  const prevPageStartAfter = pageHistory[currentPage - 2];
-                 q = query(q, startAfter(prevPageStartAfter!));
+                 q = query(q, startAfter(prevPageStartAfter!), limit(RECORDS_PER_PAGE));
+            } else {
+                q = query(q, limit(RECORDS_PER_PAGE));
             }
             
             const documentSnapshots = await getDocs(q);
