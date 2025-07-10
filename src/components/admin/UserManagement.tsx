@@ -179,8 +179,8 @@ export default function UserManagement() {
   // Effect to combine all data sources into processedUsers and absentUsers
   useEffect(() => {
     if (!settings || allUsers.length === 0) {
-        if (allUsers.length > 0) setLoading(false);
-        return;
+      if (allUsers.length > 0) setLoading(false);
+      return;
     }
 
     const now = new Date();
@@ -198,7 +198,7 @@ export default function UserManagement() {
       } else if (attendanceInfo) {
         status = attendanceInfo.status;
       } else {
-        status = 'Guru'; 
+        status = 'Guru';
       }
       
       return {
@@ -221,8 +221,8 @@ export default function UserManagement() {
 
     setAbsentUsers(notCheckedInUsers);
     setProcessedUsers(usersWithStatus);
-    if (loading) setLoading(false);
-  }, [allUsers, attendanceStatusMap, settings, loading]);
+    setLoading(false);
+  }, [allUsers, attendanceStatusMap, settings]);
 
   const displayedUsers = useMemo(() => {
     const filtered = searchTerm
