@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { Capacitor } from '@capacitor/core';
 
 interface ProfileProps {
-    setActiveView: (view: string) => void;
+    setActiveView: (view: 'privacy') => void;
 }
 
 const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (

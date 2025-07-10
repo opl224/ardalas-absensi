@@ -11,19 +11,19 @@ import { AttendanceSettingsDialog } from "./AttendanceSettingsDialog";
 import dynamic from 'next/dynamic';
 import { CenteredLoader } from "../ui/loader";
 
-const UserManagement = dynamic(() => import('./UserManagement').then(mod => mod.UserManagement), {
+const UserManagement = dynamic(() => import('./UserManagement').then(mod => mod.default), {
   loading: () => <CenteredLoader />,
 });
-const Reports = dynamic(() => import('./Reports').then(mod => mod.Reports), {
+const Reports = dynamic(() => import('./Reports'), {
   loading: () => <CenteredLoader />,
 });
-const Attendance = dynamic(() => import('./Attendance'), {
+const Attendance = dynamic(() => import('./Attendance').then(mod => mod.default), {
   loading: () => <CenteredLoader />,
 });
-const Profile = dynamic(() => import('./Profile').then(mod => mod.Profile), {
+const Profile = dynamic(() => import('./Profile'), {
   loading: () => <CenteredLoader />,
 });
-const Privacy = dynamic(() => import('./Privacy').then(mod => mod.Privacy), {
+const Privacy = dynamic(() => import('./Privacy'), {
   loading: () => <CenteredLoader />,
 });
 
@@ -175,12 +175,16 @@ export function MobileAdminDashboard() {
     changeView,
   });
 
-  const props = {
+  const props: any = {
       setActiveView: changeView,
       onBack: onBack,
       // Pass a function to open the settings dialog
       setShowSettingsDialog: setShowSettingsDialog,
   };
+  
+  if (page.view === 'profile') {
+      props.onBack = onBack;
+  }
 
   return (
     <div className="bg-gray-50 dark:bg-zinc-900 min-h-screen flex flex-col">
