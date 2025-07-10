@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { collection, getDocs, query, where, doc, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, doc, onSnapshot, DocumentData } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader } from '../ui/loader';
 import { Separator } from '../ui/separator';
@@ -67,13 +67,11 @@ const DetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, lab
 };
 
 export default function UserManagement() {
-  const [allUserDocs, setAllUserDocs] = useState<any[]>([]);
-  const [displayedUsers, setDisplayedUsers] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  
   const [currentPage, setCurrentPage] = useState(1);
-
+  
   const [attendanceStatusMap, setAttendanceStatusMap] = useState<Map<string, AttendanceStatus>>(new Map());
   const [settings, setSettings] = useState<any>(null);
 
@@ -108,74 +106,69 @@ export default function UserManagement() {
     return () => { removeListener() };
   }, [handleBackButton, removeListener]);
 
-  // Effect to fetch all users once
-  useEffect(() => {
-    const fetchAllUsers = async () => {
-        setLoading(true);
-        try {
-            const adminQuery = query(collection(db, "users"), where('role', '==', 'admin'));
-            const teacherQuery = query(collection(db, "teachers"));
-
-            const [adminSnapshot, teacherSnapshot] = await Promise.all([
-                getDocs(adminQuery),
-                getDocs(teacherQuery)
-            ]);
-            
-            const allDocs = [
-                ...adminSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Admin' })),
-                ...teacherSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Guru' }))
-            ];
-
-            allDocs.sort((a, b) => {
-                if (a.role === 'Admin' && b.role !== 'Admin') return -1;
-                if (a.role !== 'Admin' && b.role === 'Admin') return 1;
-                return (a.name || '').localeCompare(b.name || '');
-            });
-            
-            setAllUserDocs(allDocs);
-
-        } catch (error) {
-            console.error("Error fetching users:", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat data pengguna.' });
-            setLoading(false);
-        }
-    };
-    fetchAllUsers();
-  }, [toast]);
-  
   // Effect to listen to settings and today's attendance in real-time
   useEffect(() => {
-      const settingsRef = doc(db, "settings", "attendance");
-      const settingsUnsubscribe = onSnapshot(settingsRef, (docSnap) => {
-          setSettings(docSnap.exists() ? docSnap.data() : {});
-      });
+    const settingsRef = doc(db, "settings", "attendance");
+    const settingsUnsubscribe = onSnapshot(settingsRef, (docSnap) => {
+        setSettings(docSnap.exists() ? docSnap.data() : {});
+    }, (error) => {
+        console.error("Error fetching settings: ", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat pengaturan.' });
+    });
 
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
-      const attendanceQuery = query(collection(db, "photo_attendances"), where("checkInTime", ">=", todayStart));
-      const attendanceUnsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
-          const newMap = new Map<string, AttendanceStatus>();
-          snapshot.forEach(doc => {
-              const data = doc.data();
-              newMap.set(data.userId, { status: data.status, isFraudulent: data.isFraudulent });
-          });
-          setAttendanceStatusMap(newMap);
-      });
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const attendanceQuery = query(collection(db, "photo_attendances"), where("checkInTime", ">=", todayStart));
+    const attendanceUnsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
+        const newMap = new Map<string, AttendanceStatus>();
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            newMap.set(data.userId, { status: data.status, isFraudulent: data.isFraudulent });
+        });
+        setAttendanceStatusMap(newMap);
+    }, (error) => {
+        console.error("Error fetching attendance: ", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat data kehadiran.' });
+    });
 
-      return () => {
-          settingsUnsubscribe();
-          attendanceUnsubscribe();
-      };
+    return () => {
+        settingsUnsubscribe();
+        attendanceUnsubscribe();
+    };
+  }, [toast]);
+  
+  // Effect for real-time user updates
+  useEffect(() => {
+    setLoading(true);
+    const adminQuery = query(collection(db, "users"), where('role', '==', 'admin'));
+    const teacherQuery = query(collection(db, "teachers"));
+
+    const unsubAdmins = onSnapshot(adminQuery, (adminSnapshot) => {
+        const adminUsers = adminSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Admin' } as User));
+        setAllUsers(prevUsers => {
+            const otherUsers = prevUsers.filter(u => u.role !== 'Admin');
+            return [...adminUsers, ...otherUsers].sort((a,b) => (a.name || '').localeCompare(b.name || ''));
+        });
+        setLoading(false);
+    });
+
+    const unsubTeachers = onSnapshot(teacherQuery, (teacherSnapshot) => {
+        const teacherUsers = teacherSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Guru' } as User));
+        setAllUsers(prevUsers => {
+            const otherUsers = prevUsers.filter(u => u.role !== 'Guru');
+            return [...teacherUsers, ...otherUsers].sort((a,b) => (a.name || '').localeCompare(b.name || ''));
+        });
+        setLoading(false);
+    });
+
+    return () => {
+        unsubAdmins();
+        unsubTeachers();
+    };
   }, []);
 
-  // Effect to process and display users whenever source data or filters change
-  useEffect(() => {
-    if (allUserDocs.length === 0 || settings === null) {
-      if(allUserDocs.length > 0 && settings !== null) setLoading(false);
-      return;
-    };
-    
-    setLoading(true);
+  const processedUsers = useMemo(() => {
+    if (!settings) return [];
 
     const now = new Date();
     const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
@@ -188,57 +181,66 @@ export default function UserManagement() {
     const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
     const isPastAbsentDeadline = now > checkInGraceEnd;
 
-    const combinedUsers = allUserDocs.map(user => {
-        let status: User['status'];
-        const attendanceInfo = attendanceStatusMap.get(user.id);
-        if (user.role === 'Admin') {
-            status = 'Admin';
-        } else if (attendanceInfo) {
-            status = attendanceInfo.status;
-        } else if (isOffDay) {
-            status = 'Libur';
-        } else if (isPastAbsentDeadline) {
-            status = 'Tidak Hadir';
-        } else {
-            status = 'Belum Absen';
-        }
-        
-        return {
-            ...user,
-            status,
-            isFraudulent: attendanceInfo?.isFraudulent ?? false,
-        } as User;
+    return allUsers.map(user => {
+      let status: User['status'];
+      const attendanceInfo = attendanceStatusMap.get(user.id);
+      
+      if (user.role === 'Admin') {
+        status = 'Admin';
+      } else if (attendanceInfo) {
+        status = attendanceInfo.status;
+      } else if (isOffDay) {
+        status = 'Libur';
+      } else if (isPastAbsentDeadline) {
+        status = 'Tidak Hadir';
+      } else {
+        status = 'Belum Absen';
+      }
+      
+      return {
+        ...user,
+        status,
+        isFraudulent: attendanceInfo?.isFraudulent ?? false,
+      };
+    }).sort((a, b) => {
+        if (a.role === 'Admin' && b.role !== 'Admin') return -1;
+        if (a.role !== 'Admin' && b.role === 'Admin') return 1;
+        return (a.name || '').localeCompare(b.name || '');
     });
+  }, [allUsers, attendanceStatusMap, settings]);
 
-    const filteredUsers = searchTerm
-        ? combinedUsers.filter(user => user.name && user.name.toLowerCase().includes(searchTerm.toLowerCase()))
-        : combinedUsers;
+  const displayedUsers = useMemo(() => {
+    const filtered = searchTerm
+      ? processedUsers.filter(user => user.name?.toLowerCase().includes(searchTerm.toLowerCase()))
+      : processedUsers;
     
     const startIndex = (currentPage - 1) * USERS_PER_PAGE;
-    const paginatedUsers = filteredUsers.slice(startIndex, startIndex + USERS_PER_PAGE);
+    return filtered.slice(startIndex, startIndex + USERS_PER_PAGE);
+  }, [processedUsers, searchTerm, currentPage]);
 
-    setDisplayedUsers(paginatedUsers);
-    setLoading(false);
-
-  }, [allUserDocs, attendanceStatusMap, settings, currentPage, searchTerm]);
+  const totalFilteredCount = useMemo(() => {
+      return searchTerm
+      ? processedUsers.filter(user => user.name?.toLowerCase().includes(searchTerm.toLowerCase())).length
+      : processedUsers.length;
+  }, [processedUsers, searchTerm]);
 
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const term = e.target.value;
-      setSearchTerm(term);
+      setSearchTerm(e.target.value);
       setCurrentPage(1); 
   };
 
 
   const handleNextPage = () => {
-    setCurrentPage(prev => prev + 1);
+    if ((currentPage * USERS_PER_PAGE) < totalFilteredCount) {
+        setCurrentPage(prev => prev + 1);
+    }
   };
   const handlePrevPage = () => {
     if (currentPage > 1) {
         setCurrentPage(prev => prev - 1);
     }
   };
-
 
   const getBadgeVariant = (status: User['status']) => {
     switch (status) {
@@ -258,15 +260,13 @@ export default function UserManagement() {
     toast({ title: 'Mempersiapkan Unduhan...', description: 'Ini bisa memakan waktu beberapa saat.' });
 
     try {
-        let allUsersData: any[] = allUserDocs;
-
-        if (allUsersData.length === 0) {
+        if (allUsers.length === 0) {
             toast({ variant: 'destructive', title: 'Gagal Mengunduh', description: 'Tidak ada data pengguna untuk diunduh.' });
             return;
         }
 
         const headers = ['ID', 'Nama', 'Email', 'Peran', 'NIP', 'Mata Pelajaran', 'Kelas', 'Jenis Kelamin', 'Telepon', 'Agama', 'Alamat'];
-        const data = allUsersData.map(user => [
+        const data = allUsers.map(user => [
             user.id,
             user.name,
             user.email,
@@ -357,9 +357,8 @@ export default function UserManagement() {
     setSelectedUser(null);
   };
 
-  const totalFilteredUsers = searchTerm ? allUserDocs.filter(user => user.name && user.name.toLowerCase().includes(searchTerm.toLowerCase())).length : allUserDocs.length;
   const hasPrevPage = currentPage > 1;
-  const hasNextPage = currentPage * USERS_PER_PAGE < totalFilteredUsers;
+  const hasNextPage = currentPage * USERS_PER_PAGE < totalFilteredCount;
 
   return (
     <>
@@ -441,11 +440,11 @@ export default function UserManagement() {
               
               {(hasPrevPage || hasNextPage) && (
                 <div className="flex items-center justify-center space-x-2 mt-6">
-                    <Button variant="outline" onClick={handlePrevPage} disabled={!hasPrevPage || loading}>
+                    <Button variant="outline" onClick={handlePrevPage} disabled={!hasPrevPage}>
                         <ChevronLeft className="h-4 w-4 mr-1" />
                         Sebelumnya
                     </Button>
-                    <Button variant="outline" onClick={handleNextPage} disabled={!hasNextPage || loading}>
+                    <Button variant="outline" onClick={handleNextPage} disabled={!hasNextPage}>
                         Berikutnya
                         <ChevronRight className="h-4 w-4 ml-1" />
                     </Button>
@@ -502,3 +501,4 @@ export default function UserManagement() {
     </>
   );
 }
+
