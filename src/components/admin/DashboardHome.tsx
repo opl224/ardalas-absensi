@@ -75,23 +75,22 @@ export function DashboardHome() {
 
     // Effect to fetch data and listen for attendance, re-runs when settings or totalGurus change
     useEffect(() => {
-        if (!settings || totalGurus === 0) {
-             if (settings) {
-                // Handle case where there are no teachers
-                setStats({ present: 0, absent: 0, late: 0, total: 0, rate: 0 });
-                setAttendanceData([]);
-                setLoading(false);
-            }
-            return;
-        };
+        if (!settings) return;
 
         setLoading(true);
 
         const now = new Date();
         const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
 
-        if (settings.offDays?.includes(todayStr)) {
+        if (settings.offDays?.includes(todayStr) && totalGurus > 0) {
             setStats({ present: 0, absent: totalGurus, late: 0, total: totalGurus, rate: 0 });
+            setAttendanceData([]);
+            setLoading(false);
+            return;
+        }
+
+        if (totalGurus === 0) {
+            setStats({ present: 0, absent: 0, late: 0, total: 0, rate: 0 });
             setAttendanceData([]);
             setLoading(false);
             return;
@@ -105,8 +104,7 @@ export function DashboardHome() {
             collection(db, "photo_attendances"),
             where("role", "==", "guru"),
             where("checkInTime", ">=", startOfToday),
-            where("checkInTime", "<", endOfToday),
-            orderBy("checkInTime", "desc")
+            where("checkInTime", "<", endOfToday)
         );
 
         const unsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
@@ -115,7 +113,6 @@ export function DashboardHome() {
                 ...doc.data()
             })) as AttendanceRecord[];
 
-            // Correctly filter for ONLY 'Hadir' and 'Terlambat' for display and stats
             const activeAttendances = allAttendancesToday.filter(
                 a => a.status === 'Hadir' || a.status === 'Terlambat'
             );
@@ -125,22 +122,7 @@ export function DashboardHome() {
             const lateCount = activeAttendances.filter(a => a.status === 'Terlambat').length;
             const totalWithRecords = presentCount + lateCount;
 
-            const [endHours, endMinutes] = (settings.checkInEnd || '09:00').split(':').map(Number);
-            const checkInDeadline = new Date();
-            checkInDeadline.setHours(endHours, endMinutes, 0, 0);
-            const gracePeriodMinutes = settings.gracePeriod ?? 60;
-            const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
-
-            // Absent is total users minus those who have a 'Hadir' or 'Terlambat' record.
-            let absentCount = totalGurus - totalWithRecords;
-
-            // If it's before the absent deadline, nobody is marked absent yet unless manually set
-            if (new Date() < checkInGraceEnd) {
-                 const manuallyAbsentCount = allAttendancesToday.filter(a => a.status === 'Tidak Hadir').length;
-                 // We subtract those who are manually marked absent from the total gurus before calculating auto-absent
-                 absentCount = manuallyAbsentCount;
-            }
-            
+            const absentCount = totalGurus - totalWithRecords;
             const attendanceRate = totalGurus > 0 ? Math.round((totalWithRecords / totalGurus) * 100) : 0;
             
             setStats({
