@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect, useTransition } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, Mail, Building2, Shield, LogOut, ChevronRight, Camera } from "lucide-react";
+import { User, Mail, Building2, Shield, ChevronRight, Camera } from "lucide-react";
 import { ExitAppDialog } from "../ExitAppDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { CenteredLoader, Loader } from "../ui/loader";
@@ -164,7 +164,7 @@ export function Profile({ setActiveView, dialogStates, setDialogState }: Profile
                     </Card>
                 </div>
             </div>
-            <ExitAppDialog open={!!dialogStates?.logout} onOpenChange={(isOpen) => setDialogState?.('logout', isOpen)} onConfirm={() => logout()} />
+            <ExitAppDialog open={!!dialogStates?.logout} onOpenChange={(isOpen) => setDialogState?.('logout', isOpen)} onConfirm={() => logout("Anda telah berhasil keluar.")} />
         </>
     );
 }

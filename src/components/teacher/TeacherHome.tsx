@@ -37,7 +37,7 @@ function CheckoutButton({ disabled, pending }: { disabled: boolean, pending: boo
     return (
       <Button type="submit" className="w-full" disabled={pending || disabled}>
         {pending && <Loader scale={0.48} />}
-        Absen Keluar
+        <span className={pending ? 'invisible' : 'visible'}>Absen Keluar</span>
       </Button>
     );
 }
@@ -339,6 +339,13 @@ export function TeacherHome({ setActiveView, dialogStates, setDialogState }: Tea
                                         <span className='font-medium text-foreground'>{status === 'checked_out' && checkoutTime ? checkoutTime : ' - '}</span>
                                     </div>
                                 </div>
+                                {status === 'checked_in' && (
+                                    <form onSubmit={handleCheckoutSubmit}>
+                                        <input type="hidden" name="userId" value={userProfile.uid} />
+                                        <input type="hidden" name="attendanceId" value={checkinData.attendanceId} />
+                                        <CheckoutButton disabled={!isCheckoutAllowed} pending={isPending} />
+                                    </form>
+                                )}
                             </>
                         )}
                     </CardContent>

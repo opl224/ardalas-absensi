@@ -23,7 +23,7 @@ function SubmitButton({ disabled, pending }: { disabled: boolean; pending: boole
   return (
     <Button type="submit" className="w-full" disabled={disabled || pending}>
       {pending && <Loader scale={0.48} />}
-      Kirim Absensi
+      <span className={pending ? 'invisible' : 'visible'}>Kirim Absensi</span>
     </Button>
   );
 }
