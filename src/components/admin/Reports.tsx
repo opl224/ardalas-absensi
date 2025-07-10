@@ -100,8 +100,31 @@ export default function Reports() {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('today');
     const { toast } = useToast();
+    const [totalGurus, setTotalGurus] = useState(0);
 
     useEffect(() => {
+        const teachersQuery = query(collection(db, 'teachers'));
+        const unsubscribe = onSnapshot(teachersQuery, (snapshot) => {
+            setTotalGurus(snapshot.size);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    useEffect(() => {
+        if (totalGurus === 0 && activeTab) {
+            setLoading(false);
+            setStats({
+                totalGurus: 0,
+                present: 0,
+                absent: 0,
+                late: 0,
+                attendanceRate: 0,
+                rateChange: 0,
+            });
+            setReportData([]);
+            return;
+        }
+
         setLoading(true);
         let unsubscribe: Unsubscribe = () => {};
 
@@ -129,10 +152,6 @@ export default function Reports() {
                 }
                 startDate.setHours(0, 0, 0, 0);
                 endDate.setHours(23, 59, 59, 999);
-                
-                const gurusQuery = query(collection(db, 'teachers'));
-                const gurusCountSnapshot = await getCountFromServer(gurusQuery);
-                const totalGurus = gurusCountSnapshot.data().count;
 
                 const attendanceQuery = query(
                     collection(db, "photo_attendances"),
@@ -143,32 +162,18 @@ export default function Reports() {
                 
                 unsubscribe = onSnapshot(attendanceQuery, async (snapshot) => {
                     const attendanceDocs = snapshot.docs;
+                    const attendanceData = attendanceDocs.map(doc => doc.data());
                     
-                    const presentUserIds = new Set(attendanceDocs.map(doc => doc.data().userId));
-                    const presentCount = presentUserIds.size;
-                    const lateCount = attendanceDocs.filter(doc => doc.data().status === 'Terlambat').length;
+                    const presentCount = attendanceData.filter(d => d.status === 'Hadir').length;
+                    const lateCount = attendanceData.filter(d => d.status === 'Terlambat').length;
                     
                     const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
                     const settings = settingsDoc.exists() ? settingsDoc.data() : { checkInEnd: '09:00', gracePeriod: 60 };
 
-                    let absentCount = 0;
-                    if (activeTab === 'today') {
-                        const currentTime = new Date();
-                        const checkInEndStr = settings.checkInEnd || '09:00';
-                        const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
-                        const checkInDeadline = new Date();
-                        checkInDeadline.setHours(endHours, endMinutes, 0, 0);
-                        const gracePeriodMinutes = settings.gracePeriod ?? 60;
-                        const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
-
-                        if (currentTime > checkInGraceEnd) {
-                            absentCount = totalGurus - presentCount;
-                        }
-                    } else {
-                        absentCount = totalGurus - presentCount;
-                    }
-
-                    const attendanceRate = totalGurus > 0 ? (presentCount / totalGurus) * 100 : 0;
+                    const totalActiveAttendance = presentCount + lateCount;
+                    let absentCount = totalGurus - totalActiveAttendance;
+                    
+                    const attendanceRate = totalGurus > 0 ? (totalActiveAttendance / totalGurus) * 100 : 0;
                     
                     const rateChange = 2.3; // Placeholder
 
@@ -181,8 +186,7 @@ export default function Reports() {
                         rateChange,
                     });
                     
-                    const detailedData: AttendanceReportRecord[] = attendanceDocs.map(doc => {
-                        const data = doc.data();
+                    const detailedData: AttendanceReportRecord[] = attendanceData.map(data => {
                         return {
                             name: data.name || 'N/A',
                             checkInTime: data.checkInTime ? (data.checkInTime as Timestamp).toDate().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '-',
@@ -210,7 +214,7 @@ export default function Reports() {
         return () => {
             unsubscribe();
         }
-    }, [activeTab]);
+    }, [activeTab, totalGurus]);
 
     const handleDownload = async (formatType: 'pdf' | 'csv') => {
         if (loading || reportData.length === 0) {
@@ -349,5 +353,3 @@ export default function Reports() {
         </div>
     );
 }
-
-    

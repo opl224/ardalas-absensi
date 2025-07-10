@@ -49,6 +49,16 @@ export function DashboardHome() {
     const [loading, setLoading] = useState(true);
     const [showSettingsDialog, setShowSettingsDialog] = useState(false);
     const [settings, setSettings] = useState<any | null>(null);
+    const [totalGurus, setTotalGurus] = useState(0);
+
+    // Effect to get total gurus count
+    useEffect(() => {
+        const teachersQuery = query(collection(db, 'teachers'));
+        const unsubscribe = onSnapshot(teachersQuery, (snapshot) => {
+            setTotalGurus(snapshot.size);
+        });
+        return () => unsubscribe();
+    }, []);
 
     // Effect to listen for settings changes
     useEffect(() => {
@@ -63,96 +73,91 @@ export function DashboardHome() {
         return () => unsubscribe();
     }, []);
 
-    // Effect to fetch data and listen for attendance, re-runs when settings change
+    // Effect to fetch data and listen for attendance, re-runs when settings or totalGurus change
     useEffect(() => {
-        if (!settings) return; // Wait for settings to load
-
-        setLoading(true);
-        const teachersQuery = query(collection(db, 'teachers'));
-        
-        const setupListeners = async () => {
-            const teachersCountSnapshot = await getCountFromServer(teachersQuery);
-            const totalUserCount = teachersCountSnapshot.data().count;
-
-            const now = new Date();
-            const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
-
-            if (settings.offDays?.includes(todayStr)) {
-                setStats({ present: 0, absent: totalUserCount, late: 0, total: totalUserCount, rate: 0 });
+        if (!settings || totalGurus === 0) {
+             if (settings) {
+                // Handle case where there are no teachers
+                setStats({ present: 0, absent: 0, late: 0, total: 0, rate: 0 });
                 setAttendanceData([]);
                 setLoading(false);
-                return () => {}; // Return an empty unsubscribe function
+            }
+            return;
+        };
+
+        setLoading(true);
+
+        const now = new Date();
+        const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
+
+        if (settings.offDays?.includes(todayStr)) {
+            setStats({ present: 0, absent: totalGurus, late: 0, total: totalGurus, rate: 0 });
+            setAttendanceData([]);
+            setLoading(false);
+            return;
+        }
+        
+        const today = new Date();
+        const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+        const attendanceQuery = query(
+            collection(db, "photo_attendances"),
+            where("role", "==", "guru"),
+            where("checkInTime", ">=", startOfToday),
+            where("checkInTime", "<", endOfToday),
+            orderBy("checkInTime", "desc")
+        );
+
+        const unsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
+            const allAttendancesToday = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })) as AttendanceRecord[];
+
+            // Correctly filter for ONLY 'Hadir' and 'Terlambat' for display and stats
+            const activeAttendances = allAttendancesToday.filter(
+                a => a.status === 'Hadir' || a.status === 'Terlambat'
+            );
+            setAttendanceData(activeAttendances);
+            
+            const presentCount = activeAttendances.filter(a => a.status === 'Hadir').length;
+            const lateCount = activeAttendances.filter(a => a.status === 'Terlambat').length;
+            const totalWithRecords = presentCount + lateCount;
+
+            const [endHours, endMinutes] = (settings.checkInEnd || '09:00').split(':').map(Number);
+            const checkInDeadline = new Date();
+            checkInDeadline.setHours(endHours, endMinutes, 0, 0);
+            const gracePeriodMinutes = settings.gracePeriod ?? 60;
+            const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
+
+            // Absent is total users minus those who have a 'Hadir' or 'Terlambat' record.
+            let absentCount = totalGurus - totalWithRecords;
+
+            // If it's before the absent deadline, nobody is marked absent yet unless manually set
+            if (new Date() < checkInGraceEnd) {
+                 const manuallyAbsentCount = allAttendancesToday.filter(a => a.status === 'Tidak Hadir').length;
+                 // We subtract those who are manually marked absent from the total gurus before calculating auto-absent
+                 absentCount = manuallyAbsentCount;
             }
             
-            const today = new Date();
-            const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-            const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-
-            const attendanceQuery = query(
-                collection(db, "photo_attendances"),
-                where("role", "==", "guru"),
-                where("checkInTime", ">=", startOfToday),
-                where("checkInTime", "<", endOfToday),
-                orderBy("checkInTime", "desc")
-            );
-
-            const unsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
-                const allAttendancesToday = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                })) as AttendanceRecord[];
-
-                // Filter out "Tidak Hadir" for display and present/late counts
-                const activeAttendances = allAttendancesToday.filter(a => a.status === 'Hadir' || a.status === 'Terlambat');
-                setAttendanceData(activeAttendances);
-                
-                // Explicitly count each status from the filtered data
-                const presentCount = activeAttendances.filter(a => a.status === 'Hadir').length;
-                const lateCount = activeAttendances.filter(a => a.status === 'Terlambat').length;
-                
-                // Total with records is sum of present and late. 'Tidak Hadir' records are handled separately.
-                const totalWithRecords = presentCount + lateCount;
-
-                // Absent calculation
-                const [endHours, endMinutes] = (settings.checkInEnd || '09:00').split(':').map(Number);
-                const checkInDeadline = new Date();
-                checkInDeadline.setHours(endHours, endMinutes, 0, 0);
-                const gracePeriodMinutes = settings.gracePeriod ?? 60;
-                const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
-
-                // Absent is total users minus those who have a 'Hadir' or 'Terlambat' record.
-                let absentCount = totalUserCount - totalWithRecords;
-
-                // If it's before the absent deadline, nobody is marked absent yet.
-                if (new Date() < checkInGraceEnd) {
-                    absentCount = 0;
-                }
-                
-                // Attendance rate is based on who showed up (present + late) vs total.
-                const attendanceRate = totalUserCount > 0 ? Math.round((totalWithRecords / totalUserCount) * 100) : 0;
-                
-                setStats({
-                    present: presentCount,
-                    absent: absentCount >= 0 ? absentCount : 0,
-                    late: lateCount,
-                    total: totalUserCount,
-                    rate: attendanceRate
-                });
-                setLoading(false);
-            }, (error) => {
-                console.error("Error fetching stats: ", error);
-                setLoading(false);
+            const attendanceRate = totalGurus > 0 ? Math.round((totalWithRecords / totalGurus) * 100) : 0;
+            
+            setStats({
+                present: presentCount,
+                absent: absentCount >= 0 ? absentCount : 0,
+                late: lateCount,
+                total: totalGurus,
+                rate: attendanceRate
             });
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching stats: ", error);
+            setLoading(false);
+        });
 
-            return unsubscribe;
-        };
-
-        const unsubscribePromise = setupListeners();
-
-        return () => {
-            unsubscribePromise.then(unsub => unsub && unsub());
-        };
-    }, [settings]);
+        return () => unsubscribe();
+    }, [settings, totalGurus]);
 
     return (
         <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -222,7 +227,7 @@ export function DashboardHome() {
                                             <div className="font-medium">{item.name}</div>
                                         </TableCell>
                                         <TableCell className="hidden sm:table-cell">{item.role}</TableCell>
-                                        <TableCell className="hidden sm:table-cell">{item.status !== 'Tidak Hadir' ? item.checkInTime.toDate().toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'}) : '-'}</TableCell>
+                                        <TableCell className="hidden sm:table-cell">{item.checkInTime.toDate().toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'})}</TableCell>
                                         <TableCell>
                                             <Badge variant={
                                                 item.isFraudulent ? 'destructive' :
