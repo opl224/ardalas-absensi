@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useState, useEffect, useMemo, useRef, useTransition } from 'react';
@@ -51,6 +52,9 @@ interface AttendanceProps {
   dialogStates?: { [key: string]: boolean };
   setDialogState?: (dialog: string, isOpen: boolean) => void;
 }
+
+const RECORDS_PER_PAGE = 10;
+const filterOptions = ['Semua Kehadiran', 'Hadir', 'Terlambat', 'Tidak Hadir', 'Kecurangan'];
 
 function EditAttendanceDialog({ record, open, onOpenChange }: { record: AttendanceRecord | null, open: boolean, onOpenChange: (open: boolean) => void }) {
     const [state, setState] = useState<AttendanceUpdateState>({});
@@ -755,7 +759,6 @@ export function Attendance({ dialogStates, setDialogState }: AttendanceProps) {
     )
 }
 
-
     
 
 
@@ -764,5 +767,6 @@ export function Attendance({ dialogStates, setDialogState }: AttendanceProps) {
 
 
     
+
 
 
