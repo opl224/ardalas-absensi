@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, TrendingUp, Clock, Download, UserX } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, Timestamp, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, doc, getDoc, getCountFromServer } from 'firebase/firestore';
 import { Loader } from '../ui/loader';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -128,8 +128,8 @@ export default function Reports() {
                 endDate.setHours(23, 59, 59, 999);
                 
                 const gurusQuery = query(collection(db, 'teachers'));
-                const gurusSnapshot = await getDocs(gurusQuery);
-                const totalGurus = gurusSnapshot.size;
+                const gurusCountSnapshot = await getCountFromServer(gurusQuery);
+                const totalGurus = gurusCountSnapshot.data().count;
 
                 const attendanceQuery = query(
                     collection(db, "photo_attendances"),

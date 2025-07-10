@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { collection, query, orderBy, Timestamp, where, doc, getDoc, onSnapshot, getDocs } from "firebase/firestore";
+import { collection, query, orderBy, Timestamp, where, doc, onSnapshot, getDocs, getCountFromServer } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Loader } from "@/components/ui/loader";
 import { Separator } from "../ui/separator";
@@ -68,11 +68,11 @@ export function DashboardHome() {
         if (!settings) return; // Wait for settings to load
 
         setLoading(true);
-        const usersQuery = query(collection(db, 'users'), where('role', '==', 'guru'));
+        const teachersQuery = query(collection(db, 'teachers'));
         
         const setupListeners = async () => {
-            const usersSnapshot = await getDocs(usersQuery);
-            const totalUserCount = usersSnapshot.size;
+            const teachersCountSnapshot = await getCountFromServer(teachersQuery);
+            const totalUserCount = teachersCountSnapshot.data().count;
 
             const now = new Date();
             const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });

@@ -595,7 +595,7 @@ export default function Attendance() {
                             <p className="text-center text-muted-foreground py-8">Tidak ada catatan kehadiran untuk filter yang dipilih.</p>
                         )}
                     </div>
-                    {(currentPage > 1 || lastVisible) && (
+                    {(currentPage > 1 || (lastVisible && attendanceData.length >= RECORDS_PER_PAGE)) && (
                          <div className="flex items-center justify-center space-x-2 mt-6">
                             <Button
                                 variant="outline"
