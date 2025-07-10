@@ -46,6 +46,7 @@ export function MobileHome({ setActiveView, setShowSettingsDialog }: MobileHomeP
     const [loading, setLoading] = useState(true);
     const [settings, setSettings] = useState<any | null>(null);
     const [showAvatarDialog, setShowAvatarDialog] = useState(false);
+    const [totalGurus, setTotalGurus] = useState(0);
 
     useEffect(() => {
         const updateDateTime = () => {
@@ -61,6 +62,14 @@ export function MobileHome({ setActiveView, setShowSettingsDialog }: MobileHomeP
         return () => clearInterval(interval);
     }, []);
 
+    useEffect(() => {
+        const teachersQuery = query(collection(db, 'teachers'));
+        const unsubscribe = onSnapshot(teachersQuery, (snapshot) => {
+            setTotalGurus(snapshot.size);
+        });
+        return () => unsubscribe();
+    }, []);
+
     // Listener for settings changes
     useEffect(() => {
         const settingsRef = doc(db, "settings", "attendance");
@@ -74,89 +83,64 @@ export function MobileHome({ setActiveView, setShowSettingsDialog }: MobileHomeP
         return () => unsubscribe();
     }, []);
 
-    // Main logic effect, re-runs when settings change
+    // Main logic effect, re-runs when settings or totalGurus change
     useEffect(() => {
         if (!settings) return; // Wait for settings to load
 
         setLoading(true);
-        const fetchStats = async () => {
-            try {
-                const usersQuery = query(collection(db, 'users'), where('role', '==', 'guru'));
-                const usersSnapshot = await getDocs(usersQuery);
-                const totalUserCount = usersSnapshot.size;
 
-                if (totalUserCount === 0) {
-                    setStats({ present: 0, absent: 0, late: 0, total: 0, rate: 0 });
-                    setLoading(false);
-                    return () => {};
-                }
-                
-                const now = new Date();
-                const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
-                
-                if (settings.offDays.includes(todayStr)) {
-                     setStats({ present: 0, absent: 0, late: 0, total: totalUserCount, rate: 100 });
-                     setLoading(false);
-                     return () => {};
-                }
-                
-                const today = new Date();
-                const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-                const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+        const now = new Date();
+        const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
 
-                const attendanceQuery = query(
-                    collection(db, "photo_attendances"),
-                    where("role", "==", "guru"),
-                    where("checkInTime", ">=", startOfToday),
-                    where("checkInTime", "<", endOfToday)
-                );
+        if (settings.offDays?.includes(todayStr) && totalGurus > 0) {
+            setStats({ present: 0, absent: totalGurus, late: 0, total: totalGurus, rate: 0 });
+            setLoading(false);
+            return;
+        }
 
-                const unsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
-                    const attendances = snapshot.docs.map(doc => doc.data());
-                    const presentCount = attendances.length;
-                    const lateCount = attendances.filter(a => a.status === 'Terlambat').length;
-                    
-                    const [endHours, endMinutes] = settings.checkInEnd.split(':').map(Number);
-                    const checkInDeadline = new Date();
-                    checkInDeadline.setHours(endHours, endMinutes, 0, 0);
-                    const gracePeriodMinutes = settings.gracePeriod ?? 60;
-                    const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
-
-                    let absentCount = 0;
-                    if (new Date() > checkInGraceEnd) {
-                        absentCount = totalUserCount - presentCount;
-                    }
-
-                    const attendanceRate = totalUserCount > 0 ? Math.round((presentCount / totalUserCount) * 100) : 0;
-                    
-                    setStats({
-                        present: presentCount,
-                        absent: absentCount >= 0 ? absentCount : 0,
-                        late: lateCount,
-                        total: totalUserCount,
-                        rate: attendanceRate
-                    });
-                     setLoading(false);
-                }, (error) => {
-                    console.error("Error fetching stats: ", error);
-                    setLoading(false);
-                });
-
-                return unsubscribe;
-
-            } catch (error) {
-                console.error("Error fetching total users: ", error);
-                setLoading(false);
-                return () => {};
-            }
-        };
-
-        const unsubscribePromise = fetchStats();
+        if (totalGurus === 0) {
+            setStats({ present: 0, absent: 0, late: 0, total: 0, rate: 0 });
+            setLoading(false);
+            return;
+        }
         
-        return () => {
-            unsubscribePromise.then(unsub => unsub && unsub());
-        };
-    }, [settings]);
+        const today = new Date();
+        const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+        const attendanceQuery = query(
+            collection(db, "photo_attendances"),
+            where("role", "==", "guru"),
+            where("checkInTime", ">=", startOfToday),
+            where("checkInTime", "<", endOfToday),
+            where("status", "in", ["Hadir", "Terlambat"])
+        );
+
+        const unsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
+            const allAttendancesToday = snapshot.docs.map(doc => doc.data());
+
+            const presentCount = allAttendancesToday.filter(a => a.status === 'Hadir').length;
+            const lateCount = allAttendancesToday.filter(a => a.status === 'Terlambat').length;
+            const totalWithRecords = presentCount + lateCount;
+
+            const absentCount = totalGurus - totalWithRecords;
+            const attendanceRate = totalGurus > 0 ? Math.round((totalWithRecords / totalGurus) * 100) : 0;
+            
+            setStats({
+                present: presentCount,
+                absent: absentCount >= 0 ? absentCount : 0,
+                late: lateCount,
+                total: totalGurus,
+                rate: attendanceRate
+            });
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching stats: ", error);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [settings, totalGurus]);
 
     if (!userProfile) {
         return null;
@@ -242,12 +226,12 @@ export function MobileHome({ setActiveView, setShowSettingsDialog }: MobileHomeP
                         <>
                             <div className="flex justify-around text-center">
                                 <div>
-                                    <div className="w-16 h-16 bg-red-500 ml-2 text-white rounded-full flex items-center justify-center text-2xl font-bold">{stats.absent}</div>
-                                    <p className="mt-2 text-sm font-medium text-muted-foreground">Tidak Hadir</p>
-                                </div>
-                                <div>
                                     <div className="w-16 h-16 bg-green-500 text-white rounded-full flex items-center justify-center text-2xl font-bold">{stats.present}</div>
                                     <p className="mt-2 text-sm font-medium text-muted-foreground">Hadir</p>
+                                </div>
+                                <div>
+                                    <div className="w-16 h-16 bg-red-500 ml-2 text-white rounded-full flex items-center justify-center text-2xl font-bold">{stats.absent}</div>
+                                    <p className="mt-2 text-sm font-medium text-muted-foreground">Tidak Hadir</p>
                                 </div>
                                 <div>
                                     <div className="w-16 h-16 bg-yellow-400 text-black rounded-full flex items-center justify-center text-2xl font-bold">{stats.late}</div>
