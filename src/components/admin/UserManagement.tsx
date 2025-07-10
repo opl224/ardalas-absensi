@@ -70,6 +70,7 @@ export default function UserManagement() {
   const [firstVisible, setFirstVisible] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [allUserDocs, setAllUserDocs] = useState<any[]>([]);
+  const [totalUsers, setTotalUsers] = useState(0);
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const { toast } = useToast();
@@ -107,7 +108,7 @@ export default function UserManagement() {
   const fetchUsers = useCallback(async (page = 1, searchQuery = '') => {
     setLoading(true);
     try {
-        if (page === 1) { // Only refetch all users on first page or new search
+        if (page === 1) {
             const adminQuery = query(collection(db, "users"), where('role', '==', 'admin'));
             const teacherQuery = collection(db, "teachers");
 
@@ -117,29 +118,31 @@ export default function UserManagement() {
             ]);
 
             const combinedUserMap = new Map();
-            adminSnapshot.forEach(doc => combinedUserMap.set(doc.id, { ...doc.data(), id: doc.id, role: 'Admin' }));
+            // Admins take priority if there's an ID conflict
             teacherSnapshot.forEach(doc => combinedUserMap.set(doc.id, { ...doc.data(), id: doc.id, role: 'Guru' }));
+            adminSnapshot.forEach(doc => combinedUserMap.set(doc.id, { ...doc.data(), id: doc.id, role: 'Admin' }));
             
             let allDocs = Array.from(combinedUserMap.values());
             
             if (searchQuery) {
-                allDocs = allDocs.filter(doc => doc.name.toLowerCase().includes(searchQuery.toLowerCase()));
+                allDocs = allDocs.filter(doc => doc.name && doc.name.toLowerCase().includes(searchQuery.toLowerCase()));
             }
 
             allDocs.sort((a, b) => {
                 if (a.role === 'Admin' && b.role !== 'Admin') return -1;
                 if (a.role !== 'Admin' && b.role === 'Admin') return 1;
-                return a.name.localeCompare(b.name);
+                return (a.name || '').localeCompare(b.name || '');
             });
             
             setAllUserDocs(allDocs);
+            setTotalUsers(allDocs.length);
         }
-
+        
         const startIndex = (page - 1) * USERS_PER_PAGE;
         const endIndex = startIndex + USERS_PER_PAGE;
         const paginatedUsersData = allUserDocs.slice(startIndex, endIndex);
 
-        if (paginatedUsersData.length === 0 && page > 1) { // If went past last page
+        if (paginatedUsersData.length === 0 && page > 1) {
             setLoading(false);
             return;
         }
@@ -206,7 +209,6 @@ export default function UserManagement() {
   }, [toast, allUserDocs]);
 
   useEffect(() => {
-    // Debounce search
     if (searchTimeout.current) {
         clearTimeout(searchTimeout.current);
     }
@@ -214,13 +216,11 @@ export default function UserManagement() {
         setCurrentPage(1);
         fetchUsers(1, searchTerm);
     }, 500);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm]);
+  }, [searchTerm, fetchUsers]);
 
   useEffect(() => {
       fetchUsers(currentPage, searchTerm);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, allUserDocs])
+  }, [currentPage, fetchUsers, searchTerm])
 
   const handleNextPage = () => {
     setCurrentPage(prev => prev + 1);
@@ -435,7 +435,7 @@ export default function UserManagement() {
                   )}
               </div>
               
-              {(firstVisible || lastVisible) && (
+              {(firstVisible || lastVisible) && totalUsers > USERS_PER_PAGE && (
                 <div className="flex items-center justify-center space-x-2 mt-6">
                     <Button variant="outline" onClick={handlePrevPage} disabled={!firstVisible || loading}>
                         <ChevronLeft className="h-4 w-4 mr-1" />
