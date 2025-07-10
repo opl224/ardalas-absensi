@@ -199,7 +199,11 @@ export default function LoginPage() {
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                    <Checkbox id="remember-me" checked={rememberMe} onCheckedChange={(checked) => setRememberMe(checked as boolean)} />
+                    <Checkbox 
+                      id="remember-me" 
+                      checked={rememberMe} 
+                      onClick={() => setRememberMe(!rememberMe)} 
+                    />
                     <Label htmlFor="remember-me" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                         Ingatkan Saya
                     </Label>
