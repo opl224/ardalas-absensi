@@ -202,7 +202,7 @@ export default function LoginPage() {
                     <Checkbox 
                       id="remember-me" 
                       checked={rememberMe} 
-                      onClick={() => setRememberMe(!rememberMe)} 
+                      onCheckedChange={() => setTimeout(() => setRememberMe(!rememberMe), 0)}
                     />
                     <Label htmlFor="remember-me" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                         Ingatkan Saya
