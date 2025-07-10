@@ -5,7 +5,7 @@ import { useState, useRef, useEffect, useTransition } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { User, Mail, LogOut, Shield, ChevronRight, Camera, BookCopy, Briefcase } from "lucide-react";
-import { LogoutDialog } from "@/components/admin/LogoutDialog";
+import { ExitAppDialog } from "../ExitAppDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { CenteredLoader, Loader } from "../ui/loader";
 import { ThemeToggle } from "../ThemeToggle";
@@ -173,7 +173,7 @@ export function TeacherProfile({ setActiveView, dialogStates, setDialogState }: 
                     </Card>
                 </div>
             </div>
-            <LogoutDialog open={!!dialogStates?.logout} onOpenChange={(isOpen) => setDialogState?.('logout', isOpen)} onConfirm={logout} />
+            <ExitAppDialog open={!!dialogStates?.logout} onOpenChange={(isOpen) => setDialogState?.('logout', isOpen)} onConfirm={() => logout()} />
         </>
     );
 }

@@ -22,14 +22,14 @@ export function LogoutDialog({ open, onOpenChange, onConfirm }: LogoutDialogProp
         <AlertDialog open={open} onOpenChange={onOpenChange}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle>Apakah Anda yakin ingin keluar?</AlertDialogTitle>
+                    <AlertDialogTitle>Apakah Anda yakin ingin keluar dari aplikasi?</AlertDialogTitle>
                     <AlertDialogDescription>
                         Anda akan dikembalikan ke halaman login.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel>Batal</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => onConfirm()}>Keluar</AlertDialogAction>
+                    <AlertDialogCancel>Tidak</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => onConfirm()}>Ya</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>

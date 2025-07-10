@@ -31,7 +31,7 @@ import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Switch } from '../ui/switch';
 import { App as CapacitorApp } from '@capacitor/app';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 
 
@@ -175,7 +175,7 @@ function EditAttendanceDialog({ record, open, onOpenChange }: { record: Attendan
                             <Label htmlFor="removeFraudWarning">Hapus Peringatan Kecurangan</Label>
                         </div>
                     )}
-                    <DialogFooter>
+                    <DialogFooter className='pt-2 gap-y-2'>
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
                             Batal
                         </Button>
@@ -204,26 +204,21 @@ export function Attendance({ dialogStates, setDialogState }: AttendanceProps) {
     const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
 
     useEffect(() => {
+        let listener: PluginListenerHandle | null = null;
         const setupBackButtonListener = async () => {
             if (Capacitor.isNativePlatform() && (dialogStates?.view || dialogStates?.delete)) {
-                const listener = await CapacitorApp.addListener('backButton', (e) => {
+                listener = await CapacitorApp.addListener('backButton', (e) => {
                     e.canGoBack = false;
                     if (dialogStates?.view) setDialogState?.('view', false);
                     if (dialogStates?.delete) setDialogState?.('delete', false);
                 });
-                return listener;
             }
-            return null;
         };
 
-        const listenerPromise = setupBackButtonListener();
+        setupBackButtonListener();
 
         return () => {
-            listenerPromise.then(listener => {
-                if (listener) {
-                    listener.remove();
-                }
-            });
+            listener?.remove();
         };
     }, [dialogStates, setDialogState]);
 

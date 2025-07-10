@@ -5,7 +5,7 @@ import { useState, useRef, useEffect, useTransition } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { User, Mail, GraduationCap, LogOut, Camera } from "lucide-react";
-import { LogoutDialog } from "@/components/admin/LogoutDialog"; 
+import { ExitAppDialog } from "../ExitAppDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { CenteredLoader, Loader } from "../ui/loader";
 import { ThemeToggle } from "../ThemeToggle";
@@ -23,9 +23,13 @@ const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label:
     </div>
 );
 
-export function StudentProfile() {
+interface StudentProfileProps {
+    dialogStates?: { [key: string]: boolean };
+    setDialogState?: (dialog: string, isOpen: boolean) => void;
+}
+
+export function StudentProfile({ dialogStates, setDialogState }: StudentProfileProps) {
     const { userProfile, logout } = useAuth();
-    const [showLogoutDialog, setShowLogoutDialog] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
@@ -121,11 +125,11 @@ export function StudentProfile() {
                     </Card>
                     
                     <Card>
-                        <CardContent className="p-2">
+                        <CardContent className="p-0">
                            <Button
-                                onClick={() => setShowLogoutDialog(true)}
+                                onClick={() => setDialogState?.('logout', true)}
                                 variant="ghost" 
-                                className="w-full justify-center text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                className="w-full justify-center text-destructive hover:bg-destructive/10 hover:text-destructive h-full py-3"
                             >
                                 <LogOut className="h-4 w-4 mr-2" />
                                 Keluar
@@ -134,7 +138,7 @@ export function StudentProfile() {
                     </Card>
                 </div>
             </div>
-            <LogoutDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog} onConfirm={logout} />
+            <ExitAppDialog open={!!dialogStates?.logout} onOpenChange={(isOpen) => setDialogState?.('logout', isOpen)} onConfirm={() => logout()} />
         </>
     );
 }
