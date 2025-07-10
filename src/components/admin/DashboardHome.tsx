@@ -114,7 +114,6 @@ export function DashboardHome() {
         const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
 
-        // This query now includes 'Tidak Hadir' to correctly filter it out later
         const attendanceQuery = query(
             collection(db, "photo_attendances"),
             where("role", "==", "guru"),
@@ -124,7 +123,7 @@ export function DashboardHome() {
 
         const unsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
             // Get all records for today, including "Tidak Hadir"
-            const allTodaysRecords = snapshot.docs.map(doc => doc.data());
+            const allTodaysRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             
             // Filter only for active attendances for the table and counts
             const activeAttendances = allTodaysRecords.filter(
@@ -134,15 +133,15 @@ export function DashboardHome() {
             
             const presentCount = activeAttendances.filter(a => a.status === 'Hadir').length;
             const lateCount = activeAttendances.filter(a => a.status === 'Terlambat').length;
-            const totalWithRecords = presentCount + lateCount;
+            const presentAndLateCount = presentCount + lateCount;
 
             let absentCount = 0;
             // Only mark as absent if the check-in time is over
             if (isCheckinTimeOver(settings)) {
-                absentCount = totalGurus - totalWithRecords;
+                absentCount = totalGurus - presentAndLateCount;
             }
 
-            const attendanceRate = totalGurus > 0 ? Math.round((totalWithRecords / totalGurus) * 100) : 0;
+            const attendanceRate = totalGurus > 0 ? Math.round((presentAndLateCount / totalGurus) * 100) : 0;
             
             setStats({
                 present: presentCount,
@@ -220,7 +219,7 @@ export function DashboardHome() {
                         </TableHeader>
                         <TableBody>
                             {loading ? (
-                                <TableRow><TableCell colSpan={4} className="py-8"><div className="flex justify-center"><Loader scale={0.8}/></div></TableCell></TableRow>
+                                <TableRow key="loading-row"><TableCell colSpan={4} className="py-8"><div className="flex justify-center"><Loader scale={0.8}/></div></TableCell></TableRow>
                             ) : attendanceData.length > 0 ? (
                                 attendanceData.map((item) => (
                                     <TableRow key={item.id}>
@@ -239,7 +238,7 @@ export function DashboardHome() {
                                     </TableRow>
                                 ))
                             ) : (
-                                <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Belum ada aktivitas hari ini.</TableCell></TableRow>
+                                <TableRow key="no-activity-row"><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Belum ada aktivitas hari ini.</TableCell></TableRow>
                             )}
                         </TableBody>
                     </Table>
