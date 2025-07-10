@@ -31,7 +31,7 @@ const ClickableRow = ({ icon: Icon, label, onClick, className }: { icon: React.E
         disabled={!onClick}
     >
         <div className="flex items-center gap-4">
-            <Icon className="h-6 w-6" />
+            <Icon className="h-6 w-6 text-muted-foreground" />
             <span className="font-medium text-foreground">{label}</span>
         </div>
         {onClick && <ChevronRight className="h-5 w-5 text-muted-foreground" />}
@@ -101,8 +101,8 @@ export function TeacherProfile({ setActiveView, dialogStates, setDialogState }: 
                     <h1 className="text-xl font-bold text-foreground">Profil</h1>
                 </header>
 
-                <div className="p-4">
-                    <div className="flex items-center gap-4 mb-6">
+                <div className="p-4 space-y-6">
+                    <div className="flex items-center gap-4">
                         <div className="relative">
                             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
                             <Avatar className="h-16 w-16 cursor-pointer" onClick={handleAvatarClick}>
@@ -131,7 +131,7 @@ export function TeacherProfile({ setActiveView, dialogStates, setDialogState }: 
                         </div>
                     </div>
 
-                    <Card className="mb-6">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-lg">Informasi Profil</CardTitle>
                         </CardHeader>
@@ -141,7 +141,7 @@ export function TeacherProfile({ setActiveView, dialogStates, setDialogState }: 
                         </CardContent>
                     </Card>
 
-                    <Card className="mb-6">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-lg">Informasi Akademik</CardTitle>
                         </CardHeader>
@@ -151,7 +151,7 @@ export function TeacherProfile({ setActiveView, dialogStates, setDialogState }: 
                         </CardContent>
                     </Card>
 
-                    <Card className="mb-6">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-lg">Pengaturan</CardTitle>
                         </CardHeader>
@@ -160,13 +160,17 @@ export function TeacherProfile({ setActiveView, dialogStates, setDialogState }: 
                         </CardContent>
                     </Card>
 
-                    <Button 
-                        variant="ghost" 
-                        className="w-full justify-center text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        onClick={() => setDialogState?.('logout', true)}
-                    >
-                        Keluar
-                    </Button>
+                    <Card>
+                        <CardContent className="p-2">
+                            <Button 
+                                variant="ghost" 
+                                className="w-full justify-center text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() => setDialogState?.('logout', true)}
+                            >
+                                Keluar
+                            </Button>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
             <LogoutDialog open={!!dialogStates?.logout} onOpenChange={(isOpen) => setDialogState?.('logout', isOpen)} onConfirm={logout} />

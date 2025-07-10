@@ -101,8 +101,8 @@ export function Profile({ setActiveView, dialogStates, setDialogState }: Profile
                     <h1 className="text-xl font-bold text-foreground">Profil</h1>
                 </header>
 
-                <div className="p-4">
-                    <div className="flex items-center gap-4 mb-6">
+                <div className="p-4 space-y-6">
+                    <div className="flex items-center gap-4">
                         <div className="relative">
                             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
                             <Avatar className="h-16 w-16 cursor-pointer" onClick={handleAvatarClick}>
@@ -131,7 +131,7 @@ export function Profile({ setActiveView, dialogStates, setDialogState }: Profile
                         </div>
                     </div>
 
-                    <Card className="mb-6">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-lg">Informasi Profil</CardTitle>
                         </CardHeader>
@@ -142,7 +142,7 @@ export function Profile({ setActiveView, dialogStates, setDialogState }: Profile
                         </CardContent>
                     </Card>
 
-                    <Card className="mb-6">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-lg">Pengaturan</CardTitle>
                         </CardHeader>
@@ -151,13 +151,17 @@ export function Profile({ setActiveView, dialogStates, setDialogState }: Profile
                         </CardContent>
                     </Card>
                     
-                    <Button 
-                        variant="ghost" 
-                        className="w-full justify-center text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        onClick={() => setDialogState?.('logout', true)}
-                    >
-                        Keluar
-                    </Button>
+                    <Card>
+                        <CardContent className="p-2">
+                            <Button 
+                                variant="ghost" 
+                                className="w-full justify-center text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() => setDialogState?.('logout', true)}
+                            >
+                                Keluar
+                            </Button>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
             <LogoutDialog open={!!dialogStates?.logout} onOpenChange={(isOpen) => setDialogState?.('logout', isOpen)} onConfirm={logout} />

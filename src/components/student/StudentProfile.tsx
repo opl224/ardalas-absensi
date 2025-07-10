@@ -79,8 +79,8 @@ export function StudentProfile() {
                 <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <h1 className="text-xl font-bold text-foreground">Profil</h1>
                 </header>
-                <div className="p-4">
-                    <div className="flex items-center gap-4 mb-6">
+                <div className="p-4 space-y-6">
+                    <div className="flex items-center gap-4">
                         <div className="relative">
                             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
                             <Avatar className="h-16 w-16 cursor-pointer" onClick={handleAvatarClick}>
@@ -109,7 +109,7 @@ export function StudentProfile() {
                         </div>
                     </div>
 
-                    <Card className="mb-6">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-lg">Informasi Profil</CardTitle>
                         </CardHeader>
@@ -119,21 +119,17 @@ export function StudentProfile() {
                             <InfoRow icon={GraduationCap} label="Kelas" value={userProfile.class || 'Tidak diketahui'} />
                         </CardContent>
                     </Card>
-
+                    
                     <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg">Pengaturan</CardTitle>
-                        </CardHeader>
-                        <CardContent className="divide-y divide-border pt-0">
-                           <button
+                        <CardContent className="p-2">
+                           <Button
                                 onClick={() => setShowLogoutDialog(true)}
-                                className="flex items-center justify-between py-3 w-full text-left text-destructive rounded-md hover:bg-destructive/10"
+                                variant="ghost" 
+                                className="w-full justify-center text-destructive hover:bg-destructive/10 hover:text-destructive"
                             >
-                                <div className="flex items-center gap-4">
-                                    <LogOut className="h-6 w-6" />
-                                    <span className="font-medium">Keluar</span>
-                                </div>
-                            </button>
+                                <LogOut className="h-4 w-4 mr-2" />
+                                Keluar
+                            </Button>
                         </CardContent>
                     </Card>
                 </div>
