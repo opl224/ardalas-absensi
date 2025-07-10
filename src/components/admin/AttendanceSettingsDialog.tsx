@@ -14,7 +14,7 @@ import { db } from '@/lib/firebase';
 import { Loader } from '../ui/loader';
 import { Separator } from '../ui/separator';
 
-const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const daysOfWeekIndonesian: { [key: string]: string } = {
     'Sunday': 'Minggu',
     'Monday': 'Senin',
@@ -157,11 +157,11 @@ export function AttendanceSettingsDialog({ open, onOpenChange }: AttendanceSetti
                                 ))}
                             </div>
                         </div>
-                        <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 gap-y-2 sm:gap-y-0">
+                        <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 pt-2 gap-y-2 sm:gap-y-0">
                             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>Batal</Button>
                             <Button type="submit" disabled={isPending}>
-                                {isPending && <Loader scale={0.48} />}
-                                <span>Simpan</span>
+                                {isPending && <Loader scale={0.48} className="mr-2" />}
+                                Simpan Perubahan
                             </Button>
                         </DialogFooter>
                     </form>
@@ -170,5 +170,3 @@ export function AttendanceSettingsDialog({ open, onOpenChange }: AttendanceSetti
         </Dialog>
     );
 }
-
-    
