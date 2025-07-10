@@ -20,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { collection, getDocs, query, where, doc, getDoc, orderBy, limit, startAfter, QueryDocumentSnapshot, endBefore, limitToLast, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader } from '../ui/loader';
 import { Separator } from '../ui/separator';
@@ -67,25 +67,20 @@ const DetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, lab
 };
 
 export default function UserManagement() {
-  const [users, setUsers] = useState<User[]>([]);
   const [allUserDocs, setAllUserDocs] = useState<any[]>([]);
+  const [displayedUsers, setDisplayedUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalUsers, setTotalUsers] = useState(0);
-  const [hasPrevPage, setHasPrevPage] = useState(false);
-  const [hasNextPage, setHasNextPage] = useState(false);
 
-  // State for real-time attendance data
   const [attendanceStatusMap, setAttendanceStatusMap] = useState<Map<string, AttendanceStatus>>(new Map());
-  const [settings, setSettings] = useState<any | null>(null);
+  const [settings, setSettings] = useState<any>(null);
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const { toast } = useToast();
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [backButtonListener, setBackButtonListener] = useState<PluginListenerHandle | null>(null);
-  const initialFetchDone = useRef(false);
 
   const removeListener = useCallback(() => {
     if (backButtonListener) {
@@ -138,7 +133,6 @@ export default function UserManagement() {
             });
             
             setAllUserDocs(allDocs);
-            initialFetchDone.current = true;
 
         } catch (error) {
             console.error("Error fetching users:", error);
@@ -174,12 +168,15 @@ export default function UserManagement() {
       };
   }, []);
 
-  // Effect to combine user data with real-time status and handle pagination
+  // Effect to process and display users whenever source data or filters change
   useEffect(() => {
-    if (!initialFetchDone.current || settings === null) return;
-    setLoading(true);
+    if (allUserDocs.length === 0 || settings === null) {
+      if(allUserDocs.length > 0 && settings !== null) setLoading(false);
+      return;
+    };
     
-    // Determine status logic based on settings and real-time attendance data
+    setLoading(true);
+
     const now = new Date();
     const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
     const isOffDay = settings.offDays?.includes(todayStr) ?? false;
@@ -191,18 +188,7 @@ export default function UserManagement() {
     const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
     const isPastAbsentDeadline = now > checkInGraceEnd;
 
-    // Filter users based on search term
-    const filteredUsers = searchTerm
-        ? allUserDocs.filter(doc => doc.name && doc.name.toLowerCase().includes(searchTerm.toLowerCase()))
-        : allUserDocs;
-
-    // Paginate
-    const startIndex = (currentPage - 1) * USERS_PER_PAGE;
-    const endIndex = startIndex + USERS_PER_PAGE;
-    const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
-
-    // Combine with status
-    const finalUsers = paginatedUsers.map(user => {
+    const combinedUsers = allUserDocs.map(user => {
         let status: User['status'];
         const attendanceInfo = attendanceStatusMap.get(user.id);
         if (user.role === 'Admin') {
@@ -224,10 +210,14 @@ export default function UserManagement() {
         } as User;
     });
 
-    setUsers(finalUsers);
-    setTotalUsers(filteredUsers.length);
-    setHasPrevPage(currentPage > 1);
-    setHasNextPage(endIndex < filteredUsers.length);
+    const filteredUsers = searchTerm
+        ? combinedUsers.filter(user => user.name && user.name.toLowerCase().includes(searchTerm.toLowerCase()))
+        : combinedUsers;
+    
+    const startIndex = (currentPage - 1) * USERS_PER_PAGE;
+    const paginatedUsers = filteredUsers.slice(startIndex, startIndex + USERS_PER_PAGE);
+
+    setDisplayedUsers(paginatedUsers);
     setLoading(false);
 
   }, [allUserDocs, attendanceStatusMap, settings, currentPage, searchTerm]);
@@ -236,7 +226,7 @@ export default function UserManagement() {
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const term = e.target.value;
       setSearchTerm(term);
-      setCurrentPage(1); // Reset to first page on new search
+      setCurrentPage(1); 
   };
 
 
@@ -367,6 +357,10 @@ export default function UserManagement() {
     setSelectedUser(null);
   };
 
+  const totalFilteredUsers = searchTerm ? allUserDocs.filter(user => user.name && user.name.toLowerCase().includes(searchTerm.toLowerCase())).length : allUserDocs.length;
+  const hasPrevPage = currentPage > 1;
+  const hasNextPage = currentPage * USERS_PER_PAGE < totalFilteredUsers;
+
   return (
     <>
       <div className="bg-gray-50 dark:bg-zinc-900">
@@ -410,8 +404,8 @@ export default function UserManagement() {
           ) : (
               <>
               <div className="space-y-3">
-                  {users.length > 0 ? (
-                      users.map((user) => (
+                  {displayedUsers.length > 0 ? (
+                      displayedUsers.map((user) => (
                       <Card key={user.id} className="p-3">
                           <div className="flex items-center gap-4">
                               <Avatar className="h-12 w-12">
@@ -508,4 +502,3 @@ export default function UserManagement() {
     </>
   );
 }
-
