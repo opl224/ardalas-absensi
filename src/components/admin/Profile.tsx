@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useState, useRef, useEffect, useTransition } from "react";
@@ -141,20 +142,22 @@ export function Profile({ setActiveView, dialogStates, setDialogState }: Profile
                         </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="mb-6">
                         <CardHeader>
                             <CardTitle className="text-lg">Pengaturan</CardTitle>
                         </CardHeader>
                         <CardContent className="divide-y divide-border pt-0">
                             <ClickableRow icon={Shield} label="Privasi" onClick={() => setActiveView('privacy')} />
-                            <ClickableRow 
-                                icon={LogOut} 
-                                label="Keluar" 
-                                onClick={() => setDialogState?.('logout', true)}
-                                className="text-destructive hover:bg-destructive/10"
-                            />
                         </CardContent>
                     </Card>
+                    
+                    <Button 
+                        variant="ghost" 
+                        className="w-full justify-center text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => setDialogState?.('logout', true)}
+                    >
+                        Keluar
+                    </Button>
                 </div>
             </div>
             <LogoutDialog open={!!dialogStates?.logout} onOpenChange={(isOpen) => setDialogState?.('logout', isOpen)} onConfirm={logout} />

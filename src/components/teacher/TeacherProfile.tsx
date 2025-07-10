@@ -32,7 +32,7 @@ const ClickableRow = ({ icon: Icon, label, onClick, className }: { icon: React.E
     >
         <div className="flex items-center gap-4">
             <Icon className="h-6 w-6" />
-            <span className="font-medium">{label}</span>
+            <span className="font-medium text-foreground">{label}</span>
         </div>
         {onClick && <ChevronRight className="h-5 w-5 text-muted-foreground" />}
     </button>
@@ -40,11 +40,12 @@ const ClickableRow = ({ icon: Icon, label, onClick, className }: { icon: React.E
 
 interface TeacherProfileProps {
   setActiveView?: (view: 'privacy') => void;
+  dialogStates?: { [key: string]: boolean };
+  setDialogState?: (dialog: string, isOpen: boolean) => void;
 }
 
-export function TeacherProfile({ setActiveView }: TeacherProfileProps) {
+export function TeacherProfile({ setActiveView, dialogStates, setDialogState }: TeacherProfileProps) {
     const { userProfile, logout } = useAuth();
-    const [showLogoutDialog, setShowLogoutDialog] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
@@ -150,23 +151,25 @@ export function TeacherProfile({ setActiveView }: TeacherProfileProps) {
                         </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="mb-6">
                         <CardHeader>
                             <CardTitle className="text-lg">Pengaturan</CardTitle>
                         </CardHeader>
                         <CardContent className="divide-y divide-border pt-0">
                             <ClickableRow icon={Shield} label="Privasi" onClick={() => setActiveView?.('privacy')} />
-                            <ClickableRow 
-                                icon={LogOut} 
-                                label="Keluar" 
-                                onClick={() => setShowLogoutDialog(true)}
-                                className="text-destructive hover:bg-destructive/10"
-                            />
                         </CardContent>
                     </Card>
+
+                    <Button 
+                        variant="ghost" 
+                        className="w-full justify-center text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => setDialogState?.('logout', true)}
+                    >
+                        Keluar
+                    </Button>
                 </div>
             </div>
-            <LogoutDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog} onConfirm={logout} />
+            <LogoutDialog open={!!dialogStates?.logout} onOpenChange={(isOpen) => setDialogState?.('logout', isOpen)} onConfirm={logout} />
         </>
     );
 }
