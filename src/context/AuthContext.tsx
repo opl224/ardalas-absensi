@@ -67,36 +67,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
 
             if (firebaseUser) {
-                const baseUserDocRef = doc(db, 'users', firebaseUser.uid);
-                const baseUserSnap = await getDoc(baseUserDocRef);
+                // First, try to find user in 'users' (admins)
+                let userDocRef = doc(db, 'users', firebaseUser.uid);
+                let userSnap = await getDoc(userDocRef);
+                let userData = userSnap.data();
+                let userRole = userData?.role;
+                let profileDocRef = userDocRef;
 
-                if (!baseUserSnap.exists()) {
-                    console.error(`User document for user ${firebaseUser.uid} not found in 'users' collection.`);
-                    logout("Profil pengguna tidak ditemukan.");
-                    return;
-                }
-                
-                const baseUserData = baseUserSnap.data();
-                const userRole = baseUserData.role;
-                setUser(firebaseUser);
-
-                let profileDocRef = baseUserDocRef;
-                let specificProfileData = {};
-
-                if (userRole === 'guru') {
-                    const teacherDocRef = doc(db, 'teachers', firebaseUser.uid);
-                    const teacherSnap = await getDoc(teacherDocRef);
-                    if (teacherSnap.exists()) {
-                        specificProfileData = teacherSnap.data();
-                        profileDocRef = teacherDocRef;
+                // If not in 'users', check 'teachers'
+                if (!userSnap.exists()) {
+                    profileDocRef = doc(db, 'teachers', firebaseUser.uid);
+                    userSnap = await getDoc(profileDocRef);
+                    if (userSnap.exists()) {
+                       // Teacher specific data + base data from auth
+                       userData = { ...userSnap.data(), email: firebaseUser.email, name: userSnap.data()?.name || firebaseUser.displayName };
+                       userRole = 'guru';
+                    } else {
+                       console.error(`User document for user ${firebaseUser.uid} not found.`);
+                       logout("Profil pengguna tidak ditemukan.");
+                       return;
                     }
                 }
+
+                setUser(firebaseUser);
                 
                 profileListenerUnsubscribe = onSnapshot(profileDocRef, (profileSnap) => {
+                    const profileData = profileSnap.exists() ? profileSnap.data() : {};
                     const finalProfileData = {
                         uid: firebaseUser.uid,
-                        ...baseUserData,
-                        ...(profileSnap.exists() ? profileSnap.data() : specificProfileData),
+                        email: firebaseUser.email,
+                        ...profileData, // Contains name, avatar, etc.
                         role: userRole,
                     };
                     setUserProfile(finalProfileData as UserProfile);

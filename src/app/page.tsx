@@ -119,24 +119,34 @@ export default function LoginPage() {
           router.push('/admin/dashboard');
         } else if (role === 'guru') {
           router.push('/teacher/dashboard');
-        } else {
-          // This case should ideally not be reached due to the check above
-          await signOut(auth);
-          toast({
-            variant: 'destructive',
-            title: 'Akses Ditolak',
-            description: 'Peran pengguna Anda tidak dikenali atau tidak diizinkan mengakses halaman ini.',
-          });
-          setLoading(false);
         }
       } else {
-        await signOut(auth);
-        toast({
-            variant: 'destructive',
-            title: 'Gagal Masuk',
-            description: 'Data pengguna tidak ditemukan.',
-        });
-        setLoading(false);
+        // Also check teachers collection if not found in users
+        const teacherDocRef = doc(db, 'teachers', user.uid);
+        const teacherDoc = await getDoc(teacherDocRef);
+        if (teacherDoc.exists()) {
+            if (isDesktop) {
+                await signOut(auth);
+                setShowDesktopAccessDeniedDialog(true);
+                setLoading(false);
+                return;
+            }
+            const idToken = await user.getIdToken();
+            await fetch('/api/auth/session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ idToken }),
+            });
+            router.push('/teacher/dashboard');
+        } else {
+            await signOut(auth);
+            toast({
+                variant: 'destructive',
+                title: 'Gagal Masuk',
+                description: 'Data pengguna tidak ditemukan.',
+            });
+            setLoading(false);
+        }
       }
 
     } catch (error: any) {

@@ -66,10 +66,10 @@ export default function UserManagement() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
-  const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot | null>(null);
-  const [firstVisible, setFirstVisible] = useState<QueryDocumentSnapshot | null>(null);
-  const [pageHistory, setPageHistory] = useState<(QueryDocumentSnapshot | null)[]>([null]);
+  const [lastVisible, setLastVisible] = useState<any>(null);
+  const [firstVisible, setFirstVisible] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [allUserDocs, setAllUserDocs] = useState<any[]>([]);
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const { toast } = useToast();
@@ -104,54 +104,59 @@ export default function UserManagement() {
     return () => { removeListener() };
   }, [handleBackButton, removeListener]);
 
-  const fetchUsers = useCallback(async (direction: 'next' | 'prev' | 'first' = 'first', searchQuery = searchTerm) => {
+  const fetchUsers = useCallback(async (page = 1, searchQuery = '') => {
     setLoading(true);
     try {
-        const fetchCollection = async (collectionName: string, role: 'Admin' | 'Guru') => {
-            let q = query(collection(db, collectionName), orderBy('name'));
+        if (page === 1) { // Only refetch all users on first page or new search
+            const adminQuery = query(collection(db, "users"), where('role', '==', 'admin'));
+            const teacherQuery = collection(db, "teachers");
+
+            const [adminSnapshot, teacherSnapshot] = await Promise.all([
+                getDocs(adminQuery),
+                getDocs(teacherQuery)
+            ]);
+
+            const combinedUserMap = new Map();
+            adminSnapshot.forEach(doc => combinedUserMap.set(doc.id, { ...doc.data(), id: doc.id, role: 'Admin' }));
+            teacherSnapshot.forEach(doc => combinedUserMap.set(doc.id, { ...doc.data(), id: doc.id, role: 'Guru' }));
+            
+            let allDocs = Array.from(combinedUserMap.values());
+            
             if (searchQuery) {
-                q = query(q, where('name', '>=', searchQuery), where('name', '<=', searchQuery + '\uf8ff'));
+                allDocs = allDocs.filter(doc => doc.name.toLowerCase().includes(searchQuery.toLowerCase()));
             }
-            const snapshot = await getDocs(q);
-            return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role })) as Omit<User, 'status' | 'isFraudulent'>[];
-        };
 
-        let combinedUsers = [
-            ...await fetchCollection('users', 'Admin'),
-            ...await fetchCollection('teachers', 'Guru'),
-        ];
-        
-        // Manual sort after fetching as Firestore can't orderBy across different collections
-        combinedUsers.sort((a, b) => {
-            if (a.role === 'Admin' && b.role !== 'Admin') return -1;
-            if (a.role !== 'Admin' && b.role === 'Admin') return 1;
-            return a.name.localeCompare(b.name);
-        });
+            allDocs.sort((a, b) => {
+                if (a.role === 'Admin' && b.role !== 'Admin') return -1;
+                if (a.role !== 'Admin' && b.role === 'Admin') return 1;
+                return a.name.localeCompare(b.name);
+            });
+            
+            setAllUserDocs(allDocs);
+        }
 
-        // Manual pagination
-        const startIndex = (currentPage - 1) * USERS_PER_PAGE;
+        const startIndex = (page - 1) * USERS_PER_PAGE;
         const endIndex = startIndex + USERS_PER_PAGE;
-        const paginatedUsersData = combinedUsers.slice(startIndex, endIndex);
-        const paginatedUserIds = paginatedUsersData.map(u => u.id);
+        const paginatedUsersData = allUserDocs.slice(startIndex, endIndex);
 
-        if (paginatedUserIds.length === 0) {
-            setUsers([]);
+        if (paginatedUsersData.length === 0 && page > 1) { // If went past last page
             setLoading(false);
-            setLastVisible(null);
-            setFirstVisible(currentPage > 1 ? new (class {}) as QueryDocumentSnapshot : null); // Still allow going back
             return;
         }
 
-        // Fetch attendance status only for the paginated users
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        const attendanceQuery = query(collection(db, "photo_attendances"), where("checkInTime", ">=", todayStart), where('userId', 'in', paginatedUserIds));
-        const attendanceSnapshot = await getDocs(attendanceQuery);
-        const attendanceStatusMap = new Map<string, any>();
-        attendanceSnapshot.forEach(doc => {
-            const data = doc.data();
-            attendanceStatusMap.set(data.userId, { status: data.status, isFraudulent: data.isFraudulent });
-        });
+        const paginatedUserIds = paginatedUsersData.map(u => u.id).filter(Boolean);
+
+        let attendanceStatusMap = new Map<string, any>();
+        if (paginatedUserIds.length > 0) {
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            const attendanceQuery = query(collection(db, "photo_attendances"), where("checkInTime", ">=", todayStart), where('userId', 'in', paginatedUserIds));
+            const attendanceSnapshot = await getDocs(attendanceQuery);
+            attendanceSnapshot.forEach(doc => {
+                const data = doc.data();
+                attendanceStatusMap.set(data.userId, { status: data.status, isFraudulent: data.isFraudulent });
+            });
+        }
         
         const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
         const settings = settingsDoc.exists() ? settingsDoc.data() : {};
@@ -187,10 +192,10 @@ export default function UserManagement() {
                 isFraudulent: attendanceInfo?.isFraudulent ?? false,
             } as User;
         });
-
+        
         setUsers(finalUsers);
-        setLastVisible(combinedUsers.length > endIndex ? new (class {}) as QueryDocumentSnapshot : null);
-        setFirstVisible(startIndex > 0 ? new (class {}) as QueryDocumentSnapshot : null);
+        setFirstVisible(startIndex > 0);
+        setLastVisible(allUserDocs.length > endIndex);
 
     } catch (error) {
         console.error("Error fetching users:", error);
@@ -198,18 +203,24 @@ export default function UserManagement() {
     } finally {
         setLoading(false);
     }
-  }, [searchTerm, toast, currentPage]);
+  }, [toast, allUserDocs]);
 
   useEffect(() => {
-    setCurrentPage(1); // Reset page on new search
-    fetchUsers('first', searchTerm);
+    // Debounce search
+    if (searchTimeout.current) {
+        clearTimeout(searchTimeout.current);
+    }
+    searchTimeout.current = setTimeout(() => {
+        setCurrentPage(1);
+        fetchUsers(1, searchTerm);
+    }, 500);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm]);
 
   useEffect(() => {
-      fetchUsers();
+      fetchUsers(currentPage, searchTerm);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage])
+  }, [currentPage, allUserDocs])
 
   const handleNextPage = () => {
     setCurrentPage(prev => prev + 1);
@@ -424,9 +435,9 @@ export default function UserManagement() {
                   )}
               </div>
               
-              {(currentPage > 1 || lastVisible) && (
+              {(firstVisible || lastVisible) && (
                 <div className="flex items-center justify-center space-x-2 mt-6">
-                    <Button variant="outline" onClick={handlePrevPage} disabled={currentPage === 1 || loading}>
+                    <Button variant="outline" onClick={handlePrevPage} disabled={!firstVisible || loading}>
                         <ChevronLeft className="h-4 w-4 mr-1" />
                         Sebelumnya
                     </Button>
