@@ -152,10 +152,10 @@ export function Profile({ setActiveView, dialogStates, setDialogState }: Profile
                     </Card>
                     
                     <Card>
-                        <CardContent className="p-2">
+                        <CardContent className="p-0">
                             <Button 
                                 variant="ghost" 
-                                className="w-full justify-center text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                className="w-full justify-center text-destructive hover:bg-destructive/10 hover:text-destructive h-full py-3"
                                 onClick={() => setDialogState?.('logout', true)}
                             >
                                 Keluar
