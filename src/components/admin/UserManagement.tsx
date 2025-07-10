@@ -20,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { collection, query, where, doc, onSnapshot, DocumentData } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, DocumentData, getDocs, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader } from '../ui/loader';
 import { Separator } from '../ui/separator';
@@ -110,54 +110,52 @@ export default function UserManagement() {
     return () => { removeListener() };
   }, [handleBackButton, removeListener]);
 
-  // Effect to listen for settings
+  // Effect to fetch ALL users ONCE and listen for settings
   useEffect(() => {
+    setLoading(true);
+
+    const fetchAllUsers = async () => {
+        try {
+            const adminQuery = query(collection(db, "users"), where('role', '==', 'admin'));
+            const teacherQuery = query(collection(db, "teachers"));
+
+            const [adminSnapshot, teacherSnapshot] = await Promise.all([
+                getDocs(adminQuery),
+                getDocs(teacherQuery)
+            ]);
+            
+            const adminUsers: User[] = adminSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Admin' } as User));
+            const teacherUsers: User[] = teacherSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Guru' } as User));
+
+            const combined = [...adminUsers, ...teacherUsers];
+            const uniqueUsers = Array.from(new Map(combined.map(u => [u.id, u])).values());
+            setAllUsers(uniqueUsers.sort((a,b) => (a.name || '').localeCompare(b.name || '')));
+        } catch (error) {
+            console.error("Error fetching all users:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat daftar pengguna.' });
+        }
+    };
+    
+    fetchAllUsers();
+    
     const settingsRef = doc(db, "settings", "attendance");
-    const unsubscribe = onSnapshot(settingsRef, (docSnap) => {
+    const unsubSettings = onSnapshot(settingsRef, (docSnap) => {
         setSettings(docSnap.exists() ? docSnap.data() : {});
     }, (error) => {
         console.error("Error fetching settings: ", error);
         toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat pengaturan.' });
     });
-    return () => unsubscribe();
+    
+    return () => unsubSettings();
+
   }, [toast]);
-
-  // Effect for real-time user updates
-  useEffect(() => {
-    setLoading(true);
-    const adminQuery = query(collection(db, "users"), where('role', '==', 'admin'));
-    const teacherQuery = query(collection(db, "teachers"));
-
-    let adminUsers: User[] = [];
-    let teacherUsers: User[] = [];
-
-    const combineUsers = () => {
-        const combined = [...adminUsers, ...teacherUsers];
-        const uniqueUsers = Array.from(new Map(combined.map(u => [u.id, u])).values());
-        setAllUsers(uniqueUsers.sort((a,b) => (a.name || '').localeCompare(b.name || '')));
-    };
-
-    const unsubAdmins = onSnapshot(adminQuery, (adminSnapshot) => {
-        adminUsers = adminSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Admin' } as User));
-        combineUsers();
-    });
-
-    const unsubTeachers = onSnapshot(teacherQuery, (teacherSnapshot) => {
-        teacherUsers = teacherSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Guru' } as User));
-        combineUsers();
-    });
-
-    return () => {
-        unsubAdmins();
-        unsubTeachers();
-    };
-  }, []);
-
-  // Effect to listen to today's attendance in real-time
+  
+  // Effect for real-time attendance updates
   useEffect(() => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const attendanceQuery = query(collection(db, "photo_attendances"), where("checkInTime", ">=", todayStart));
+    
     const unsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
         const newMap = new Map<string, AttendanceStatus>();
         snapshot.forEach(doc => {
@@ -176,7 +174,7 @@ export default function UserManagement() {
   // Effect to combine all data sources into processedUsers
   useEffect(() => {
     if (!settings || allUsers.length === 0) {
-        if (!settings) setLoading(true);
+        if (allUsers.length > 0) setLoading(false);
         return;
     }
 
@@ -515,3 +513,5 @@ export default function UserManagement() {
     </>
   );
 }
+
+    
