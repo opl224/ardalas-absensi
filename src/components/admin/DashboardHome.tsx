@@ -97,16 +97,18 @@ export function DashboardHome() {
             );
 
             const unsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
-                const fetchedAttendances = snapshot.docs.map(doc => ({
+                const allAttendancesToday = snapshot.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data()
                 })) as AttendanceRecord[];
+
+                // Filter out "Tidak Hadir" for display and present/late counts
+                const activeAttendances = allAttendancesToday.filter(a => a.status === 'Hadir' || a.status === 'Terlambat');
+                setAttendanceData(activeAttendances);
                 
-                setAttendanceData(fetchedAttendances);
-                
-                // Explicitly count each status from the fetched data
-                const presentCount = fetchedAttendances.filter(a => a.status === 'Hadir').length;
-                const lateCount = fetchedAttendances.filter(a => a.status === 'Terlambat').length;
+                // Explicitly count each status from the filtered data
+                const presentCount = activeAttendances.filter(a => a.status === 'Hadir').length;
+                const lateCount = activeAttendances.filter(a => a.status === 'Terlambat').length;
                 
                 // Total with records is sum of present and late. 'Tidak Hadir' records are handled separately.
                 const totalWithRecords = presentCount + lateCount;
@@ -118,12 +120,14 @@ export function DashboardHome() {
                 const gracePeriodMinutes = settings.gracePeriod ?? 60;
                 const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
 
-                let absentCount = 0;
-                // Only mark as absent if the deadline has passed.
-                if (new Date() > checkInGraceEnd) {
-                    absentCount = totalUserCount - totalWithRecords;
-                }
+                // Absent is total users minus those who have a 'Hadir' or 'Terlambat' record.
+                let absentCount = totalUserCount - totalWithRecords;
 
+                // If it's before the absent deadline, nobody is marked absent yet.
+                if (new Date() < checkInGraceEnd) {
+                    absentCount = 0;
+                }
+                
                 // Attendance rate is based on who showed up (present + late) vs total.
                 const attendanceRate = totalUserCount > 0 ? Math.round((totalWithRecords / totalUserCount) * 100) : 0;
                 
