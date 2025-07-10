@@ -17,7 +17,7 @@ const UserManagement = dynamic(() => import('./UserManagement').then(mod => mod.
 const Reports = dynamic(() => import('./Reports').then(mod => mod.Reports), {
   loading: () => <CenteredLoader />,
 });
-const Attendance = dynamic(() => import('./Attendance').then(mod => mod.Attendance), {
+const Attendance = dynamic(() => import('./Attendance').then(mod => mod.default), {
   loading: () => <CenteredLoader />,
 });
 const Profile = dynamic(() => import('./Profile').then(mod => mod.Profile), {
