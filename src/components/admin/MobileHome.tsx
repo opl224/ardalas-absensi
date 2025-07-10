@@ -33,19 +33,19 @@ interface Stats {
 
 interface MobileHomeProps {
     setActiveView: (view: ActiveView) => void;
-    dialogStates?: { [key: string]: boolean };
-    setDialogState?: (dialog: string, isOpen: boolean) => void;
+    setShowSettingsDialog: (isOpen: boolean) => void;
 }
 
 const splitTextFrom = { opacity: 0, y: 20 };
 const splitTextTo = { opacity: 1, y: 0 };
 
-export function MobileHome({ setActiveView, dialogStates, setDialogState }: MobileHomeProps) {
+export function MobileHome({ setActiveView, setShowSettingsDialog }: MobileHomeProps) {
     const { userProfile } = useAuth();
     const [dateTime, setDateTime] = useState({ date: '', time: '' });
     const [stats, setStats] = useState<Stats>({ present: 0, absent: 0, late: 0, total: 0, rate: 0 });
     const [loading, setLoading] = useState(true);
     const [settings, setSettings] = useState<any | null>(null);
+    const [showAvatarDialog, setShowAvatarDialog] = useState(false);
 
     useEffect(() => {
         const updateDateTime = () => {
@@ -188,7 +188,7 @@ export function MobileHome({ setActiveView, dialogStates, setDialogState }: Mobi
                     <p className="text-sm text-muted-foreground">Administrator Sistem</p>
                 </div>
                 {isCustomAvatar ? (
-                    <Dialog open={dialogStates?.avatar} onOpenChange={(isOpen) => setDialogState?.('avatar', isOpen)}>
+                    <Dialog open={showAvatarDialog} onOpenChange={setShowAvatarDialog}>
                         <DialogTrigger asChild>
                             <Avatar className="h-14 w-14 cursor-pointer">
                                 <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait" />
@@ -224,7 +224,7 @@ export function MobileHome({ setActiveView, dialogStates, setDialogState }: Mobi
                             <span className="font-medium text-sm text-foreground">{dateTime.time || 'Memuat waktu...'}</span>
                         </div>
                     </CardContent>
-                    <button className="button-89" role="button" onClick={() => setDialogState?.('settings', true)}>
+                    <button className="button-89" role="button" onClick={() => setShowSettingsDialog(true)}>
                       Atur
                     </button>
                 </div>
@@ -278,5 +278,3 @@ export function MobileHome({ setActiveView, dialogStates, setDialogState }: Mobi
         </div>
     );
 }
-
-    

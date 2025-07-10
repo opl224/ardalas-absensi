@@ -27,7 +27,7 @@ import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { App as CapacitorApp } from '@capacitor/app';
 
@@ -48,11 +48,6 @@ interface User {
   address?: string;
 }
 
-interface UserManagementProps {
-    dialogStates?: { [key: string]: boolean };
-    setDialogState?: (dialog: string, isOpen: boolean) => void;
-}
-
 const USERS_PER_PAGE = 10;
 
 const DetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value?: string }) => {
@@ -67,36 +62,42 @@ const DetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, lab
     );
 };
 
-export function UserManagement({ dialogStates, setDialogState }: UserManagementProps) {
+export function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const { toast } = useToast();
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [listener, setListener] = useState<PluginListenerHandle | null>(null);
 
+  const removeListener = useCallback(() => {
+    if (listener) {
+        listener.remove();
+        setListener(null);
+    }
+  }, [listener]);
+  
   useEffect(() => {
     const setupBackButtonListener = async () => {
-        if (Capacitor.isNativePlatform() && dialogStates?.detail) {
-            const listener = await CapacitorApp.addListener('backButton', (e) => {
+        if (Capacitor.isNativePlatform()) {
+           const l = await CapacitorApp.addListener('backButton', (e) => {
                 e.canGoBack = false;
-                setDialogState?.('detail', false);
+                if(isDetailOpen) {
+                    setIsDetailOpen(false);
+                }
             });
-            return listener;
+            setListener(l);
         }
-        return null;
     };
 
-    const listenerPromise = setupBackButtonListener();
+    setupBackButtonListener();
 
     return () => {
-        listenerPromise.then(listener => {
-            if (listener) {
-                listener.remove();
-            }
-        });
+        removeListener();
     };
-}, [dialogStates?.detail, setDialogState]);
+  }, [isDetailOpen, removeListener]);
 
   useEffect(() => {
     const fetchUsersAndListenForStatus = async () => {
@@ -387,11 +388,11 @@ export function UserManagement({ dialogStates, setDialogState }: UserManagementP
 
   const handleOpenDetailDialog = (user: User) => {
     setSelectedUser(user);
-    setDialogState?.('detail', true);
+    setIsDetailOpen(true);
   };
 
   const handleCloseDetailDialog = () => {
-    setDialogState?.('detail', false);
+    setIsDetailOpen(false);
     setSelectedUser(null);
   };
 
@@ -522,7 +523,7 @@ export function UserManagement({ dialogStates, setDialogState }: UserManagementP
           )}
         </div>
       </div>
-      <Dialog open={dialogStates?.detail} onOpenChange={handleCloseDetailDialog}>
+      <Dialog open={isDetailOpen} onOpenChange={handleCloseDetailDialog}>
         <DialogContent className="sm:max-w-md">
             <DialogHeader>
             <DialogTitle>Detail Pengguna</DialogTitle>
@@ -568,5 +569,3 @@ export function UserManagement({ dialogStates, setDialogState }: UserManagementP
     </>
   );
 }
-
-    

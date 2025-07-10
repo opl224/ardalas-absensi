@@ -59,17 +59,8 @@ export function MobileAdminDashboard() {
     direction: 0,
     index: 0,
   });
-  const [dialogStates, setDialogStates] = useState<{[key: string]: boolean}>({
-    delete: false,
-    view: false,
-    edit: false,
-    detail: false,
-    settings: false,
-  });
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
 
-  const setDialogState = useCallback((dialog: string, isOpen: boolean) => {
-    setDialogStates(prev => ({...prev, [dialog]: isOpen}));
-  }, []);
 
   const NavLink = ({
       index,
@@ -155,13 +146,12 @@ export function MobileAdminDashboard() {
   const onBack = () => changeView('profile');
 
   const onDialogClose = useCallback(() => {
-    const openDialogKey = Object.keys(dialogStates).find(key => dialogStates[key]);
-    if (openDialogKey) {
-        setDialogState(openDialogKey, false);
-        return true;
+    if (showSettingsDialog) {
+      setShowSettingsDialog(false);
+      return true;
     }
     return false;
-  }, [dialogStates, setDialogState]);
+  }, [showSettingsDialog]);
 
   const { showExitDialog, setShowExitDialog, handleConfirmExit } = useAndroidBackHandler({
     currentView: page.view,
@@ -175,8 +165,8 @@ export function MobileAdminDashboard() {
   const props = {
       setActiveView: changeView,
       onBack: onBack,
-      setDialogState: setDialogState,
-      dialogStates: dialogStates,
+      // Pass a function to open the settings dialog
+      setShowSettingsDialog: setShowSettingsDialog,
   };
 
   return (
@@ -230,7 +220,7 @@ export function MobileAdminDashboard() {
       />
       
       {/* Settings Dialog is controlled at the dashboard level for back button handling */}
-      <AttendanceSettingsDialog open={dialogStates.settings} onOpenChange={(isOpen) => setDialogState('settings', isOpen)} />
+      <AttendanceSettingsDialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog} />
 
     </div>
   );

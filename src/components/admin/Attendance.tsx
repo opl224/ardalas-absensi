@@ -49,11 +49,6 @@ interface AttendanceRecord {
     checkInLocation?: { latitude: number, longitude: number };
 }
 
-interface AttendanceProps {
-  dialogStates?: { [key: string]: boolean };
-  setDialogState?: (dialog: string, isOpen: boolean) => void;
-}
-
 interface FirestoreUser {
     id: string;
     name: string;
@@ -69,24 +64,36 @@ function EditAttendanceDialog({ record, open, onOpenChange }: { record: Attendan
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
     const formRef = useRef<HTMLFormElement>(null);
+    const [listener, setListener] = useState<PluginListenerHandle | null>(null);
+
+    const removeListener = useCallback(() => {
+        if (listener) {
+            listener.remove();
+            setListener(null);
+        }
+    }, [listener]);
 
     useEffect(() => {
-        let listener: PluginListenerHandle | null = null;
         const setupBackButtonListener = async () => {
             if (Capacitor.isNativePlatform() && open) {
-                listener = await CapacitorApp.addListener('backButton', (e) => {
+                const l = await CapacitorApp.addListener('backButton', (e) => {
                     e.canGoBack = false;
                     onOpenChange(false);
                 });
+                setListener(l);
             }
         };
 
-        setupBackButtonListener();
+        if (open) {
+            setupBackButtonListener();
+        } else {
+            removeListener();
+        }
 
         return () => {
-            listener?.remove();
+            removeListener();
         };
-    }, [open, onOpenChange]);
+    }, [open, onOpenChange, removeListener]);
 
 
     useEffect(() => {
@@ -184,7 +191,7 @@ function EditAttendanceDialog({ record, open, onOpenChange }: { record: Attendan
     );
 }
 
-export function Attendance({ dialogStates, setDialogState }: AttendanceProps) {
+export function Attendance() {
     const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
@@ -195,26 +202,40 @@ export function Attendance({ dialogStates, setDialogState }: AttendanceProps) {
     const { toast } = useToast();
     const [settings, setSettings] = useState<any>(null);
 
+    // Localized dialog states
+    const [isViewOpen, setIsViewOpen] = useState(false);
+    const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+    const [isEditOpen, setIsEditOpen] = useState(false);
     const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
+    const [listener, setListener] = useState<PluginListenerHandle | null>(null);
 
+    const removeListener = useCallback(() => {
+        if (listener) {
+            listener.remove();
+            setListener(null);
+        }
+    }, [listener]);
+    
     useEffect(() => {
-        let listener: PluginListenerHandle | null = null;
         const setupBackButtonListener = async () => {
-            if (Capacitor.isNativePlatform() && (dialogStates?.view || dialogStates?.delete)) {
-                listener = await CapacitorApp.addListener('backButton', (e) => {
+            if (Capacitor.isNativePlatform()) {
+                const l = await CapacitorApp.addListener('backButton', (e) => {
                     e.canGoBack = false;
-                    if (dialogStates?.view) setDialogState?.('view', false);
-                    if (dialogStates?.delete) setDialogState?.('delete', false);
+                    if (isViewOpen) setIsViewOpen(false);
+                    else if (isDeleteOpen) setIsDeleteOpen(false);
+                    else if (isEditOpen) setIsEditOpen(false);
+                    // Add other dialog checks here if needed
                 });
+                setListener(l);
             }
         };
 
         setupBackButtonListener();
-
+        
         return () => {
-            listener?.remove();
+            removeListener();
         };
-    }, [dialogStates, setDialogState]);
+    }, [isViewOpen, isDeleteOpen, isEditOpen, removeListener]);
 
     useEffect(() => {
         const settingsRef = doc(db, "settings", "attendance");
@@ -412,20 +433,20 @@ export function Attendance({ dialogStates, setDialogState }: AttendanceProps) {
                 variant: "destructive",
             });
         } finally {
-            setDialogState?.('delete', false);
+            setIsDeleteOpen(false);
             setSelectedRecordId(null);
         }
     };
     
     const openViewDialog = (record: AttendanceRecord) => {
         setSelectedRecord(record);
-        setDialogState?.('view', true);
+        setIsViewOpen(true);
     };
 
     const openDeleteDialog = (e: React.MouseEvent, id: string) => {
         e.stopPropagation(); 
         setSelectedRecordId(id);
-        setDialogState?.('delete', true);
+        setIsDeleteOpen(true);
     }
 
     const openEditDialog = (e: React.MouseEvent, record: AttendanceRecord) => {
@@ -439,7 +460,7 @@ export function Attendance({ dialogStates, setDialogState }: AttendanceProps) {
             return;
         }
         setEditingRecord(record);
-        setDialogState?.('edit', true);
+        setIsEditOpen(true);
     };
     
     const getBadgeVariant = (record: AttendanceRecord) => {
@@ -691,7 +712,7 @@ export function Attendance({ dialogStates, setDialogState }: AttendanceProps) {
                     </>
                 )}
             </div>
-            <AlertDialog open={dialogStates?.delete} onOpenChange={(isOpen) => setDialogState?.('delete', isOpen)}>
+            <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Apakah Anda yakin ingin menghapus?</AlertDialogTitle>
@@ -712,7 +733,7 @@ export function Attendance({ dialogStates, setDialogState }: AttendanceProps) {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-            <Dialog open={dialogStates?.view} onOpenChange={(isOpen) => setDialogState?.('view', isOpen)}>
+            <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>{selectedRecord?.name}</DialogTitle>
@@ -798,7 +819,7 @@ export function Attendance({ dialogStates, setDialogState }: AttendanceProps) {
                     )}
                 </DialogContent>
             </Dialog>
-            <EditAttendanceDialog record={editingRecord} open={!!dialogStates?.edit} onOpenChange={(isOpen) => setDialogState?.('edit', isOpen)} />
+            <EditAttendanceDialog record={editingRecord} open={isEditOpen} onOpenChange={setIsEditOpen} />
         </div>
     )
 }
