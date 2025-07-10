@@ -74,14 +74,6 @@ export function MobileTeacherDashboard() {
     index: 0,
   });
   const { userProfile, loading } = useAuth();
-  const [dialogStates, setDialogStates] = useState<{ [key: string]: boolean }>({
-    avatar: false,
-    logout: false,
-  });
-
-  const setDialogState = useCallback((dialog: string, isOpen: boolean) => {
-    setDialogStates(prev => ({ ...prev, [dialog]: isOpen }));
-  }, []);
   
   const NavLink = ({
     index,
@@ -190,23 +182,15 @@ export function MobileTeacherDashboard() {
   }
   else {
       ComponentToRender = viewComponents[page.view];
-      props = { setActiveView: changeView, dialogStates, setDialogState };
+      props = { setActiveView: changeView };
   }
   
-  const onDialogClose = useCallback(() => {
-    const openDialogKey = Object.keys(dialogStates).find(key => dialogStates[key]);
-    if (openDialogKey) {
-        setDialogState(openDialogKey, false);
-        return true;
-    }
-    return false;
-  }, [dialogStates, setDialogState]);
-
+  // onDialogClose is no longer needed as dialog state is localized
   const { showExitDialog, setShowExitDialog, handleConfirmExit } = useAndroidBackHandler({
     currentView: page.view,
     isSubView,
     onBack,
-    onDialogClose,
+    onDialogClose: () => false, // No global dialogs to close
     homeViewId: 'home',
     changeView,
   });

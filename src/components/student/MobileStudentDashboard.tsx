@@ -71,16 +71,7 @@ export function MobileStudentDashboard() {
     index: 0,
   });
   const { userProfile, loading } = useAuth();
-  const [dialogStates, setDialogStates] = useState<{ [key: string]: boolean }>({
-    avatar: false,
-    logout: false,
-  });
-
-  const setDialogState = useCallback((dialog: string, isOpen: boolean) => {
-    setDialogStates(prev => ({ ...prev, [dialog]: isOpen }));
-  }, []);
-
-
+  
   const NavLink = ({
     index,
     setView,
@@ -181,23 +172,14 @@ export function MobileStudentDashboard() {
       props = { onBack, onSuccess: () => changeView('history') };
   } else {
       ComponentToRender = viewComponents[page.view];
-      props = { setActiveView: changeView, dialogStates, setDialogState };
+      props = { setActiveView: changeView };
   }
   
-  const onDialogClose = useCallback(() => {
-    const openDialogKey = Object.keys(dialogStates).find(key => dialogStates[key]);
-    if (openDialogKey) {
-      setDialogState(openDialogKey, false);
-      return true;
-    }
-    return false;
-  }, [dialogStates, setDialogState]);
-
   const { showExitDialog, setShowExitDialog, handleConfirmExit } = useAndroidBackHandler({
     currentView: page.view,
     isSubView,
     onBack,
-    onDialogClose,
+    onDialogClose: () => false, // No global dialogs to close
     homeViewId: 'home',
     changeView,
   });
