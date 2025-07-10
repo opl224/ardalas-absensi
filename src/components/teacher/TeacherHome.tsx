@@ -71,7 +71,7 @@ const splitTextTo = { opacity: 1, y: 0 };
 export function TeacherHome({ setActiveView }: TeacherHomeProps) {
     const [dateTime, setDateTime] = useState({ date: '', time: '' });
     const [status, setStatus] = useState<CheckinStatus>('loading');
-    const [checkinData, setCheckinData] = useState<{ time: string; photo: string; attendanceId: string; status: 'Hadir' | 'Terlambat' } | null>(null);
+    const [checkinData, setCheckinData] = useState<{ time: string; photo: string; attendanceId: string; status: 'Hadir' | 'Terlambat' | 'Tidak Hadir' } | null>(null);
     const [checkoutTime, setCheckoutTime] = useState<string | null>(null);
     const [isCheckoutAllowed, setIsCheckoutAllowed] = useState(false);
     const [settings, setSettings] = useState<any | null>(null);
@@ -197,7 +197,9 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                 status: data.status,
             });
 
-            if (data.checkOutTime) {
+            if (data.status === 'Tidak Hadir') {
+                setStatus('tidak_hadir');
+            } else if (data.checkOutTime) {
                 const checkOutTimestamp = data.checkOutTime as Timestamp;
                 setStatus('checked_out');
                 setCheckoutTime(checkOutTimestamp.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit'}));
@@ -311,7 +313,7 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                         {status === 'tidak_hadir' && (
                             <div className='space-y-4'>
                                  <Badge variant="destructive" className="py-1 px-4 text-base">Tidak Hadir</Badge>
-                                <p className="text-muted-foreground">Waktu absen masuk hari ini telah berakhir.</p>
+                                <p className="text-muted-foreground">Waktu absen masuk hari ini telah berakhir atau status diubah oleh admin.</p>
                                 <Button className="w-full" disabled>Absen Masuk</Button>
                             </div>
                         )}
