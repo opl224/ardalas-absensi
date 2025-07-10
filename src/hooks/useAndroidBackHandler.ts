@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -49,12 +50,18 @@ export const useAndroidBackHandler = ({
   );
 
   useEffect(() => {
+    let listener: any;
     // Only run on capacitor platform
     if (typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform()) {
-        const listener = App.addListener('backButton', handleBackButton);
+        const addListener = async () => {
+           listener = await App.addListener('backButton', handleBackButton);
+        }
+        addListener();
     
         return () => {
-          listener.remove();
+          if (listener) {
+            listener.remove();
+          }
         };
     }
   }, [handleBackButton]);

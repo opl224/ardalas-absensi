@@ -1,6 +1,7 @@
+
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Home, History, User as UserIcon, ArrowLeft } from 'lucide-react';
 import { TeacherHome } from './TeacherHome';
 import { AttendanceHistory } from './AttendanceHistory';
@@ -73,6 +74,14 @@ export function MobileTeacherDashboard() {
     index: 0,
   });
   const { userProfile, loading } = useAuth();
+  const [dialogStates, setDialogStates] = useState<{ [key: string]: boolean }>({
+    avatar: false,
+    logout: false,
+  });
+
+  const setDialogState = useCallback((dialog: string, isOpen: boolean) => {
+    setDialogStates(prev => ({ ...prev, [dialog]: isOpen }));
+  }, []);
   
   const NavLink = ({
     index,
@@ -181,17 +190,25 @@ export function MobileTeacherDashboard() {
   }
   else {
       ComponentToRender = viewComponents[page.view];
-      props = { setActiveView: changeView, onBack: () => changeView('profile') };
+      props = { setActiveView: changeView, dialogStates, setDialogState };
   }
+  
+  const onDialogClose = useCallback(() => {
+    const openDialogKey = Object.keys(dialogStates).find(key => dialogStates[key]);
+    if (openDialogKey) {
+        setDialogState(openDialogKey, false);
+        return true;
+    }
+    return false;
+  }, [dialogStates, setDialogState]);
 
   const { showExitDialog, setShowExitDialog, handleConfirmExit } = useAndroidBackHandler({
     currentView: page.view,
     isSubView,
     onBack,
-    profileViewId: 'profile',
+    onDialogClose,
     homeViewId: 'home',
     changeView,
-    mainViews,
   });
 
 
