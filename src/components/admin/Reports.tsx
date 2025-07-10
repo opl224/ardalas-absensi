@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, TrendingUp, Clock, Download, UserX } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { db } from '@/lib/firebase';
-import { collection, query, where, Timestamp, doc, getDoc, getCountFromServer, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { collection, query, where, Timestamp, doc, getDoc, getCountFromServer, onSnapshot, Unsubscribe, getDocs } from 'firebase/firestore';
 import { Loader } from '../ui/loader';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -27,10 +27,23 @@ interface AttendanceReportRecord {
     name: string;
     checkInTime: string;
     checkOutTime: string;
-
     status: string;
     fraudReason: string;
 }
+
+const isCheckinTimeOver = (settings: any): boolean => {
+    if (!settings || !settings.checkInEnd) return false;
+
+    const now = new Date();
+    const [endHours, endMinutes] = settings.checkInEnd.split(':').map(Number);
+    const gracePeriodMinutes = Number(settings.gracePeriod) || 0;
+
+    const deadline = new Date();
+    deadline.setHours(endHours, endMinutes, 0, 0);
+    deadline.setMinutes(deadline.getMinutes() + gracePeriodMinutes);
+
+    return now > deadline;
+};
 
 const StatCard = ({ title, value, icon: Icon, color }: { title: string, value: string | number, icon: React.ElementType, color: string }) => (
     <Card className={`border-l-4 ${color}`}>
@@ -161,17 +174,26 @@ export default function Reports() {
                 );
                 
                 unsubscribe = onSnapshot(attendanceQuery, async (snapshot) => {
-                    const attendanceDocs = snapshot.docs;
-                    const attendanceData = attendanceDocs.map(doc => doc.data());
-                    
-                    const presentCount = attendanceData.filter(d => d.status === 'Hadir').length;
-                    const lateCount = attendanceData.filter(d => d.status === 'Terlambat').length;
-                    
+                    const allTodaysRecords = snapshot.docs.map(doc => doc.data());
                     const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
                     const settings = settingsDoc.exists() ? settingsDoc.data() : { checkInEnd: '09:00', gracePeriod: 60 };
 
+                    const activeAttendances = allTodaysRecords.filter(
+                        a => a.status === 'Hadir' || a.status === 'Terlambat'
+                    );
+
+                    const presentCount = activeAttendances.filter(d => d.status === 'Hadir').length;
+                    const lateCount = activeAttendances.filter(d => d.status === 'Terlambat').length;
+                    
                     const totalActiveAttendance = presentCount + lateCount;
-                    let absentCount = totalGurus - totalActiveAttendance;
+                    
+                    let absentCount = 0;
+                    if (activeTab === 'today' && isCheckinTimeOver(settings)) {
+                        absentCount = totalGurus - totalActiveAttendance;
+                    } else if (activeTab !== 'today') {
+                        // This part is complex for historical data, needs more logic
+                        // For now, let's assume it's based on daily check-ins
+                    }
                     
                     const attendanceRate = totalGurus > 0 ? (totalActiveAttendance / totalGurus) * 100 : 0;
                     
@@ -186,7 +208,7 @@ export default function Reports() {
                         rateChange,
                     });
                     
-                    const detailedData: AttendanceReportRecord[] = attendanceData.map(data => {
+                    const detailedData: AttendanceReportRecord[] = allTodaysRecords.map(data => {
                         return {
                             name: data.name || 'N/A',
                             checkInTime: data.checkInTime ? (data.checkInTime as Timestamp).toDate().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '-',
@@ -217,29 +239,66 @@ export default function Reports() {
     }, [activeTab, totalGurus]);
 
     const handleDownload = async (formatType: 'pdf' | 'csv') => {
-        if (loading || reportData.length === 0) {
-            toast({
-                variant: 'destructive',
-                title: 'Gagal Mengunduh',
-                description: 'Data tidak tersedia atau sedang dimuat. Silakan coba lagi nanti.'
-            });
-            return;
-        }
+        toast({ title: "Mempersiapkan Unduhan...", description: "Ini mungkin memakan waktu beberapa saat." });
 
-        const headers = ['Nama', 'Waktu Absen Masuk', 'Waktu Absen Keluar', 'Status', 'Alasan Kecurangan'];
-        const data = reportData.map(d => [d.name, d.checkInTime, d.checkOutTime, d.status, d.fraudReason]);
+        try {
+            const now = new Date();
+            let startDate: Date;
+            const endDate: Date = new Date(); 
+
+            switch (activeTab) {
+                case 'week':
+                    const firstDayOfWeek = now.getDate() - now.getDay();
+                    startDate = new Date(now.setDate(firstDayOfWeek));
+                    break;
+                case 'month':
+                    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                    break;
+                case 'year':
+                    startDate = new Date(now.getFullYear(), 0, 1);
+                    break;
+                case 'today':
+                default:
+                    startDate = new Date();
+                    break;
+            }
+            startDate.setHours(0, 0, 0, 0);
+            endDate.setHours(23, 59, 59, 999);
+
+            const allDataQuery = query(
+                collection(db, "photo_attendances"),
+                where("role", "==", "guru"),
+                where("checkInTime", ">=", startDate),
+                where("checkInTime", "<=", endDate),
+            );
+
+            const allDocsSnapshot = await getDocs(allDataQuery);
+            const allRecords = allDocsSnapshot.docs.map(doc => doc.data());
+            
+            if (allRecords.length === 0) {
+                toast({ variant: 'destructive', title: 'Gagal Mengunduh', description: 'Tidak ada data untuk diunduh pada periode ini.' });
+                return;
+            }
+
+            const headers = ['Nama', 'Waktu Absen Masuk', 'Waktu Absen Keluar', 'Status', 'Alasan Kecurangan'];
+            const data = allRecords.map(d => [
+                d.name,
+                d.checkInTime ? (d.checkInTime as Timestamp).toDate().toLocaleString('id-ID') : '-',
+                d.checkOutTime ? (d.checkOutTime as Timestamp).toDate().toLocaleString('id-ID') : '-',
+                d.isFraudulent ? `Kecurangan (${d.status})` : d.status,
+                d.fraudReason || '-'
+            ]);
         
-        const periodMap: { [key: string]: string } = {
-            today: 'Hari Ini',
-            week: 'Minggu Ini',
-            month: 'Bulan Ini',
-            year: 'Tahun Ini'
-        };
-        const period = periodMap[activeTab] || activeTab;
-        const filename = `Laporan_Kehadiran_Guru_${period.replace(' ','_')}_${new Date().toISOString().slice(0, 10)}.${formatType}`;
+            const periodMap: { [key: string]: string } = {
+                today: 'Hari Ini',
+                week: 'Minggu Ini',
+                month: 'Bulan Ini',
+                year: 'Tahun Ini'
+            };
+            const period = periodMap[activeTab] || activeTab;
+            const filename = `Laporan_Kehadiran_Guru_${period.replace(' ','_')}_${new Date().toISOString().slice(0, 10)}.${formatType}`;
         
-        if (Capacitor.isNativePlatform()) {
-            try {
+            if (Capacitor.isNativePlatform()) {
                 let fileData: string;
                 if (formatType === 'csv') {
                     const csvContent = [headers.join(','), ...data.map(row => row.join(','))].join('\n');
@@ -266,38 +325,34 @@ export default function Reports() {
                     description: `${filename} disimpan di folder Dokumen perangkat Anda.`,
                 });
 
-            } catch (e: any) {
-                console.error('Error saving file to device', e);
-                toast({
-                    variant: 'destructive',
-                    title: 'Gagal Menyimpan File',
-                    description: e.message || 'Tidak dapat menyimpan laporan ke perangkat.',
-                });
-            }
-        } else {
-            toast({
-                title: "Mempersiapkan Unduhan",
-                description: `Laporan Anda akan segera diunduh sebagai ${formatType.toUpperCase()}.`
-            });
-            if (formatType === 'csv') {
-                const csvContent = [headers.join(','), ...data.map(row => row.join(','))].join('\n');
-                const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(blob);
-                link.setAttribute('download', filename);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }
+            } else {
+                if (formatType === 'csv') {
+                    const csvContent = [headers.join(','), ...data.map(row => row.join(','))].join('\n');
+                    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.setAttribute('download', filename);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
     
-            if (formatType === 'pdf') {
-                const { default: jsPDF } = await import('jspdf');
-                const { default: autoTable } = await import('jspdf-autotable');
-                const doc = new jsPDF();
-                doc.text(`Laporan Kehadiran Guru - ${period}`, 14, 16);
-                autoTable(doc, { head: [headers], body: data, startY: 20 });
-                doc.save(filename);
+                if (formatType === 'pdf') {
+                    const { default: jsPDF } = await import('jspdf');
+                    const { default: autoTable } = await import('jspdf-autotable');
+                    const doc = new jsPDF();
+                    doc.text(`Laporan Kehadiran Guru - ${period}`, 14, 16);
+                    autoTable(doc, { head: [headers], body: data, startY: 20 });
+                    doc.save(filename);
+                }
             }
+        } catch (e: any) {
+            console.error('Error during download:', e);
+            toast({
+                variant: 'destructive',
+                title: 'Gagal Mengunduh',
+                description: e.message || 'Terjadi kesalahan saat mempersiapkan file.',
+            });
         }
     }
 

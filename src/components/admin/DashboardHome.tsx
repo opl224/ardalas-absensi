@@ -43,6 +43,20 @@ interface Stats {
     rate: number;
 }
 
+const isCheckinTimeOver = (settings: any): boolean => {
+    if (!settings || !settings.checkInEnd) return false;
+
+    const now = new Date();
+    const [endHours, endMinutes] = settings.checkInEnd.split(':').map(Number);
+    const gracePeriodMinutes = Number(settings.gracePeriod) || 0;
+
+    const deadline = new Date();
+    deadline.setHours(endHours, endMinutes, 0, 0);
+    deadline.setMinutes(deadline.getMinutes() + gracePeriodMinutes);
+
+    return now > deadline;
+};
+
 export function DashboardHome() {
     const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
     const [stats, setStats] = useState<Stats>({ present: 0, absent: 0, late: 0, total: 0, rate: 0 });
@@ -88,7 +102,7 @@ export function DashboardHome() {
             setLoading(false);
             return;
         }
-
+        
         if (totalGurus === 0) {
             setStats({ present: 0, absent: 0, late: 0, total: 0, rate: 0 });
             setAttendanceData([]);
@@ -100,6 +114,7 @@ export function DashboardHome() {
         const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
 
+        // This query now includes 'Tidak Hadir' to correctly filter it out later
         const attendanceQuery = query(
             collection(db, "photo_attendances"),
             where("role", "==", "guru"),
@@ -108,21 +123,25 @@ export function DashboardHome() {
         );
 
         const unsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
-            const allAttendancesToday = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            })) as AttendanceRecord[];
-
-            const activeAttendances = allAttendancesToday.filter(
+            // Get all records for today, including "Tidak Hadir"
+            const allTodaysRecords = snapshot.docs.map(doc => doc.data());
+            
+            // Filter only for active attendances for the table and counts
+            const activeAttendances = allTodaysRecords.filter(
                 a => a.status === 'Hadir' || a.status === 'Terlambat'
-            );
+            ) as AttendanceRecord[];
             setAttendanceData(activeAttendances);
             
             const presentCount = activeAttendances.filter(a => a.status === 'Hadir').length;
             const lateCount = activeAttendances.filter(a => a.status === 'Terlambat').length;
             const totalWithRecords = presentCount + lateCount;
 
-            const absentCount = totalGurus - totalWithRecords;
+            let absentCount = 0;
+            // Only mark as absent if the check-in time is over
+            if (isCheckinTimeOver(settings)) {
+                absentCount = totalGurus - totalWithRecords;
+            }
+
             const attendanceRate = totalGurus > 0 ? Math.round((totalWithRecords / totalGurus) * 100) : 0;
             
             setStats({
@@ -208,7 +227,7 @@ export function DashboardHome() {
                                         <TableCell>
                                             <div className="font-medium">{item.name}</div>
                                         </TableCell>
-                                        <TableCell className="hidden sm:table-cell">{item.role}</TableCell>
+                                        <TableCell className="hidden sm:table-cell capitalize">{item.role}</TableCell>
                                         <TableCell className="hidden sm:table-cell">{item.checkInTime.toDate().toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'})}</TableCell>
                                         <TableCell>
                                             <Badge variant={
