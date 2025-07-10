@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { collection, query, orderBy, Timestamp, where, doc, onSnapshot, getDocs, getCountFromServer } from "firebase/firestore";
+import { collection, query, orderBy, Timestamp, where, doc, onSnapshot, getCountFromServer } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Loader } from "@/components/ui/loader";
 import { Separator } from "../ui/separator";
@@ -78,7 +78,7 @@ export function DashboardHome() {
             const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
 
             if (settings.offDays?.includes(todayStr)) {
-                setStats({ present: 0, absent: 0, late: 0, total: totalUserCount, rate: 100 });
+                setStats({ present: 0, absent: totalUserCount, late: 0, total: totalUserCount, rate: 0 });
                 setAttendanceData([]);
                 setLoading(false);
                 return () => {}; // Return an empty unsubscribe function
@@ -104,9 +104,14 @@ export function DashboardHome() {
                 
                 setAttendanceData(fetchedAttendances);
                 
-                const presentCount = fetchedAttendances.length;
+                // Explicitly count each status from the fetched data
+                const presentCount = fetchedAttendances.filter(a => a.status === 'Hadir').length;
                 const lateCount = fetchedAttendances.filter(a => a.status === 'Terlambat').length;
                 
+                // Total with records is sum of present and late. 'Tidak Hadir' records are handled separately.
+                const totalWithRecords = presentCount + lateCount;
+
+                // Absent calculation
                 const [endHours, endMinutes] = (settings.checkInEnd || '09:00').split(':').map(Number);
                 const checkInDeadline = new Date();
                 checkInDeadline.setHours(endHours, endMinutes, 0, 0);
@@ -114,11 +119,13 @@ export function DashboardHome() {
                 const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
 
                 let absentCount = 0;
+                // Only mark as absent if the deadline has passed.
                 if (new Date() > checkInGraceEnd) {
-                    absentCount = totalUserCount - presentCount;
+                    absentCount = totalUserCount - totalWithRecords;
                 }
 
-                const attendanceRate = totalUserCount > 0 ? Math.round((presentCount / totalUserCount) * 100) : 0;
+                // Attendance rate is based on who showed up (present + late) vs total.
+                const attendanceRate = totalUserCount > 0 ? Math.round((totalWithRecords / totalUserCount) * 100) : 0;
                 
                 setStats({
                     present: presentCount,
@@ -211,7 +218,7 @@ export function DashboardHome() {
                                             <div className="font-medium">{item.name}</div>
                                         </TableCell>
                                         <TableCell className="hidden sm:table-cell">{item.role}</TableCell>
-                                        <TableCell className="hidden sm:table-cell">{item.checkInTime.toDate().toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'})}</TableCell>
+                                        <TableCell className="hidden sm:table-cell">{item.status !== 'Tidak Hadir' ? item.checkInTime.toDate().toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'}) : '-'}</TableCell>
                                         <TableCell>
                                             <Badge variant={
                                                 item.isFraudulent ? 'destructive' :
