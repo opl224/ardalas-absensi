@@ -29,7 +29,7 @@ const UserManagement = dynamic(() => import('@/components/admin/UserManagement')
 const Reports = dynamic(() => import('@/components/admin/Reports').then(mod => mod.Reports), {
   loading: () => <CenteredLoader />,
 });
-const Attendance = dynamic(() => import('@/components/admin/Attendance').then(mod => mod.Attendance), {
+const Attendance = dynamic(() => import('@/components/admin/Attendance'), {
   loading: () => <CenteredLoader />,
 });
 
