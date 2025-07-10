@@ -22,10 +22,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Capacitor } from '@capacitor/core';
-import { App } from '@capacitor/app';
+import { App as CapacitorApp } from '@capacitor/app';
 
 interface StudentHomeProps {
   setActiveView: (view: 'home' | 'history' | 'profile' | 'checkin') => void;
+  dialogStates?: { [key: string]: boolean };
+  setDialogState?: (dialog: string, isOpen: boolean) => void;
 }
 
 type CheckinStatus = 'not_checked_in' | 'checked_in' | 'checked_out' | 'tidak_hadir' | 'loading';
@@ -66,14 +68,13 @@ function getTodayAtTime(timeString: string): Date {
 }
 
 
-export function StudentHome({ setActiveView }: StudentHomeProps) {
+export function StudentHome({ setActiveView, dialogStates, setDialogState }: StudentHomeProps) {
     const [dateTime, setDateTime] = useState({ date: '', time: '' });
     const [status, setStatus] = useState<CheckinStatus>('loading');
     const [checkinData, setCheckinData] = useState<{ time: string; photo: string; attendanceId: string; status: 'Hadir' | 'Terlambat' } | null>(null);
     const [checkoutTime, setCheckoutTime] = useState<string | null>(null);
     const [isCheckoutAllowed, setIsCheckoutAllowed] = useState(false);
-    const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
-
+    
     const { userProfile } = useAuth();
     const { toast } = useToast();
 
@@ -83,16 +84,27 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
 
 
     useEffect(() => {
-        if (Capacitor.isNativePlatform() && isAvatarDialogOpen) {
-          const listener = App.addListener('backButton', (e) => {
-            e.canGoBack = false;
-            setIsAvatarDialogOpen(false);
-          });
-          return () => {
-            listener.remove();
-          };
-        }
-      }, [isAvatarDialogOpen]);
+        const setupBackButtonListener = async () => {
+            if (Capacitor.isNativePlatform() && dialogStates?.avatar) {
+                const listener = await CapacitorApp.addListener('backButton', (e) => {
+                    e.canGoBack = false;
+                    setDialogState?.('avatar', false);
+                });
+                return listener;
+            }
+            return null;
+        };
+    
+        const listenerPromise = setupBackButtonListener();
+    
+        return () => {
+            listenerPromise.then(listener => {
+                if (listener) {
+                    listener.remove();
+                }
+            });
+        };
+    }, [dialogStates?.avatar, setDialogState]);
 
     useEffect(() => {
         const updateDateTime = () => {
@@ -218,7 +230,7 @@ export function StudentHome({ setActiveView }: StudentHomeProps) {
                         <p className="text-sm text-muted-foreground capitalize">{userProfile.role}</p>
                     </div>
                     {isCustomAvatar ? (
-                        <Dialog open={isAvatarDialogOpen} onOpenChange={setIsAvatarDialogOpen}>
+                        <Dialog open={dialogStates?.avatar} onOpenChange={(isOpen) => setDialogState?.('avatar', isOpen)}>
                             <DialogTrigger asChild>
                                 <Avatar className="h-14 w-14 cursor-pointer">
                                     <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait"/>

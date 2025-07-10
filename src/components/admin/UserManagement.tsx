@@ -29,7 +29,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
-import { App } from '@capacitor/app';
+import { App as CapacitorApp } from '@capacitor/app';
 
 interface User {
   id: string;
@@ -76,16 +76,27 @@ export function UserManagement({ dialogStates, setDialogState }: UserManagementP
   const { toast } = useToast();
 
   useEffect(() => {
-    if (Capacitor.isNativePlatform() && dialogStates?.detail) {
-      const listener = App.addListener('backButton', (e) => {
-        e.canGoBack = false;
-        setDialogState?.('detail', false);
-      });
-      return () => {
-        listener.remove();
-      };
-    }
-  }, [dialogStates?.detail, setDialogState]);
+    const setupBackButtonListener = async () => {
+        if (Capacitor.isNativePlatform() && dialogStates?.detail) {
+            const listener = await CapacitorApp.addListener('backButton', (e) => {
+                e.canGoBack = false;
+                setDialogState?.('detail', false);
+            });
+            return listener;
+        }
+        return null;
+    };
+
+    const listenerPromise = setupBackButtonListener();
+
+    return () => {
+        listenerPromise.then(listener => {
+            if (listener) {
+                listener.remove();
+            }
+        });
+    };
+}, [dialogStates?.detail, setDialogState]);
 
   useEffect(() => {
     const fetchUsersAndListenForStatus = async () => {
@@ -197,10 +208,10 @@ export function UserManagement({ dialogStates, setDialogState }: UserManagementP
       }
     };
 
-    fetchUsersAndListenForStatus();
+    const unsubscribePromise = fetchUsersAndListenForStatus();
     
     return () => {
-      // No-op for now, as unsubscribe is handled inside the listener setup
+      unsubscribePromise.then(unsub => unsub && unsub());
     };
   }, [toast]);
 
@@ -306,7 +317,7 @@ export function UserManagement({ dialogStates, setDialogState }: UserManagementP
                 const csvData = data.map(row => row.map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(','));
                 const csvContent = [headers.join(','), ...csvData].join('\n');
                 fileData = btoa(unescape(encodeURIComponent(csvContent)));
-            } else { // pdf
+            } else { 
                 const { default: jsPDF } = await import('jspdf');
                 const { default: autoTable } = await import('jspdf-autotable');
                 const doc = new jsPDF();
@@ -337,7 +348,6 @@ export function UserManagement({ dialogStates, setDialogState }: UserManagementP
             });
         }
     } else {
-        // Web implementation
         toast({
             title: 'Mempersiapkan Unduhan',
             description: `Daftar pengguna akan segera diunduh sebagai ${formatType.toUpperCase()}.`,

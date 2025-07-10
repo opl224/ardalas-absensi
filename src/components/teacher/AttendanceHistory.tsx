@@ -146,7 +146,6 @@ export function AttendanceHistory() {
             });
         }
     } else {
-        // Web implementation
         toast({
             title: "Mempersiapkan Unduhan",
             description: `Laporan Anda akan segera diunduh sebagai ${formatType.toUpperCase()}.`

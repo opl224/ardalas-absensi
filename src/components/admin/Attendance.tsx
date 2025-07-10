@@ -30,9 +30,9 @@ import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Switch } from '../ui/switch';
+import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
-import { App } from '@capacitor/app';
 
 
 interface AttendanceRecord {
@@ -54,6 +54,13 @@ interface AttendanceProps {
   setDialogState?: (dialog: string, isOpen: boolean) => void;
 }
 
+interface FirestoreUser {
+    id: string;
+    name: string;
+    role: string;
+    avatar?: string;
+}
+
 const RECORDS_PER_PAGE = 10;
 const filterOptions = ['Semua Kehadiran', 'Hadir', 'Terlambat', 'Tidak Hadir', 'Kecurangan'];
 
@@ -64,16 +71,28 @@ function EditAttendanceDialog({ record, open, onOpenChange }: { record: Attendan
     const formRef = useRef<HTMLFormElement>(null);
 
     useEffect(() => {
-        if (Capacitor.isNativePlatform() && open) {
-          const listener = App.addListener('backButton', (e) => {
-            e.canGoBack = false;
-            onOpenChange(false);
-          });
-          return () => {
-            listener.remove();
-          };
-        }
+        const setupBackButtonListener = async () => {
+            if (Capacitor.isNativePlatform() && open) {
+                const listener = await CapacitorApp.addListener('backButton', (e) => {
+                    e.canGoBack = false;
+                    onOpenChange(false);
+                });
+                return listener;
+            }
+            return null;
+        };
+
+        const listenerPromise = setupBackButtonListener();
+
+        return () => {
+            listenerPromise.then(listener => {
+                if (listener) {
+                    listener.remove();
+                }
+            });
+        };
     }, [open, onOpenChange]);
+
 
     useEffect(() => {
         if (state.success) {
@@ -185,28 +204,28 @@ export function Attendance({ dialogStates, setDialogState }: AttendanceProps) {
     const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
 
     useEffect(() => {
-        if (Capacitor.isNativePlatform() && dialogStates?.view) {
-          const listener = App.addListener('backButton', (e) => {
-            e.canGoBack = false;
-            setDialogState?.('view', false);
-          });
-          return () => {
-            listener.remove();
-          };
-        }
-    }, [dialogStates?.view, setDialogState]);
+        const setupBackButtonListener = async () => {
+            if (Capacitor.isNativePlatform() && (dialogStates?.view || dialogStates?.delete)) {
+                const listener = await CapacitorApp.addListener('backButton', (e) => {
+                    e.canGoBack = false;
+                    if (dialogStates?.view) setDialogState?.('view', false);
+                    if (dialogStates?.delete) setDialogState?.('delete', false);
+                });
+                return listener;
+            }
+            return null;
+        };
 
-    useEffect(() => {
-        if (Capacitor.isNativePlatform() && dialogStates?.delete) {
-          const listener = App.addListener('backButton', (e) => {
-            e.canGoBack = false;
-            setDialogState?.('delete', false);
-          });
-          return () => {
-            listener.remove();
-          };
-        }
-    }, [dialogStates?.delete, setDialogState]);
+        const listenerPromise = setupBackButtonListener();
+
+        return () => {
+            listenerPromise.then(listener => {
+                if (listener) {
+                    listener.remove();
+                }
+            });
+        };
+    }, [dialogStates, setDialogState]);
 
     useEffect(() => {
         const settingsRef = doc(db, "settings", "attendance");
@@ -258,7 +277,7 @@ export function Attendance({ dialogStates, setDialogState }: AttendanceProps) {
             if (canDetermineAbsent) {
                 const usersQuery = query(collection(db, 'users'), where('role', '==', 'guru'));
                 const usersSnapshot = await getDocs(usersQuery);
-                const allUsers = usersSnapshot.docs.map(userDoc => ({ id: userDoc.id, ...userDoc.data() }));
+                const allUsers = usersSnapshot.docs.map(userDoc => ({ id: userDoc.id, ...userDoc.data() })) as FirestoreUser[];
 
                 const presentUserIds = new Set(fetchedRecords.map(r => r.userId));
                 const absentUsers = allUsers.filter(user => !presentUserIds.has(user.id));
@@ -268,9 +287,9 @@ export function Attendance({ dialogStates, setDialogState }: AttendanceProps) {
                     userId: user.id,
                     name: user.name,
                     role: user.role,
-                    checkInTime: Timestamp.fromDate(startOfDay), // Will appear at the bottom of desc list
+                    checkInTime: Timestamp.fromDate(startOfDay), 
                     status: 'Tidak Hadir',
-                    checkInPhotoUrl: user.avatar || '', // Use avatar for photo
+                    checkInPhotoUrl: user.avatar || '',
                     isFraudulent: false,
                 }));
                 
@@ -279,8 +298,8 @@ export function Attendance({ dialogStates, setDialogState }: AttendanceProps) {
             }
 
             setAttendanceData(finalRecords);
-            setCurrentPage(1); // Reset page on new data
-            setStatusFilter('Semua Kehadiran'); // Reset filter on new data
+            setCurrentPage(1); 
+            setStatusFilter('Semua Kehadiran'); 
             setLoading(false);
         }, (error) => {
             console.error("Error fetching attendance data: ", error);
@@ -330,7 +349,7 @@ export function Attendance({ dialogStates, setDialogState }: AttendanceProps) {
                 if (formatType === 'csv') {
                     const csvContent = [headers.join(','), ...data.map(row => row.join(','))].join('\n');
                     fileData = btoa(unescape(encodeURIComponent(csvContent)));
-                } else { // pdf
+                } else { 
                     const { default: jsPDF } = await import('jspdf');
                     const { default: autoTable } = await import('jspdf-autotable');
                     const doc = new jsPDF();
@@ -361,7 +380,6 @@ export function Attendance({ dialogStates, setDialogState }: AttendanceProps) {
                 });
             }
         } else {
-            // Web implementation
             toast({
                 title: "Mempersiapkan Unduhan",
                 description: `Laporan Anda akan segera diunduh sebagai ${formatType.toUpperCase()}.`
@@ -416,7 +434,7 @@ export function Attendance({ dialogStates, setDialogState }: AttendanceProps) {
     };
 
     const openDeleteDialog = (e: React.MouseEvent, id: string) => {
-        e.stopPropagation(); // prevent view dialog
+        e.stopPropagation(); 
         setSelectedRecordId(id);
         setDialogState?.('delete', true);
     }
