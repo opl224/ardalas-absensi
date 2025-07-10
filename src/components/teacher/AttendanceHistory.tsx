@@ -129,13 +129,13 @@ export function AttendanceHistory() {
             await Filesystem.writeFile({
                 path: filename,
                 data: fileData,
-                directory: Directory.Downloads,
+                directory: Directory.Documents,
                 recursive: true
             });
 
             toast({
                 title: "Unduhan Selesai",
-                description: `${filename} disimpan di folder Unduhan perangkat Anda.`,
+                description: `${filename} disimpan di folder Dokumen perangkat Anda.`,
             });
         } catch (e: any) {
             console.error('Error saving file to device', e);

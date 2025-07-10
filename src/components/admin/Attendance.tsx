@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useState, useEffect, useMemo, useRef, useTransition } from 'react';
+import { useState, useEffect, useMemo, useRef, useTransition, useCallback } from 'react';
 import { format } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -32,6 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Switch } from '../ui/switch';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
+import { App } from '@capacitor/app';
 
 
 interface AttendanceRecord {
@@ -61,6 +62,18 @@ function EditAttendanceDialog({ record, open, onOpenChange }: { record: Attendan
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
     const formRef = useRef<HTMLFormElement>(null);
+
+    useEffect(() => {
+        if (Capacitor.isNativePlatform() && open) {
+          const listener = App.addListener('backButton', (e) => {
+            e.canGoBack = false;
+            onOpenChange(false);
+          });
+          return () => {
+            listener.remove();
+          };
+        }
+    }, [open, onOpenChange]);
 
     useEffect(() => {
         if (state.success) {
@@ -170,6 +183,30 @@ export function Attendance({ dialogStates, setDialogState }: AttendanceProps) {
     const [settings, setSettings] = useState<any>(null);
 
     const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
+
+    useEffect(() => {
+        if (Capacitor.isNativePlatform() && dialogStates?.view) {
+          const listener = App.addListener('backButton', (e) => {
+            e.canGoBack = false;
+            setDialogState?.('view', false);
+          });
+          return () => {
+            listener.remove();
+          };
+        }
+    }, [dialogStates?.view, setDialogState]);
+
+    useEffect(() => {
+        if (Capacitor.isNativePlatform() && dialogStates?.delete) {
+          const listener = App.addListener('backButton', (e) => {
+            e.canGoBack = false;
+            setDialogState?.('delete', false);
+          });
+          return () => {
+            listener.remove();
+          };
+        }
+    }, [dialogStates?.delete, setDialogState]);
 
     useEffect(() => {
         const settingsRef = doc(db, "settings", "attendance");
@@ -306,13 +343,13 @@ export function Attendance({ dialogStates, setDialogState }: AttendanceProps) {
                 await Filesystem.writeFile({
                     path: filename,
                     data: fileData,
-                    directory: Directory.Downloads,
+                    directory: Directory.Documents,
                     recursive: true,
                 });
     
                 toast({
                     title: "Unduhan Selesai",
-                    description: `${filename} disimpan di folder Unduhan perangkat Anda.`,
+                    description: `${filename} disimpan di folder Dokumen perangkat Anda.`,
                 });
     
             } catch (e: any) {
@@ -760,13 +797,3 @@ export function Attendance({ dialogStates, setDialogState }: AttendanceProps) {
 }
 
     
-
-
-
-
-
-
-    
-
-
-

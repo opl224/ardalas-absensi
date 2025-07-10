@@ -1,6 +1,7 @@
+
 'use client'
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
+import { App } from '@capacitor/app';
 
 interface User {
   id: string;
@@ -72,6 +74,18 @@ export function UserManagement({ dialogStates, setDialogState }: UserManagementP
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (Capacitor.isNativePlatform() && dialogStates?.detail) {
+      const listener = App.addListener('backButton', (e) => {
+        e.canGoBack = false;
+        setDialogState?.('detail', false);
+      });
+      return () => {
+        listener.remove();
+      };
+    }
+  }, [dialogStates?.detail, setDialogState]);
 
   useEffect(() => {
     const fetchUsersAndListenForStatus = async () => {
@@ -305,13 +319,13 @@ export function UserManagement({ dialogStates, setDialogState }: UserManagementP
             await Filesystem.writeFile({
                 path: filename,
                 data: fileData,
-                directory: Directory.Downloads,
+                directory: Directory.Documents,
                 recursive: true
             });
 
             toast({
                 title: "Unduhan Selesai",
-                description: `${filename} disimpan di folder Unduhan perangkat Anda.`,
+                description: `${filename} disimpan di folder Dokumen perangkat Anda.`,
             });
 
         } catch (e: any) {
