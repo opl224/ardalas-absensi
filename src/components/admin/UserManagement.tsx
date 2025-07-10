@@ -47,6 +47,11 @@ interface User {
   address?: string;
 }
 
+interface AttendanceStatus {
+    status: User['status'];
+    isFraudulent: boolean;
+}
+
 const USERS_PER_PAGE = 10;
 
 const DetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value?: string }) => {
@@ -63,21 +68,23 @@ const DetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, lab
 
 export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
+  const [allUserDocs, setAllUserDocs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
-  const [lastVisible, setLastVisible] = useState<any>(null);
-  const [firstVisible, setFirstVisible] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [allUserDocs, setAllUserDocs] = useState<any[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
+  const [hasPrevPage, setHasPrevPage] = useState(false);
+  const [hasNextPage, setHasNextPage] = useState(false);
+
+  // State for real-time attendance data
+  const [attendanceStatusMap, setAttendanceStatusMap] = useState<Map<string, AttendanceStatus>>(new Map());
+  const [settings, setSettings] = useState<any | null>(null);
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const { toast } = useToast();
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [backButtonListener, setBackButtonListener] = useState<PluginListenerHandle | null>(null);
-
-  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
   const initialFetchDone = useRef(false);
 
   const removeListener = useCallback(() => {
@@ -106,134 +113,124 @@ export default function UserManagement() {
     return () => { removeListener() };
   }, [handleBackButton, removeListener]);
 
-  const fetchUsers = useCallback(async () => {
-    setLoading(true);
-    try {
-        const adminQuery = query(collection(db, "users"), where('role', '==', 'admin'));
-        const teacherQuery = query(collection(db, "teachers"));
+  // Effect to fetch all users once
+  useEffect(() => {
+    const fetchAllUsers = async () => {
+        setLoading(true);
+        try {
+            const adminQuery = query(collection(db, "users"), where('role', '==', 'admin'));
+            const teacherQuery = query(collection(db, "teachers"));
 
-        const [adminSnapshot, teacherSnapshot] = await Promise.all([
-            getDocs(adminQuery),
-            getDocs(teacherQuery)
-        ]);
-        
-        const allDocs = [
-            ...adminSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Admin' })),
-            ...teacherSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Guru' }))
-        ];
+            const [adminSnapshot, teacherSnapshot] = await Promise.all([
+                getDocs(adminQuery),
+                getDocs(teacherQuery)
+            ]);
+            
+            const allDocs = [
+                ...adminSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Admin' })),
+                ...teacherSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Guru' }))
+            ];
 
-        allDocs.sort((a, b) => {
-            if (a.role === 'Admin' && b.role !== 'Admin') return -1;
-            if (a.role !== 'Admin' && b.role === 'Admin') return 1;
-            return (a.name || '').localeCompare(b.name || '');
-        });
-        
-        setAllUserDocs(allDocs);
-        setTotalUsers(allDocs.length);
-        initialFetchDone.current = true; // Mark initial fetch as complete
+            allDocs.sort((a, b) => {
+                if (a.role === 'Admin' && b.role !== 'Admin') return -1;
+                if (a.role !== 'Admin' && b.role === 'Admin') return 1;
+                return (a.name || '').localeCompare(b.name || '');
+            });
+            
+            setAllUserDocs(allDocs);
+            initialFetchDone.current = true;
 
-    } catch (error) {
-        console.error("Error fetching users:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat data pengguna.' });
-    } finally {
-        setLoading(false);
-    }
+        } catch (error) {
+            console.error("Error fetching users:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat data pengguna.' });
+            setLoading(false);
+        }
+    };
+    fetchAllUsers();
   }, [toast]);
-
-  useEffect(() => {
-      fetchUsers();
-  }, [fetchUsers]);
   
+  // Effect to listen to settings and today's attendance in real-time
   useEffect(() => {
-    if (!initialFetchDone.current) return;
+      const settingsRef = doc(db, "settings", "attendance");
+      const settingsUnsubscribe = onSnapshot(settingsRef, (docSnap) => {
+          setSettings(docSnap.exists() ? docSnap.data() : {});
+      });
 
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const attendanceQuery = query(collection(db, "photo_attendances"), where("checkInTime", ">=", todayStart));
+      const attendanceUnsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
+          const newMap = new Map<string, AttendanceStatus>();
+          snapshot.forEach(doc => {
+              const data = doc.data();
+              newMap.set(data.userId, { status: data.status, isFraudulent: data.isFraudulent });
+          });
+          setAttendanceStatusMap(newMap);
+      });
+
+      return () => {
+          settingsUnsubscribe();
+          attendanceUnsubscribe();
+      };
+  }, []);
+
+  // Effect to combine user data with real-time status and handle pagination
+  useEffect(() => {
+    if (!initialFetchDone.current || settings === null) return;
     setLoading(true);
-    let filteredUsers = allUserDocs;
-    if (searchTerm) {
-        filteredUsers = allUserDocs.filter(doc => doc.name && doc.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    }
     
+    // Determine status logic based on settings and real-time attendance data
+    const now = new Date();
+    const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
+    const isOffDay = settings.offDays?.includes(todayStr) ?? false;
+    const checkInEndStr = settings.checkInEnd || '09:00';
+    const gracePeriodMinutes = settings.gracePeriod ?? 60;
+    const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
+    const checkInDeadline = new Date();
+    checkInDeadline.setHours(endHours, endMinutes, 0, 0);
+    const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
+    const isPastAbsentDeadline = now > checkInGraceEnd;
+
+    // Filter users based on search term
+    const filteredUsers = searchTerm
+        ? allUserDocs.filter(doc => doc.name && doc.name.toLowerCase().includes(searchTerm.toLowerCase()))
+        : allUserDocs;
+
+    // Paginate
     const startIndex = (currentPage - 1) * USERS_PER_PAGE;
     const endIndex = startIndex + USERS_PER_PAGE;
-    const paginatedUsersData = filteredUsers.slice(startIndex, endIndex);
+    const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
 
-    setTotalUsers(filteredUsers.length);
-    setFirstVisible(startIndex > 0);
-    setLastVisible(filteredUsers.length > endIndex);
-
-    if (paginatedUsersData.length === 0) {
-        setUsers([]);
-        setLoading(false);
-        return;
-    }
-    
-    const paginatedUserIds = paginatedUsersData.map(u => u.id).filter(Boolean);
-    
-    let unsubscribe = () => {};
-
-    const processAndSetUsers = async (attendanceStatusMap: Map<string, any>) => {
-        const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
-        const settings = settingsDoc.exists() ? settingsDoc.data() : {};
-        const now = new Date();
-        const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
-        const isOffDay = settings.offDays?.includes(todayStr) ?? false;
-        const checkInEndStr = settings.checkInEnd || '09:00';
-        const gracePeriodMinutes = settings.gracePeriod ?? 60;
-        const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
-        const checkInDeadline = new Date();
-        checkInDeadline.setHours(endHours, endMinutes, 0, 0);
-        const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
-        const isPastAbsentDeadline = now > checkInGraceEnd;
-
-        const finalUsers = paginatedUsersData.map(user => {
-            let status: User['status'];
-            const attendanceInfo = attendanceStatusMap.get(user.id);
-            if (user.role === 'Admin') {
-                status = 'Admin';
-            } else if (attendanceInfo) {
-                status = attendanceInfo.status;
-            } else if (isOffDay) {
-                status = 'Libur';
-            } else if (isPastAbsentDeadline) {
-                status = 'Tidak Hadir';
-            } else {
-                status = 'Belum Absen';
-            }
-            
-            return {
-                ...user,
-                status,
-                isFraudulent: attendanceInfo?.isFraudulent ?? false,
-            } as User;
-        });
-
-        setUsers(finalUsers);
-        setLoading(false);
-    };
-
-    if (paginatedUserIds.length > 0) {
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        const attendanceQuery = query(collection(db, "photo_attendances"), where("checkInTime", ">=", todayStart), where('userId', 'in', paginatedUserIds));
+    // Combine with status
+    const finalUsers = paginatedUsers.map(user => {
+        let status: User['status'];
+        const attendanceInfo = attendanceStatusMap.get(user.id);
+        if (user.role === 'Admin') {
+            status = 'Admin';
+        } else if (attendanceInfo) {
+            status = attendanceInfo.status;
+        } else if (isOffDay) {
+            status = 'Libur';
+        } else if (isPastAbsentDeadline) {
+            status = 'Tidak Hadir';
+        } else {
+            status = 'Belum Absen';
+        }
         
-        unsubscribe = onSnapshot(attendanceQuery, async (attendanceSnapshot) => {
-            const attendanceStatusMap = new Map<string, any>();
-            attendanceSnapshot.forEach(doc => {
-                const data = doc.data();
-                attendanceStatusMap.set(data.userId, { status: data.status, isFraudulent: data.isFraudulent });
-            });
-            await processAndSetUsers(attendanceStatusMap);
-        }, (error) => {
-            console.error("Error with real-time listener:", error);
-            setLoading(false);
-        });
-    } else {
-        processAndSetUsers(new Map());
-    }
-    
-    return () => unsubscribe();
+        return {
+            ...user,
+            status,
+            isFraudulent: attendanceInfo?.isFraudulent ?? false,
+        } as User;
+    });
 
-  }, [allUserDocs, currentPage, searchTerm, toast]);
+    setUsers(finalUsers);
+    setTotalUsers(filteredUsers.length);
+    setHasPrevPage(currentPage > 1);
+    setHasNextPage(endIndex < filteredUsers.length);
+    setLoading(false);
+
+  }, [allUserDocs, attendanceStatusMap, settings, currentPage, searchTerm]);
 
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -448,13 +445,13 @@ export default function UserManagement() {
                   )}
               </div>
               
-              {(firstVisible || lastVisible) && totalUsers > USERS_PER_PAGE && (
+              {(hasPrevPage || hasNextPage) && (
                 <div className="flex items-center justify-center space-x-2 mt-6">
-                    <Button variant="outline" onClick={handlePrevPage} disabled={!firstVisible || loading}>
+                    <Button variant="outline" onClick={handlePrevPage} disabled={!hasPrevPage || loading}>
                         <ChevronLeft className="h-4 w-4 mr-1" />
                         Sebelumnya
                     </Button>
-                    <Button variant="outline" onClick={handleNextPage} disabled={!lastVisible || loading}>
+                    <Button variant="outline" onClick={handleNextPage} disabled={!hasNextPage || loading}>
                         Berikutnya
                         <ChevronRight className="h-4 w-4 ml-1" />
                     </Button>
@@ -511,3 +508,4 @@ export default function UserManagement() {
     </>
   );
 }
+
