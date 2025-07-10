@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, TrendingUp, Clock, Download, UserX } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, Timestamp, doc, getDoc, getCountFromServer } from 'firebase/firestore';
+import { collection, query, where, Timestamp, doc, getDoc, getCountFromServer, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { Loader } from '../ui/loader';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -27,6 +27,7 @@ interface AttendanceReportRecord {
     name: string;
     checkInTime: string;
     checkOutTime: string;
+
     status: string;
     fraudReason: string;
 }
@@ -101,8 +102,10 @@ export default function Reports() {
     const { toast } = useToast();
 
     useEffect(() => {
+        setLoading(true);
+        let unsubscribe: Unsubscribe = () => {};
+
         const fetchReportData = async () => {
-            setLoading(true);
             try {
                 const now = new Date();
                 let startDate: Date;
@@ -137,66 +140,76 @@ export default function Reports() {
                     where("checkInTime", ">=", startDate),
                     where("checkInTime", "<=", endDate)
                 );
-                const attendanceSnapshot = await getDocs(attendanceQuery);
-                const attendanceDocs = attendanceSnapshot.docs;
                 
-                const presentUserIds = new Set(attendanceDocs.map(doc => doc.data().userId));
-                const presentCount = presentUserIds.size;
-                const lateCount = attendanceDocs.filter(doc => doc.data().status === 'Terlambat').length;
-                
-                const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
-                const settings = settingsDoc.exists() ? settingsDoc.data() : { checkInEnd: '09:00', gracePeriod: 60 };
+                unsubscribe = onSnapshot(attendanceQuery, async (snapshot) => {
+                    const attendanceDocs = snapshot.docs;
+                    
+                    const presentUserIds = new Set(attendanceDocs.map(doc => doc.data().userId));
+                    const presentCount = presentUserIds.size;
+                    const lateCount = attendanceDocs.filter(doc => doc.data().status === 'Terlambat').length;
+                    
+                    const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
+                    const settings = settingsDoc.exists() ? settingsDoc.data() : { checkInEnd: '09:00', gracePeriod: 60 };
 
-                let absentCount = 0;
-                if (activeTab === 'today') {
-                    const currentTime = new Date();
-                    const checkInEndStr = settings.checkInEnd || '09:00';
-                    const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
-                    const checkInDeadline = new Date();
-                    checkInDeadline.setHours(endHours, endMinutes, 0, 0);
-                    const gracePeriodMinutes = settings.gracePeriod ?? 60;
-                    const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
+                    let absentCount = 0;
+                    if (activeTab === 'today') {
+                        const currentTime = new Date();
+                        const checkInEndStr = settings.checkInEnd || '09:00';
+                        const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
+                        const checkInDeadline = new Date();
+                        checkInDeadline.setHours(endHours, endMinutes, 0, 0);
+                        const gracePeriodMinutes = settings.gracePeriod ?? 60;
+                        const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
 
-                    if (currentTime > checkInGraceEnd) {
+                        if (currentTime > checkInGraceEnd) {
+                            absentCount = totalGurus - presentCount;
+                        }
+                    } else {
                         absentCount = totalGurus - presentCount;
                     }
-                } else {
-                    absentCount = totalGurus - presentCount;
-                }
 
-                const attendanceRate = totalGurus > 0 ? (presentCount / totalGurus) * 100 : 0;
-                
-                const rateChange = 2.3; // Placeholder
+                    const attendanceRate = totalGurus > 0 ? (presentCount / totalGurus) * 100 : 0;
+                    
+                    const rateChange = 2.3; // Placeholder
 
-                setStats({
-                    totalGurus,
-                    present: presentCount,
-                    absent: absentCount < 0 ? 0 : absentCount,
-                    late: lateCount,
-                    attendanceRate,
-                    rateChange,
+                    setStats({
+                        totalGurus,
+                        present: presentCount,
+                        absent: absentCount < 0 ? 0 : absentCount,
+                        late: lateCount,
+                        attendanceRate,
+                        rateChange,
+                    });
+                    
+                    const detailedData: AttendanceReportRecord[] = attendanceDocs.map(doc => {
+                        const data = doc.data();
+                        return {
+                            name: data.name || 'N/A',
+                            checkInTime: data.checkInTime ? (data.checkInTime as Timestamp).toDate().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '-',
+                            checkOutTime: data.checkOutTime ? (data.checkOutTime as Timestamp).toDate().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '-',
+                            status: data.status || 'N/A',
+                            fraudReason: data.fraudReason || '-',
+                        };
+                    });
+                    setReportData(detailedData);
+                    setLoading(false);
+
+                }, (error) => {
+                    console.error("Error fetching report data with onSnapshot: ", error);
+                    setLoading(false);
                 });
-                
-                const detailedData: AttendanceReportRecord[] = attendanceDocs.map(doc => {
-                    const data = doc.data();
-                    return {
-                        name: data.name || 'N/A',
-                        checkInTime: data.checkInTime ? (data.checkInTime as Timestamp).toDate().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '-',
-                        checkOutTime: data.checkOutTime ? (data.checkOutTime as Timestamp).toDate().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '-',
-                        status: data.status || 'N/A',
-                        fraudReason: data.fraudReason || '-',
-                    };
-                });
-                setReportData(detailedData);
 
             } catch (error) {
-                console.error("Error fetching report data: ", error);
-            } finally {
+                console.error("Error setting up report data fetch: ", error);
                 setLoading(false);
             }
         };
 
         fetchReportData();
+        
+        return () => {
+            unsubscribe();
+        }
     }, [activeTab]);
 
     const handleDownload = async (formatType: 'pdf' | 'csv') => {
@@ -336,3 +349,5 @@ export default function Reports() {
         </div>
     );
 }
+
+    
