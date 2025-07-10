@@ -7,12 +7,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, Download, Eye, ChevronLeft, ChevronRight, Briefcase, BookCopy, Phone, Home, VenetianMask, BookMarked, Fingerprint, AlertTriangle } from 'lucide-react';
+import { Search, Download, Eye, ChevronLeft, ChevronRight, Briefcase, BookCopy, Phone, Home, VenetianMask, BookMarked, Fingerprint, AlertTriangle, UserX } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -46,7 +47,7 @@ interface User {
 }
 
 interface ProcessedUser extends User {
-  status: 'Hadir' | 'Terlambat' | 'Tidak Hadir' | 'Libur' | 'Belum Absen' | 'Admin';
+  status: 'Hadir' | 'Terlambat' | 'Tidak Hadir' | 'Libur' | 'Guru' | 'Admin';
   isFraudulent?: boolean;
 }
 
@@ -72,6 +73,7 @@ const DetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, lab
 export default function UserManagement() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [processedUsers, setProcessedUsers] = useState<ProcessedUser[]>([]);
+  const [absentUsers, setAbsentUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -82,6 +84,7 @@ export default function UserManagement() {
   const [selectedUser, setSelectedUser] = useState<ProcessedUser | null>(null);
   const { toast } = useToast();
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isAbsentListOpen, setIsAbsentListOpen] = useState(false);
   const [backButtonListener, setBackButtonListener] = useState<PluginListenerHandle | null>(null);
 
   const removeListener = useCallback(() => {
@@ -93,10 +96,12 @@ export default function UserManagement() {
 
   const handleBackButton = useCallback((e: any) => {
     e.canGoBack = false;
-    if(isDetailOpen) {
+    if (isDetailOpen) {
         setIsDetailOpen(false);
+    } else if (isAbsentListOpen) {
+        setIsAbsentListOpen(false);
     }
-  }, [isDetailOpen]);
+  }, [isDetailOpen, isAbsentListOpen]);
   
   useEffect(() => {
     const setupListener = async () => {
@@ -181,28 +186,19 @@ export default function UserManagement() {
     const now = new Date();
     const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
     const isOffDay = settings.offDays?.includes(todayStr) ?? false;
-    const checkInEndStr = settings.checkInEnd || '09:00';
-    const gracePeriodMinutes = settings.gracePeriod ?? 60;
-    const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
-    const checkInDeadline = new Date();
-    checkInDeadline.setHours(endHours, endMinutes, 0, 0);
-    const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
-    const isPastAbsentDeadline = now > checkInGraceEnd;
-
+    
     const usersWithStatus: ProcessedUser[] = allUsers.map(user => {
       let status: ProcessedUser['status'];
       const attendanceInfo = attendanceStatusMap.get(user.id);
       
       if (user.role === 'Admin') {
         status = 'Admin';
-      } else if (attendanceInfo) {
-        status = attendanceInfo.status;
       } else if (isOffDay) {
         status = 'Libur';
-      } else if (isPastAbsentDeadline) {
-        status = 'Tidak Hadir';
+      } else if (attendanceInfo) {
+        status = attendanceInfo.status;
       } else {
-        status = 'Belum Absen';
+        status = 'Guru'; 
       }
       
       return {
@@ -216,6 +212,12 @@ export default function UserManagement() {
         return (a.name || '').localeCompare(b.name || '');
     });
 
+    const notCheckedInUsers = allUsers.filter(user => {
+        if (user.role === 'Admin' || isOffDay) return false;
+        return !attendanceStatusMap.has(user.id);
+    });
+
+    setAbsentUsers(notCheckedInUsers);
     setProcessedUsers(usersWithStatus);
     if (loading) setLoading(false);
   }, [allUsers, attendanceStatusMap, settings, loading]);
@@ -259,7 +261,7 @@ export default function UserManagement() {
         case 'Terlambat': return 'warning';
         case 'Tidak Hadir': return 'destructive';
         case 'Libur':
-        case 'Belum Absen':
+        case 'Guru':
             return 'secondary';
         case 'Admin':
             return 'info';
@@ -368,6 +370,10 @@ export default function UserManagement() {
     setIsDetailOpen(false);
     setSelectedUser(null);
   };
+  
+  const handleCloseAbsentDialog = () => {
+    setIsAbsentListOpen(false);
+  }
 
   const hasPrevPage = currentPage > 1;
   const hasNextPage = currentPage * USERS_PER_PAGE < totalFilteredCount;
@@ -380,8 +386,8 @@ export default function UserManagement() {
         </header>
 
         <div className="p-4">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="relative flex-grow">
+          <div className="flex flex-col sm:flex-row items-center gap-2 mb-4">
+            <div className="relative flex-grow w-full">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input 
                   placeholder="Cari pengguna..." 
@@ -390,22 +396,28 @@ export default function UserManagement() {
                   onChange={handleSearchChange}
                 />
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline">
-                    <Download className="mr-2 h-4 w-4" />
-                    Unduh
+            <div className='flex gap-2 w-full sm:w-auto'>
+                <Button variant="outline" className="w-full" onClick={() => setIsAbsentListOpen(true)}>
+                    <UserX className="mr-2 h-4 w-4" />
+                    Belum Absen
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => handleDownload('pdf')}>
-                      Unduh sebagai PDF
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => handleDownload('csv')}>
-                      Unduh sebagai CSV
-                  </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full">
+                        <Download className="mr-2 h-4 w-4" />
+                        Unduh
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                      <DropdownMenuItem onSelect={() => handleDownload('pdf')}>
+                          Unduh sebagai PDF
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => handleDownload('csv')}>
+                          Unduh sebagai CSV
+                      </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
           </div>
 
           {loading ? (
@@ -508,6 +520,36 @@ export default function UserManagement() {
                 </div>
             </ScrollArea>
             )}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isAbsentListOpen} onOpenChange={handleCloseAbsentDialog}>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle>Guru yang Belum Absen</DialogTitle>
+                <DialogDescription>
+                    Berikut adalah daftar guru yang belum melakukan absensi hari ini.
+                </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="max-h-[60vh] -mx-6">
+                <div className="px-6 py-4 space-y-3">
+                    {absentUsers.length > 0 ? (
+                        absentUsers.map(user => (
+                            <div key={user.id} className="flex items-center gap-4 p-2 rounded-md border">
+                                <Avatar>
+                                    <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="person portrait" />
+                                    <AvatarFallback>{user.name?.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <p className="font-medium text-foreground">{user.name}</p>
+                                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <p className="text-center text-muted-foreground py-8">Semua guru telah melakukan absensi hari ini.</p>
+                    )}
+                </div>
+            </ScrollArea>
         </DialogContent>
       </Dialog>
     </>
