@@ -13,6 +13,7 @@ import { Button } from "../ui/button";
 import { updateAvatar, type AvatarUpdateState } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { Capacitor } from '@capacitor/core';
 
 const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
     <div className="flex items-center gap-4 py-3">
@@ -48,8 +49,12 @@ export function TeacherProfile({ setActiveView }: TeacherProfileProps) {
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
     const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-
     const [state, setState] = useState<AvatarUpdateState>({});
+    const [isNative, setIsNative] = useState(false);
+
+    useEffect(() => {
+        setIsNative(Capacitor.isNativePlatform());
+    }, []);
     
     const handleAvatarClick = () => {
         if (isPending) return;
@@ -159,17 +164,19 @@ export function TeacherProfile({ setActiveView }: TeacherProfileProps) {
                         </CardContent>
                     </Card>
 
-                    <Card>
-                        <CardContent className="p-0">
-                             <Button 
-                                variant="ghost" 
-                                className="w-full justify-center text-destructive h-full py-3 hover:bg-destructive/10 hover:text-destructive"
-                                onClick={() => setShowLogoutDialog(true)}
-                            >
-                                Keluar
-                            </Button>
-                        </CardContent>
-                    </Card>
+                    {!isNative && (
+                        <Card>
+                            <CardContent className="p-0">
+                                 <Button 
+                                    variant="ghost" 
+                                    className="w-full justify-center text-destructive h-full py-3 hover:bg-destructive/10 hover:text-destructive"
+                                    onClick={() => setShowLogoutDialog(true)}
+                                >
+                                    Keluar
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
             </div>
             <LogoutDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog} onConfirm={() => logout("Anda telah berhasil keluar.")} />
