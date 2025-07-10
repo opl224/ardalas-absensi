@@ -16,13 +16,13 @@ import { Separator } from '../ui/separator';
 
 const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const daysOfWeekIndonesian: { [key: string]: string } = {
-    'Sunday': 'Minggu',
     'Monday': 'Senin',
     'Tuesday': 'Selasa',
     'Wednesday': 'Rabu',
     'Thursday': 'Kamis',
     'Friday': 'Jumat',
-    'Saturday': 'Sabtu'
+    'Saturday': 'Sabtu',
+    'Sunday': 'Minggu'
 };
 
 interface Settings {
@@ -160,7 +160,6 @@ export function AttendanceSettingsDialog({ open, onOpenChange }: AttendanceSetti
                         <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-y-2 sm:gap-x-2 pt-2">
                             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>Batal</Button>
                             <Button type="submit" disabled={isPending}>
-                                {isPending && <Loader scale={0.48} />}
                                 Simpan Perubahan
                             </Button>
                         </DialogFooter>

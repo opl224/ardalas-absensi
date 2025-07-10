@@ -3,7 +3,6 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Camera, MapPin, CheckCircle, XCircle, AlertTriangle, RefreshCw } from "lucide-react";
-import { Loader } from "../ui/loader";
 import SplitText from "@/components/ui/SplitText";
 
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,6 @@ interface CheckinCardProps {
 function SubmitButton({ disabled, pending }: { disabled: boolean; pending: boolean; }) {
   return (
     <Button type="submit" className="w-full" disabled={disabled || pending}>
-      {pending && <Loader scale={0.48} />}
       Kirim Absensi
     </Button>
   );
@@ -259,7 +257,7 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
                     )}
                     {isGettingLocation && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
-                          <Loader scale={0.4} />
+                          <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
                           <span>Mendapatkan lokasi Anda...</span>
                       </div>
                     )}

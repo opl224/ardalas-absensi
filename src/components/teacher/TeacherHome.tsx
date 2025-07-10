@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { BarChart2, CalendarDays, Clock, MapPin, CheckCircle, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { CenteredLoader, Loader } from '../ui/loader';
+import { CenteredLoader } from '../ui/loader';
 import { collection, query, where, onSnapshot, Timestamp, orderBy, limit, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import SplitText from '../ui/SplitText';
@@ -36,7 +36,6 @@ type CheckinStatus = 'not_checked_in' | 'checked_in' | 'checked_out' | 'tidak_ha
 function CheckoutButton({ disabled, pending }: { disabled: boolean, pending: boolean }) {
     return (
       <Button type="submit" className="w-full" disabled={pending || disabled}>
-        {pending && <Loader scale={0.48} />}
         Absen Keluar
       </Button>
     );
@@ -47,7 +46,7 @@ function QuickCheckoutButton({ disabled, pending }: { disabled: boolean, pending
         <button type="submit" disabled={pending || disabled} className="w-full text-left p-0 rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50">
             <Card className="w-full h-full p-4 flex flex-col items-center justify-center text-center hover:bg-secondary">
                 {pending ? (
-                    <Loader scale={0.64} />
+                    <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
                 ) : (
                     <LogOut className="h-8 w-8 text-primary" />
                 )}
@@ -302,7 +301,7 @@ export function TeacherHome({ setActiveView, dialogStates, setDialogState }: Tea
                     <CardContent className="text-center space-y-4">
                         {status === 'loading' && (
                             <div className="flex justify-center items-center h-48">
-                                <Loader />
+                                <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
                             </div>
                         )}
                         {status === 'not_checked_in' && (
@@ -400,5 +399,3 @@ export function TeacherHome({ setActiveView, dialogStates, setDialogState }: Tea
         </div>
     );
 }
-
-    

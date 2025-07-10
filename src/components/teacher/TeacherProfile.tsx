@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { User, Mail, Shield, ChevronRight, Camera, BookCopy, Briefcase } from "lucide-react";
 import { ExitAppDialog } from "../ExitAppDialog";
 import { useAuth } from "@/hooks/useAuth";
-import { CenteredLoader, Loader } from "../ui/loader";
+import { CenteredLoader } from "../ui/loader";
 import { ThemeToggle } from "../ThemeToggle";
 import { Button } from "../ui/button";
 import { updateAvatar, type AvatarUpdateState } from "@/app/actions";
@@ -116,7 +116,7 @@ export function TeacherProfile({ setActiveView, dialogStates, setDialogState }: 
                                 onClick={handleAvatarClick}
                                 disabled={isPending}
                             >
-                                {isPending ? <Loader scale={0.4} /> : <Camera className="h-4 w-4" />}
+                                {isPending ? <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div> : <Camera className="h-4 w-4" />}
                                 <span className="sr-only">Ubah Avatar</span>
                             </Button>
                         </div>
@@ -164,7 +164,7 @@ export function TeacherProfile({ setActiveView, dialogStates, setDialogState }: 
                         <CardContent className="p-0">
                              <Button 
                                 variant="ghost" 
-                                className="w-full justify-center text-destructive hover:bg-destructive/10 hover:text-destructive h-full py-3"
+                                className="w-full justify-center text-destructive h-full py-3 hover:bg-destructive/10 hover:text-destructive"
                                 onClick={() => setDialogState?.('logout', true)}
                             >
                                 Keluar
