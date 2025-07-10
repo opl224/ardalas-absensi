@@ -3,15 +3,25 @@
 
 import React, { useState, useCallback } from 'react';
 import { Home, History, User as UserIcon, ArrowLeft } from 'lucide-react';
-import { StudentHome } from './StudentHome';
-import { AttendanceHistory } from './AttendanceHistory';
-import { StudentProfile } from './StudentProfile';
-import { CheckinCard } from '@/components/check-in/CheckinCard';
 import { useAuth } from '@/hooks/useAuth';
 import { CenteredLoader } from '@/components/ui/loader';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAndroidBackHandler } from '@/hooks/useAndroidBackHandler';
 import { ExitAppDialog } from '../ExitAppDialog';
+import dynamic from 'next/dynamic';
+
+const StudentHome = dynamic(() => import('./StudentHome').then(mod => mod.StudentHome), {
+  loading: () => <CenteredLoader />,
+});
+const AttendanceHistory = dynamic(() => import('./AttendanceHistory').then(mod => mod.AttendanceHistory), {
+  loading: () => <CenteredLoader />,
+});
+const StudentProfile = dynamic(() => import('./StudentProfile').then(mod => mod.StudentProfile), {
+  loading: () => <CenteredLoader />,
+});
+const CheckinCard = dynamic(() => import('@/components/check-in/CheckinCard').then(mod => mod.CheckinCard), {
+  loading: () => <CenteredLoader />,
+});
 
 type MainViewID = 'home' | 'history' | 'profile';
 type SubViewID = 'checkin';

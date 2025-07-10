@@ -3,16 +3,28 @@
 
 import React, { useState, useCallback } from 'react';
 import { Home, History, User as UserIcon, ArrowLeft } from 'lucide-react';
-import { TeacherHome } from './TeacherHome';
-import { AttendanceHistory } from './AttendanceHistory';
-import { TeacherProfile } from './TeacherProfile';
-import { CheckinCard } from '@/components/check-in/CheckinCard';
 import { useAuth } from '@/hooks/useAuth';
 import { CenteredLoader } from '@/components/ui/loader';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Privacy } from './Privacy';
 import { useAndroidBackHandler } from '@/hooks/useAndroidBackHandler';
 import { ExitAppDialog } from '../ExitAppDialog';
+import dynamic from 'next/dynamic';
+
+const TeacherHome = dynamic(() => import('./TeacherHome').then(mod => mod.TeacherHome), {
+  loading: () => <CenteredLoader />,
+});
+const AttendanceHistory = dynamic(() => import('./AttendanceHistory').then(mod => mod.AttendanceHistory), {
+  loading: () => <CenteredLoader />,
+});
+const TeacherProfile = dynamic(() => import('./TeacherProfile').then(mod => mod.TeacherProfile), {
+  loading: () => <CenteredLoader />,
+});
+const CheckinCard = dynamic(() => import('@/components/check-in/CheckinCard').then(mod => mod.CheckinCard), {
+  loading: () => <CenteredLoader />,
+});
+const Privacy = dynamic(() => import('./Privacy').then(mod => mod.Privacy), {
+  loading: () => <CenteredLoader />,
+});
 
 type MainViewID = 'home' | 'history' | 'profile';
 type SubViewID = 'checkin' | 'privacy';

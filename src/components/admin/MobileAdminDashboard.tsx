@@ -3,16 +3,29 @@
 
 import React, { useState, useCallback } from "react";
 import { Home, User as UserIcon, Users2, LineChart, CheckSquare } from "lucide-react";
-import { UserManagement } from "./UserManagement";
-import { Reports } from "./Reports";
 import { MobileHome } from "./MobileHome";
-import { Profile } from "./Profile";
-import { Attendance } from "./Attendance";
-import { Privacy } from "./Privacy";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAndroidBackHandler } from "@/hooks/useAndroidBackHandler";
 import { ExitAppDialog } from "../ExitAppDialog";
 import { AttendanceSettingsDialog } from "./AttendanceSettingsDialog";
+import dynamic from 'next/dynamic';
+import { CenteredLoader } from "../ui/loader";
+
+const UserManagement = dynamic(() => import('./UserManagement').then(mod => mod.UserManagement), {
+  loading: () => <CenteredLoader />,
+});
+const Reports = dynamic(() => import('./Reports').then(mod => mod.Reports), {
+  loading: () => <CenteredLoader />,
+});
+const Attendance = dynamic(() => import('./Attendance').then(mod => mod.Attendance), {
+  loading: () => <CenteredLoader />,
+});
+const Profile = dynamic(() => import('./Profile').then(mod => mod.Profile), {
+  loading: () => <CenteredLoader />,
+});
+const Privacy = dynamic(() => import('./Privacy').then(mod => mod.Privacy), {
+  loading: () => <CenteredLoader />,
+});
 
 
 type MainViewID = 'home' | 'users' | 'reports' | 'attendance' | 'profile';

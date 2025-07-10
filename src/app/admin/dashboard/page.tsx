@@ -18,10 +18,21 @@ import { MobileAdminDashboard } from "@/components/admin/MobileAdminDashboard"
 import { useAuth } from "@/hooks/useAuth";
 import { CenteredLoader } from "@/components/ui/loader";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { DashboardHome } from "@/components/admin/DashboardHome";
-import { UserManagement } from "@/components/admin/UserManagement";
-import { Reports } from "@/components/admin/Reports";
-import { Attendance } from "@/components/admin/Attendance";
+import dynamic from 'next/dynamic';
+
+const DashboardHome = dynamic(() => import('@/components/admin/DashboardHome').then(mod => mod.DashboardHome), {
+  loading: () => <CenteredLoader />,
+});
+const UserManagement = dynamic(() => import('@/components/admin/UserManagement').then(mod => mod.UserManagement), {
+  loading: () => <CenteredLoader />,
+});
+const Reports = dynamic(() => import('@/components/admin/Reports').then(mod => mod.Reports), {
+  loading: () => <CenteredLoader />,
+});
+const Attendance = dynamic(() => import('@/components/admin/Attendance').then(mod => mod.Attendance), {
+  loading: () => <CenteredLoader />,
+});
+
 
 type ViewID = 'home' | 'users' | 'reports' | 'attendance';
 
