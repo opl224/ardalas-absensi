@@ -7,7 +7,7 @@ import { id as localeId } from 'date-fns/locale';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { collection, query, orderBy, Timestamp, getDocs, doc, deleteDoc, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, Timestamp, doc, deleteDoc, where, onSnapshot, getDocs, limit, startAfter, QueryDocumentSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader } from '../ui/loader';
 import { Button, buttonVariants } from '../ui/button';
@@ -49,13 +49,6 @@ interface AttendanceRecord {
     checkInLocation?: { latitude: number, longitude: number };
 }
 
-interface FirestoreUser {
-    id: string;
-    name: string;
-    role: string;
-    avatar?: string;
-}
-
 const RECORDS_PER_PAGE = 10;
 const filterOptions = ['Semua Kehadiran', 'Hadir', 'Terlambat', 'Tidak Hadir', 'Kecurangan'];
 
@@ -64,44 +57,13 @@ function EditAttendanceDialog({ record, open, onOpenChange }: { record: Attendan
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
     const formRef = useRef<HTMLFormElement>(null);
-    const [listener, setListener] = useState<PluginListenerHandle | null>(null);
     const [removeFraud, setRemoveFraud] = useState(false);
-
-    const removeListener = useCallback(() => {
-        if (listener) {
-            listener.remove();
-            setListener(null);
-        }
-    }, [listener]);
-
-    useEffect(() => {
-        const setupBackButtonListener = async () => {
-            if (Capacitor.isNativePlatform() && open) {
-                const l = await CapacitorApp.addListener('backButton', (e) => {
-                    e.canGoBack = false;
-                    onOpenChange(false);
-                });
-                setListener(l);
-            }
-        };
-
-        if (open) {
-            setupBackButtonListener();
-        } else {
-            removeListener();
-        }
-
-        return () => {
-            removeListener();
-        };
-    }, [open, onOpenChange, removeListener]);
-
 
     useEffect(() => {
         if (state.success) {
             toast({ title: 'Berhasil', description: 'Catatan kehadiran telah diperbarui.' });
             onOpenChange(false);
-            setRemoveFraud(false); // Reset state on close
+            setRemoveFraud(false); 
         }
         if (state.error) {
             toast({ variant: 'destructive', title: 'Gagal', description: state.error });
@@ -122,7 +84,6 @@ function EditAttendanceDialog({ record, open, onOpenChange }: { record: Attendan
         event.preventDefault();
         if (!formRef.current) return;
         const formData = new FormData(formRef.current);
-        // Manually append the switch state to form data
         if (removeFraud) {
             formData.append('removeFraudWarning', 'on');
         }
@@ -134,7 +95,7 @@ function EditAttendanceDialog({ record, open, onOpenChange }: { record: Attendan
     
     const handleOpenChange = (isOpen: boolean) => {
         if (!isOpen) {
-            setRemoveFraud(false); // Reset state when dialog is closed
+            setRemoveFraud(false); 
         }
         onOpenChange(isOpen);
     }
@@ -208,163 +169,175 @@ export default function Attendance() {
     const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
+    const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot | null>(null);
+    const [firstVisible, setFirstVisible] = useState<QueryDocumentSnapshot | null>(null);
+    const [pageHistory, setPageHistory] = useState<(QueryDocumentSnapshot | null)[]>([null]);
+    
     const [date, setDate] = useState<Date | undefined>(new Date());
     const [statusFilter, setStatusFilter] = useState('Semua Kehadiran');
     const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
     const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null);
     const { toast } = useToast();
-    const [settings, setSettings] = useState<any>(null);
 
     const [isViewOpen, setIsViewOpen] = useState(false);
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
-    const [listener, setListener] = useState<PluginListenerHandle | null>(null);
+
+    const [backButtonListener, setBackButtonListener] = useState<PluginListenerHandle | null>(null);
 
     const removeListener = useCallback(() => {
-        if (listener) {
-            listener.remove();
-            setListener(null);
+        if (backButtonListener) {
+            backButtonListener.remove();
+            setBackButtonListener(null);
         }
-    }, [listener]);
+    }, [backButtonListener]);
+
+    const handleBackButton = useCallback((e: any) => {
+        e.canGoBack = false;
+        if (isViewOpen) setIsViewOpen(false);
+        else if (isDeleteOpen) setIsDeleteOpen(false);
+        else if (isEditOpen) setIsEditOpen(false);
+    }, [isViewOpen, isDeleteOpen, isEditOpen]);
     
     useEffect(() => {
-        const setupBackButtonListener = async () => {
+        const setupListener = async () => {
             if (Capacitor.isNativePlatform()) {
-                const l = await CapacitorApp.addListener('backButton', (e) => {
-                    e.canGoBack = false;
-                    if (isViewOpen) setIsViewOpen(false);
-                    else if (isDeleteOpen) setIsDeleteOpen(false);
-                    else if (isEditOpen) setIsEditOpen(false);
-                });
-                setListener(l);
+                if (backButtonListener) await backButtonListener.remove();
+                const listener = await CapacitorApp.addListener('backButton', handleBackButton);
+                setBackButtonListener(listener);
             }
         };
+        setupListener();
+        return () => { removeListener() };
+    }, [handleBackButton, removeListener]);
 
-        setupBackButtonListener();
-        
-        return () => {
-            removeListener();
-        };
-    }, [isViewOpen, isDeleteOpen, isEditOpen, removeListener]);
-
-    useEffect(() => {
-        const settingsRef = doc(db, "settings", "attendance");
-        const unsubscribe = onSnapshot(settingsRef, (docSnap) => {
-            setSettings(docSnap.exists() ? docSnap.data() : { checkInEnd: '09:00', offDays: [], gracePeriod: 60 });
-        });
-        return () => unsubscribe();
-    }, []);
-
-    useEffect(() => {
-        if (!date || !settings) return;
+    const fetchAttendanceData = useCallback(async (pageDirection: 'next' | 'prev' | 'first') => {
+        if (!date) return;
         setLoading(true);
 
-        const startOfDay = new Date(date);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(date);
-        endOfDay.setHours(23, 59, 59, 999);
-        
-        const q = query(
-            collection(db, "photo_attendances"),
-            where("role", "==", "guru"),
-            where("checkInTime", ">=", startOfDay),
-            where("checkInTime", "<=", endOfDay),
-            orderBy("checkInTime", "desc")
-        );
-        
-        const unsubscribeAttendance = onSnapshot(q, async (querySnapshot) => {
-            const fetchedRecords: AttendanceRecord[] = querySnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-            })) as AttendanceRecord[];
+        try {
+            const startOfDay = new Date(date);
+            startOfDay.setHours(0, 0, 0, 0);
+            const endOfDay = new Date(date);
+            endOfDay.setHours(23, 59, 59, 999);
+
+            let q = query(
+                collection(db, "photo_attendances"),
+                where("role", "==", "guru"),
+                where("checkInTime", ">=", startOfDay),
+                where("checkInTime", "<=", endOfDay)
+            );
+
+            if (statusFilter !== 'Semua Kehadiran') {
+                if (statusFilter === 'Kecurangan') {
+                    q = query(q, where("isFraudulent", "==", true));
+                } else {
+                    q = query(q, where("status", "==", statusFilter));
+                }
+            }
             
-            let finalRecords = [...fetchedRecords];
+            q = query(q, orderBy("checkInTime", "desc"), limit(RECORDS_PER_PAGE));
 
-            const now = new Date();
-            const selectedDateStr = date.toLocaleDateString('en-US', { weekday: 'long' });
-            const isOffDay = settings.offDays.includes(selectedDateStr);
-
-            const checkInEndStr = settings.checkInEnd || '09:00';
-            const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
-            const checkInDeadline = new Date(date);
-            checkInDeadline.setHours(endHours, endMinutes, 0, 0);
-            const gracePeriodMinutes = settings.gracePeriod ?? 60;
-            const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
+            if (pageDirection === 'next' && lastVisible) {
+                q = query(q, startAfter(lastVisible));
+            } else if (pageDirection === 'prev' && firstVisible) {
+                 const prevPageStartAfter = pageHistory[currentPage - 2];
+                 q = query(q, startAfter(prevPageStartAfter!));
+            }
             
-            const isToday = now.toDateString() === date.toDateString();
-            const canDetermineAbsent = !isOffDay && (date < new Date(new Date().setHours(0, 0, 0, 0)) || (isToday && now > checkInGraceEnd));
+            const documentSnapshots = await getDocs(q);
+            const records: AttendanceRecord[] = documentSnapshots.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AttendanceRecord[];
 
-            if (canDetermineAbsent) {
-                const usersQuery = query(collection(db, 'users'), where('role', '==', 'guru'));
-                const usersSnapshot = await getDocs(usersQuery);
-                const allUsers = usersSnapshot.docs.map(userDoc => ({ id: userDoc.id, ...userDoc.data() })) as FirestoreUser[];
+            setAttendanceData(records);
+            
+            const newLastVisible = documentSnapshots.docs[documentSnapshots.docs.length - 1] || null;
+            const newFirstVisible = documentSnapshots.docs[0] || null;
+            
+            setLastVisible(newLastVisible);
+            setFirstVisible(newFirstVisible);
 
-                const presentUserIds = new Set(fetchedRecords.map(r => r.userId));
-                const absentUsers = allUsers.filter(user => !presentUserIds.has(user.id));
-                
-                const absentRecords: AttendanceRecord[] = absentUsers.map(user => ({
-                    id: `absent-${user.id}-${date.getTime()}`,
-                    userId: user.id,
-                    name: user.name,
-                    role: user.role,
-                    checkInTime: Timestamp.fromDate(startOfDay), 
-                    status: 'Tidak Hadir',
-                    checkInPhotoUrl: user.avatar || '',
-                    isFraudulent: false,
-                }));
-                
-                finalRecords = [...fetchedRecords, ...absentRecords];
-                finalRecords.sort((a, b) => b.checkInTime.toMillis() - a.checkInTime.toMillis());
+            if (pageDirection === 'first') {
+                setPageHistory([null, newFirstVisible]);
+                setCurrentPage(1);
+            } else if (pageDirection === 'next') {
+                setPageHistory(prev => [...prev, newFirstVisible]);
             }
 
-            setAttendanceData(finalRecords);
-            setCurrentPage(1); 
-            setStatusFilter('Semua Kehadiran'); 
-            setLoading(false);
-        }, (error) => {
+        } catch (error) {
             console.error("Error fetching attendance data: ", error);
-            toast({
-                variant: 'destructive',
-                title: 'Gagal Memuat Data',
-                description: 'Terjadi kesalahan saat mengambil data kehadiran.'
-            });
+            toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat data kehadiran.' });
+        } finally {
             setLoading(false);
-        });
+        }
+    }, [date, statusFilter, lastVisible, firstVisible, currentPage, pageHistory, toast]);
 
-        return () => {
-            unsubscribeAttendance();
-        };
-    }, [date, settings, toast]);
+    useEffect(() => {
+        fetchAttendanceData('first');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [date, statusFilter]);
 
-    const handleFilterChange = (filter: string) => {
-        setStatusFilter(filter);
-        setCurrentPage(1);
+    const handleNextPage = () => {
+        if (!lastVisible) return;
+        setCurrentPage(prev => prev + 1);
+        fetchAttendanceData('next');
     };
 
+    const handlePrevPage = () => {
+        if (currentPage <= 1) return;
+        setCurrentPage(prev => prev - 1);
+        setPageHistory(prev => prev.slice(0, -1));
+        const prevLastVisible = pageHistory[currentPage - 2] || null;
+        setLastVisible(prevLastVisible);
+        fetchAttendanceData('prev');
+    };
+
+
     const handleDownload = async (formatType: 'pdf' | 'csv') => {
-        if (loading || attendanceData.length === 0) {
-            toast({
-                variant: 'destructive',
-                title: 'Gagal Mengunduh',
-                description: 'Tidak ada data untuk diunduh pada tanggal yang dipilih.',
-            });
-            return;
-        }
-    
-        const headers = ['Nama', 'Peran', 'Waktu Absen Masuk', 'Waktu Absen Keluar', 'Status'];
-        const data = attendanceData.map(d => [
-            d.name,
-            d.role,
-            d.status !== 'Tidak Hadir' ? d.checkInTime.toDate().toLocaleString('id-ID') : '-',
-            d.checkOutTime ? d.checkOutTime.toDate().toLocaleString('id-ID') : '-',
-            d.isFraudulent ? `Kecurangan (${d.status})` : d.status
-        ]);
-        const formattedDate = date ? format(date, "yyyy-MM-dd") : 'tanggal_tidak_dipilih';
-        const filename = `Laporan_Kehadiran_${formattedDate}.${formatType}`;
-    
-        if (Capacitor.isNativePlatform()) {
-            try {
+        toast({ title: "Mempersiapkan Unduhan...", description: "Ini mungkin memakan waktu beberapa saat." });
+        
+        try {
+            const startOfDay = new Date(date!);
+            startOfDay.setHours(0, 0, 0, 0);
+            const endOfDay = new Date(date!);
+            endOfDay.setHours(23, 59, 59, 999);
+
+            let allDataQuery = query(
+                collection(db, "photo_attendances"),
+                where("role", "==", "guru"),
+                where("checkInTime", ">=", startOfDay),
+                where("checkInTime", "<=", endOfDay),
+                orderBy("checkInTime", "desc")
+            );
+
+            if (statusFilter !== 'Semua Kehadiran') {
+                if (statusFilter === 'Kecurangan') {
+                    allDataQuery = query(allDataQuery, where("isFraudulent", "==", true));
+                } else {
+                    allDataQuery = query(allDataQuery, where("status", "==", statusFilter));
+                }
+            }
+
+            const allDocsSnapshot = await getDocs(allDataQuery);
+            const allRecords = allDocsSnapshot.docs.map(doc => doc.data());
+            
+            if (allRecords.length === 0) {
+                toast({ variant: 'destructive', title: 'Gagal Mengunduh', description: 'Tidak ada data untuk diunduh.' });
+                return;
+            }
+
+            const headers = ['Nama', 'Peran', 'Waktu Absen Masuk', 'Waktu Absen Keluar', 'Status'];
+            const data = allRecords.map(d => [
+                d.name,
+                d.role,
+                d.status !== 'Tidak Hadir' ? d.checkInTime.toDate().toLocaleString('id-ID') : '-',
+                d.checkOutTime ? d.checkOutTime.toDate().toLocaleString('id-ID') : '-',
+                d.isFraudulent ? `Kecurangan (${d.status})` : d.status
+            ]);
+            const formattedDate = date ? format(date, "yyyy-MM-dd") : 'tanggal_tidak_dipilih';
+            const filename = `Laporan_Kehadiran_Guru_${formattedDate}.${formatType}`;
+        
+            if (Capacitor.isNativePlatform()) {
                 let fileData: string;
     
                 if (formatType === 'csv') {
@@ -392,39 +365,34 @@ export default function Attendance() {
                     description: `${filename} disimpan di folder Dokumen perangkat Anda.`,
                 });
     
-            } catch (e: any) {
-                console.error('Error saving file to device', e);
-                toast({
-                    variant: 'destructive',
-                    title: 'Gagal Menyimpan File',
-                    description: e.message || 'Tidak dapat menyimpan laporan ke perangkat.',
-                });
-            }
-        } else {
-            toast({
-                title: "Mempersiapkan Unduhan",
-                description: `Laporan Anda akan segera diunduh sebagai ${formatType.toUpperCase()}.`
-            });
+            } else {
+                if (formatType === 'csv') {
+                    const csvContent = [headers.join(','), ...data.map(row => row.join(','))].join('\n');
+                    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.setAttribute('download', filename);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
             
-            if (formatType === 'csv') {
-                const csvContent = [headers.join(','), ...data.map(row => row.join(','))].join('\n');
-                const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(blob);
-                link.setAttribute('download', filename);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                if (formatType === 'pdf') {
+                    const { default: jsPDF } = await import('jspdf');
+                    const { default: autoTable } = await import('jspdf-autotable');
+                    const doc = new jsPDF();
+                    doc.text(`Laporan Kehadiran Guru - ${date ? format(date, "PPP", { locale: localeId }) : 'Semua'}`, 14, 16);
+                    autoTable(doc, { head: [headers], body: data, startY: 20 });
+                    doc.save(filename);
+                }
             }
-        
-            if (formatType === 'pdf') {
-                const { default: jsPDF } = await import('jspdf');
-                const { default: autoTable } = await import('jspdf-autotable');
-                const doc = new jsPDF();
-                doc.text(`Laporan Kehadiran - ${date ? format(date, "PPP", { locale: localeId }) : 'Semua'}`, 14, 16);
-                autoTable(doc, { head: [headers], body: data, startY: 20 });
-                doc.save(filename);
-            }
+        } catch (e: any) {
+            console.error('Error during download:', e);
+            toast({
+                variant: 'destructive',
+                title: 'Gagal Mengunduh',
+                description: e.message || 'Terjadi kesalahan saat mempersiapkan file.',
+            });
         }
     };
 
@@ -481,65 +449,6 @@ export default function Attendance() {
         }
     }
 
-    const getBadgeText = (record: AttendanceRecord) => {
-        return record.status;
-    }
-
-    const filteredData = useMemo(() => {
-        if (statusFilter === 'Semua Kehadiran') {
-            return attendanceData;
-        }
-        if (statusFilter === 'Kecurangan') {
-            return attendanceData.filter(record => record.isFraudulent);
-        }
-        return attendanceData.filter(record => record.status === statusFilter);
-    }, [attendanceData, statusFilter]);
-
-    const totalPages = Math.ceil(filteredData.length / RECORDS_PER_PAGE);
-    const paginatedRecords = useMemo(() => {
-        const startIndex = (currentPage - 1) * RECORDS_PER_PAGE;
-        return filteredData.slice(startIndex, startIndex + RECORDS_PER_PAGE);
-    }, [filteredData, currentPage]);
-
-    const paginationRange = useMemo(() => {
-        const siblingCount = 1;
-        const totalPageNumbers = siblingCount + 5; 
-
-        if (totalPageNumbers >= totalPages) {
-            return Array.from({ length: totalPages }, (_, i) => i + 1);
-        }
-
-        const leftSiblingIndex = Math.max(currentPage - siblingCount, 1);
-        const rightSiblingIndex = Math.min(currentPage + siblingCount, totalPages);
-
-        const shouldShowLeftDots = leftSiblingIndex > 2;
-        const shouldShowRightDots = rightSiblingIndex < totalPages - 2;
-
-        const firstPageIndex = 1;
-        const lastPageIndex = totalPages;
-
-        if (!shouldShowLeftDots && shouldShowRightDots) {
-            let leftItemCount = 3 + 2 * siblingCount;
-            let leftRange = Array.from({ length: leftItemCount }, (_, i) => i + 1);
-            return [...leftRange, '...', totalPages];
-        }
-
-        if (shouldShowLeftDots && !shouldShowRightDots) {
-            let rightItemCount = 3 + 2 * siblingCount;
-            let rightRange = Array.from({ length: rightItemCount }, (_, i) => totalPages - rightItemCount + i + 1);
-            return [firstPageIndex, '...', ...rightRange];
-        }
-
-        if (shouldShowLeftDots && shouldShowRightDots) {
-            let middleRange = [];
-            for (let i = leftSiblingIndex; i <= rightSiblingIndex; i++) {
-                middleRange.push(i);
-            }
-            return [firstPageIndex, '...', ...middleRange, '...', lastPageIndex];
-        }
-    }, [totalPages, currentPage]);
-
-
     return (
         <div className="bg-gray-50 dark:bg-zinc-900">
              <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -565,7 +474,13 @@ export default function Attendance() {
                                 <Calendar
                                     mode="single"
                                     selected={date}
-                                    onSelect={setDate}
+                                    onSelect={(newDate) => {
+                                        setDate(newDate);
+                                        setCurrentPage(1);
+                                        setLastVisible(null);
+                                        setFirstVisible(null);
+                                        setPageHistory([null]);
+                                    }}
                                     initialFocus
                                     disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
                                 />
@@ -581,7 +496,13 @@ export default function Attendance() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             {filterOptions.map(option => (
-                                <DropdownMenuItem key={option} onSelect={() => handleFilterChange(option)}>
+                                <DropdownMenuItem key={option} onSelect={() => {
+                                    setStatusFilter(option);
+                                    setCurrentPage(1);
+                                    setLastVisible(null);
+                                    setFirstVisible(null);
+                                    setPageHistory([null]);
+                                }}>
                                     {option}
                                 </DropdownMenuItem>
                             ))}
@@ -615,8 +536,8 @@ export default function Attendance() {
                 ) : (
                     <>
                     <div className="space-y-3">
-                        {paginatedRecords.length > 0 ? (
-                            paginatedRecords.map((item) => (
+                        {attendanceData.length > 0 ? (
+                            attendanceData.map((item) => (
                                 <Card key={item.id} className="p-3 flex items-center gap-4">
                                     <div className="flex-grow min-w-0 flex items-center gap-4 cursor-pointer" onClick={() => openViewDialog(item)}>
                                         <Avatar className="h-12 w-12">
@@ -640,7 +561,7 @@ export default function Attendance() {
                                                 <AlertTriangle className="h-4 w-4 text-destructive" />
                                             )}
                                             <Badge variant={getBadgeVariant(item)} className="w-24 justify-center shrink-0">
-                                                {getBadgeText(item)}
+                                                {item.status}
                                             </Badge>
                                         </div>
                                         <div className="flex flex-col gap-1.5 self-center">
@@ -672,47 +593,23 @@ export default function Attendance() {
                             <p className="text-center text-muted-foreground py-8">Tidak ada catatan kehadiran untuk filter yang dipilih.</p>
                         )}
                     </div>
-                    {totalPages > 1 && (
-                        <div className="flex items-center justify-center space-x-1 mt-6">
+                    {(currentPage > 1 || lastVisible) && (
+                         <div className="flex items-center justify-center space-x-2 mt-6">
                             <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                            disabled={currentPage === 1}
-                            className="text-primary"
+                                variant="outline"
+                                onClick={handlePrevPage}
+                                disabled={currentPage === 1 || loading}
                             >
-                            <ChevronLeft className="h-5 w-5" />
+                                <ChevronLeft className="h-4 w-4" />
+                                Sebelumnya
                             </Button>
-                            {paginationRange?.map((page, index) =>
-                            page === '...' ? (
-                                <span key={`ellipsis-${index}`} className="px-2 py-1 text-muted-foreground">
-                                ...
-                                </span>
-                            ) : (
-                                <Button
-                                key={page}
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setCurrentPage(page as number)}
-                                className={cn(
-                                    'h-9 w-9',
-                                    currentPage === page
-                                    ? 'font-bold text-primary underline decoration-2 underline-offset-4'
-                                    : 'text-muted-foreground'
-                                )}
-                                >
-                                {page}
-                                </Button>
-                            )
-                            )}
                             <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                            disabled={currentPage === totalPages}
-                            className="text-primary"
+                                variant="outline"
+                                onClick={handleNextPage}
+                                disabled={!lastVisible || loading}
                             >
-                            <ChevronRight className="h-5 w-5" />
+                                Berikutnya
+                                <ChevronRight className="h-4 w-4" />
                             </Button>
                         </div>
                     )}
@@ -782,7 +679,7 @@ export default function Attendance() {
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <span className="text-muted-foreground">Status</span>
-                                    <Badge variant={getBadgeVariant(selectedRecord)}>{getBadgeText(selectedRecord)}</Badge>
+                                    <Badge variant={getBadgeVariant(selectedRecord)}>{selectedRecord.status}</Badge>
                                 </div>
                             </div>
                             

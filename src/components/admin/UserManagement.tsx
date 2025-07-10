@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,10 +20,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { collection, getDocs, query, where, doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, getDoc, onSnapshot, orderBy, limit, startAfter, endBefore, limitToLast, QueryDocumentSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader } from '../ui/loader';
-import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
@@ -66,210 +65,188 @@ export function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot | null>(null);
+  const [firstVisible, setFirstVisible] = useState<QueryDocumentSnapshot | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageDirection, setPageDirection] = useState<'next' | 'prev' | null>(null);
+
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const { toast } = useToast();
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [listener, setListener] = useState<PluginListenerHandle | null>(null);
+  const [backButtonListener, setBackButtonListener] = useState<PluginListenerHandle | null>(null);
+
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const removeListener = useCallback(() => {
-    if (listener) {
-        listener.remove();
-        setListener(null);
+    if (backButtonListener) {
+      backButtonListener.remove();
+      setBackButtonListener(null);
     }
-  }, [listener]);
+  }, [backButtonListener]);
+
+  const handleBackButton = useCallback((e: any) => {
+    e.canGoBack = false;
+    if(isDetailOpen) {
+        setIsDetailOpen(false);
+    }
+  }, [isDetailOpen]);
   
   useEffect(() => {
-    const setupBackButtonListener = async () => {
-        if (Capacitor.isNativePlatform()) {
-           const l = await CapacitorApp.addListener('backButton', (e) => {
-                e.canGoBack = false;
-                if(isDetailOpen) {
-                    setIsDetailOpen(false);
-                }
-            });
-            setListener(l);
-        }
+    const setupListener = async () => {
+      if (Capacitor.isNativePlatform()) {
+        if (backButtonListener) await backButtonListener.remove();
+        const listener = await CapacitorApp.addListener('backButton', handleBackButton);
+        setBackButtonListener(listener);
+      }
     };
+    setupListener();
+    return () => { removeListener() };
+  }, [handleBackButton, removeListener]);
 
-    setupBackButtonListener();
+  const fetchUsers = useCallback(async (direction: 'next' | 'prev' | null = null, searchQuery = searchTerm) => {
+    setLoading(true);
+    setPageDirection(direction);
 
-    return () => {
-        removeListener();
-    };
-  }, [isDetailOpen, removeListener]);
-
-  useEffect(() => {
-    const fetchUsersAndListenForStatus = async () => {
-      setLoading(true);
-      try {
-        // Fetch teachers from 'teachers' collection
-        const teachersQuery = collection(db, 'teachers');
-        const teachersSnapshot = await getDocs(teachersQuery);
-        const teacherUsers = teachersSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          role: 'Guru',
-        }));
-
-        // Fetch admins from 'users' collection
-        const adminsQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
-        const adminsSnapshot = await getDocs(adminsQuery);
-        const adminUsers = adminsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          role: 'Admin',
-        }));
-
-        const allBaseUsers = [...teacherUsers, ...adminUsers].filter(user => user.name && user.email) as any[];
-
+    try {
+        const collections = ['teachers', 'users'];
+        const attendanceStatusMap = new Map<string, any>();
+        
+        // Fetch today's attendance once
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
-        const todayEnd = new Date();
-        todayEnd.setHours(23, 59, 59, 999);
-
-        const attendanceQuery = query(
-          collection(db, "photo_attendances"),
-          where("checkInTime", ">=", todayStart),
-          where("checkInTime", "<=", todayEnd)
-        );
+        const attendanceQuery = query(collection(db, "photo_attendances"), where("checkInTime", ">=", todayStart));
+        const attendanceSnapshot = await getDocs(attendanceQuery);
+        attendanceSnapshot.forEach(doc => {
+            const data = doc.data();
+            attendanceStatusMap.set(data.userId, { status: data.status, isFraudulent: data.isFraudulent });
+        });
 
         const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
         const settings = settingsDoc.exists() ? settingsDoc.data() : {};
-        
-        const unsubscribeAttendance = onSnapshot(attendanceQuery, (attendanceSnapshot) => {
-          const now = new Date();
-          const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
-          const isOffDay = settings.offDays?.includes(todayStr) ?? false;
-          
-          const checkInEndStr = settings.checkInEnd || '09:00';
-          const gracePeriodMinutes = settings.gracePeriod ?? 60;
-          const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
-          const checkInDeadline = new Date();
-          checkInDeadline.setHours(endHours, endMinutes, 0, 0);
-          const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
-          const isPastAbsentDeadline = now > checkInGraceEnd;
+        const now = new Date();
+        const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
+        const isOffDay = settings.offDays?.includes(todayStr) ?? false;
+        const checkInEndStr = settings.checkInEnd || '09:00';
+        const gracePeriodMinutes = settings.gracePeriod ?? 60;
+        const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
+        const checkInDeadline = new Date();
+        checkInDeadline.setHours(endHours, endMinutes, 0, 0);
+        const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
+        const isPastAbsentDeadline = now > checkInGraceEnd;
 
-          const attendanceStatusMap = new Map<string, any>();
-          attendanceSnapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.userId) {
-              attendanceStatusMap.set(data.userId, { status: data.status, isFraudulent: data.isFraudulent });
+        let allUsers: User[] = [];
+
+        for (const col of collections) {
+            let q = query(collection(db, col), orderBy('name'));
+
+            if (searchQuery) {
+                q = query(q, where('name', '>=', searchQuery), where('name', '<=', searchQuery + '\uf8ff'));
             }
-          });
 
-          const usersWithStatus: User[] = allBaseUsers.map((user: any) => {
-            let status: User['status'];
-            const attendanceInfo = attendanceStatusMap.get(user.id);
-            
-            if (user.role === 'Admin') {
-                status = 'Admin';
-            } else if (attendanceInfo) {
-              status = attendanceInfo.status;
-            } else if (isOffDay) {
-              status = 'Libur';
-            } else if (isPastAbsentDeadline) {
-              status = 'Tidak Hadir';
-            } else {
-              status = 'Belum Absen';
+            if (direction === 'next' && lastVisible) {
+                q = query(q, startAfter(lastVisible), limit(USERS_PER_PAGE));
+            } else if (direction === 'prev' && firstVisible) {
+                q = query(q, endBefore(firstVisible), limitToLast(USERS_PER_PAGE));
+            } else if (!direction) { // First load or search
+                q = query(q, limit(USERS_PER_PAGE));
             }
-            
-            return {
-              ...user,
-              status,
-              isFraudulent: attendanceInfo?.isFraudulent ?? false,
-            };
-          });
 
-          usersWithStatus.sort((a, b) => {
+            const querySnapshot = await getDocs(q);
+            const docs = querySnapshot.docs;
+
+            if (!docs.length && direction) {
+                setLoading(false);
+                return; // No more pages
+            }
+
+            setFirstVisible(docs[0] || null);
+            setLastVisible(docs[docs.length - 1] || null);
+            
+            const fetchedUsers = docs.map(doc => {
+              const data = doc.data();
+              let status: User['status'];
+              const attendanceInfo = attendanceStatusMap.get(doc.id);
+
+              if (data.role === 'admin') {
+                  status = 'Admin';
+              } else if (attendanceInfo) {
+                  status = attendanceInfo.status;
+              } else if (isOffDay) {
+                  status = 'Libur';
+              } else if (isPastAbsentDeadline) {
+                  status = 'Tidak Hadir';
+              } else {
+                  status = 'Belum Absen';
+              }
+              
+              return {
+                id: doc.id,
+                name: data.name,
+                email: data.email,
+                avatar: data.avatar || '',
+                role: data.role === 'admin' ? 'Admin' : 'Guru',
+                status,
+                isFraudulent: attendanceInfo?.isFraudulent ?? false,
+                nip: data.nip,
+                subject: data.subject,
+                class: data.class,
+                gender: data.gender,
+                phone: data.phone,
+                religion: data.religion,
+                address: data.address,
+              };
+            });
+            allUsers.push(...fetchedUsers);
+        }
+
+        allUsers.sort((a, b) => {
             if (a.role === 'Admin' && b.role !== 'Admin') return -1;
             if (a.role !== 'Admin' && b.role === 'Admin') return 1;
-            const nameA = a.name || '';
-            const nameB = b.name || '';
-            return nameA.localeCompare(nameB);
-          });
-
-          setUsers(usersWithStatus);
-          setLoading(false);
-        }, (error) => {
-          console.error("Error in attendance onSnapshot listener: ", error);
-          toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat status kehadiran secara real-time.' });
-          setUsers([]);
-          setLoading(false);
+            return a.name.localeCompare(b.name);
         });
 
-        return () => unsubscribeAttendance();
+        setUsers(allUsers.slice(0, USERS_PER_PAGE));
 
-      } catch (error) {
+    } catch (error) {
         console.error("Error fetching users:", error);
         toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat data pengguna.' });
-        setUsers([]);
+    } finally {
         setLoading(false);
-        return () => {};
-      }
-    };
+        setPageDirection(null);
+    }
+  }, [searchTerm, toast, lastVisible, firstVisible]);
 
-    const unsubscribePromise = fetchUsersAndListenForStatus();
+  useEffect(() => {
+    if (searchTimeout.current) {
+        clearTimeout(searchTimeout.current);
+    }
+    searchTimeout.current = setTimeout(() => {
+        setCurrentPage(1);
+        setLastVisible(null);
+        setFirstVisible(null);
+        fetchUsers(null, searchTerm);
+    }, 500); // 500ms debounce
     
     return () => {
-      unsubscribePromise.then(unsub => unsub && unsub());
-    };
-  }, [toast]);
-
-  const filteredUsers = useMemo(() => {
-    setCurrentPage(1);
-    if (!searchTerm) {
-        return users;
+        if (searchTimeout.current) clearTimeout(searchTimeout.current);
     }
-    return users.filter(user => {
-      return user.name.toLowerCase().includes(searchTerm.toLowerCase()) || user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    });
-  }, [users, searchTerm]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm]);
 
-  const totalPages = Math.ceil(filteredUsers.length / USERS_PER_PAGE);
-  const paginatedUsers = useMemo(() => {
-      const startIndex = (currentPage - 1) * USERS_PER_PAGE;
-      return filteredUsers.slice(startIndex, startIndex + USERS_PER_PAGE);
-  }, [filteredUsers, currentPage]);
-
-  const paginationRange = useMemo(() => {
-    const siblingCount = 1;
-    const totalPageNumbers = siblingCount + 5;
-
-    if (totalPageNumbers >= totalPages) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1);
+  const handleNextPage = () => {
+    if (lastVisible) {
+        setCurrentPage(prev => prev + 1);
+        fetchUsers('next');
     }
-
-    const leftSiblingIndex = Math.max(currentPage - siblingCount, 1);
-    const rightSiblingIndex = Math.min(currentPage + siblingCount, totalPages);
-
-    const shouldShowLeftDots = leftSiblingIndex > 2;
-    const shouldShowRightDots = rightSiblingIndex < totalPages - 2;
-
-    const firstPageIndex = 1;
-    const lastPageIndex = totalPages;
-
-    if (!shouldShowLeftDots && shouldShowRightDots) {
-      let leftItemCount = 3 + 2 * siblingCount;
-      let leftRange = Array.from({ length: leftItemCount }, (_, i) => i + 1);
-      return [...leftRange, '...', totalPages];
+  };
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+        setCurrentPage(prev => prev - 1);
+        fetchUsers('prev');
     }
+  };
 
-    if (shouldShowLeftDots && !shouldShowRightDots) {
-      let rightItemCount = 3 + 2 * siblingCount;
-      let rightRange = Array.from({ length: rightItemCount }, (_, i) => totalPages - rightItemCount + i + 1);
-      return [firstPageIndex, '...', ...rightRange];
-    }
-
-    if (shouldShowLeftDots && shouldShowRightDots) {
-      let middleRange = [];
-        for (let i = leftSiblingIndex; i <= rightSiblingIndex; i++) {
-            middleRange.push(i);
-        }
-      return [firstPageIndex, '...', ...middleRange, '...', lastPageIndex];
-    }
-  }, [totalPages, currentPage]);
-  
   const getBadgeVariant = (status: User['status']) => {
     switch (status) {
         case 'Hadir': return 'success';
@@ -285,34 +262,40 @@ export function UserManagement() {
   }
 
   const handleDownload = async (formatType: 'pdf' | 'csv') => {
-    if (loading || filteredUsers.length === 0) {
-        toast({
-            variant: 'destructive',
-            title: 'Gagal Mengunduh',
-            description: 'Tidak ada data pengguna untuk diunduh.',
-        });
-        return;
-    }
+    toast({ title: 'Mempersiapkan Unduhan...', description: 'Ini bisa memakan waktu beberapa saat.' });
 
-    const headers = ['ID', 'Nama', 'Email', 'Peran', 'NIP', 'Mata Pelajaran', 'Kelas', 'Jenis Kelamin', 'Telepon', 'Agama', 'Alamat'];
-    const data = filteredUsers.map(user => [
-        user.id,
-        user.name,
-        user.email,
-        user.role,
-        user.nip || '',
-        user.subject || '',
-        user.class || '',
-        user.gender || '',
-        user.phone || '',
-        user.religion || '',
-        user.address || ''
-    ]);
+    try {
+        const collectionsToFetch = ['teachers', 'users'];
+        let allUsersData: any[] = [];
+        for (const col of collectionsToFetch) {
+            const q = query(collection(db, col));
+            const snapshot = await getDocs(q);
+            snapshot.forEach(doc => allUsersData.push({ id: doc.id, ...doc.data() }));
+        }
 
-    const filename = `Laporan_Pengguna.${formatType}`;
+        if (allUsersData.length === 0) {
+            toast({ variant: 'destructive', title: 'Gagal Mengunduh', description: 'Tidak ada data pengguna untuk diunduh.' });
+            return;
+        }
 
-    if (Capacitor.isNativePlatform()) {
-        try {
+        const headers = ['ID', 'Nama', 'Email', 'Peran', 'NIP', 'Mata Pelajaran', 'Kelas', 'Jenis Kelamin', 'Telepon', 'Agama', 'Alamat'];
+        const data = allUsersData.map(user => [
+            user.id,
+            user.name,
+            user.email,
+            user.role,
+            user.nip || '',
+            user.subject || '',
+            user.class || '',
+            user.gender || '',
+            user.phone || '',
+            user.religion || '',
+            user.address || ''
+        ]);
+
+        const filename = `Laporan_Pengguna_Lengkap.${formatType}`;
+
+        if (Capacitor.isNativePlatform()) {
             let fileData: string;
             if (formatType === 'csv') {
                 const csvData = data.map(row => row.map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(','));
@@ -322,7 +305,7 @@ export function UserManagement() {
                 const { default: jsPDF } = await import('jspdf');
                 const { default: autoTable } = await import('jspdf-autotable');
                 const doc = new jsPDF();
-                doc.text('Laporan Pengguna', 14, 16);
+                doc.text('Laporan Pengguna Lengkap', 14, 16);
                 autoTable(doc, { head: [headers], body: data.map(row => row.map(field => String(field || ''))), startY: 20, theme: 'grid', styles: { fontSize: 8 }, headStyles: { fillColor: [22, 163, 74] } });
                 const dataUri = doc.output('datauristring');
                 fileData = dataUri.substring(dataUri.indexOf(',') + 1);
@@ -340,49 +323,40 @@ export function UserManagement() {
                 description: `${filename} disimpan di folder Dokumen perangkat Anda.`,
             });
 
-        } catch (e: any) {
-            console.error('Error saving file to device', e);
-            toast({
-                variant: 'destructive',
-                title: 'Gagal Menyimpan File',
-                description: e.message || 'Tidak dapat menyimpan laporan ke perangkat.',
-            });
+        } else {
+            if (formatType === 'csv') {
+              const csvData = data.map(row => row.map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(','));
+              const csvContent = [headers.join(','), ...csvData].join('\n');
+              const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+              const link = document.createElement('a');
+              const url = URL.createObjectURL(blob);
+              link.setAttribute('href', url);
+              link.setAttribute('download', filename);
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }
+        
+            if (formatType === 'pdf') {
+              const { default: jsPDF } = await import('jspdf');
+              const { default: autoTable } = await import('jspdf-autotable');
+        
+              const doc = new jsPDF();
+              doc.text('Laporan Pengguna Lengkap', 14, 16);
+              autoTable(doc, {
+                  head: [headers],
+                  body: data.map(row => row.map(field => String(field || ''))),
+                  startY: 20,
+                  theme: 'grid',
+                  styles: { fontSize: 8 },
+                  headStyles: { fillColor: [22, 163, 74] },
+              });
+              doc.save(filename);
+            }
         }
-    } else {
-        toast({
-            title: 'Mempersiapkan Unduhan',
-            description: `Daftar pengguna akan segera diunduh sebagai ${formatType.toUpperCase()}.`,
-        });
-
-        if (formatType === 'csv') {
-          const csvData = data.map(row => row.map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(','));
-          const csvContent = [headers.join(','), ...csvData].join('\n');
-          const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
-          const link = document.createElement('a');
-          const url = URL.createObjectURL(blob);
-          link.setAttribute('href', url);
-          link.setAttribute('download', filename);
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        }
-    
-        if (formatType === 'pdf') {
-          const { default: jsPDF } = await import('jspdf');
-          const { default: autoTable } = await import('jspdf-autotable');
-    
-          const doc = new jsPDF();
-          doc.text('Laporan Pengguna', 14, 16);
-          autoTable(doc, {
-              head: [headers],
-              body: data.map(row => row.map(field => String(field || ''))),
-              startY: 20,
-              theme: 'grid',
-              styles: { fontSize: 8 },
-              headStyles: { fillColor: [22, 163, 74] },
-          });
-          doc.save(filename);
-        }
+    } catch (error) {
+        console.error("Error during download: ", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Gagal mengunduh data.' });
     }
   };
 
@@ -395,7 +369,6 @@ export function UserManagement() {
     setIsDetailOpen(false);
     setSelectedUser(null);
   };
-
 
   return (
     <>
@@ -433,15 +406,15 @@ export function UserManagement() {
             </DropdownMenu>
           </div>
 
-          {loading ? (
+          {loading && (!users.length || pageDirection) ? (
               <div className="flex justify-center items-center h-64">
                   <Loader scale={1.6} />
               </div>
           ) : (
               <>
               <div className="space-y-3">
-                  {paginatedUsers.length > 0 ? (
-                      paginatedUsers.map((user) => (
+                  {users.length > 0 ? (
+                      users.map((user) => (
                       <Card key={user.id} className="p-3">
                           <div className="flex items-center gap-4">
                               <Avatar className="h-12 w-12">
@@ -474,51 +447,18 @@ export function UserManagement() {
                       <p className="text-center text-muted-foreground py-8">Tidak ada pengguna yang ditemukan.</p>
                   )}
               </div>
+              
+              <div className="flex items-center justify-center space-x-2 mt-6">
+                <Button variant="outline" onClick={handlePrevPage} disabled={currentPage === 1 || loading}>
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Sebelumnya
+                </Button>
+                <Button variant="outline" onClick={handleNextPage} disabled={!lastVisible || users.length < USERS_PER_PAGE || loading}>
+                    Berikutnya
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
 
-              {totalPages > 1 && (
-                  <div className="flex items-center justify-center space-x-1 mt-6">
-                      <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                      disabled={currentPage === 1}
-                      className="text-primary"
-                      >
-                      <ChevronLeft className="h-5 w-5" />
-                      </Button>
-                      {paginationRange?.map((page, index) =>
-                      page === '...' ? (
-                          <span key={`ellipsis-${index}`} className="px-2 py-1 text-muted-foreground">
-                          ...
-                          </span>
-                      ) : (
-                          <Button
-                          key={page}
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setCurrentPage(page as number)}
-                          className={cn(
-                              'h-9 w-9',
-                              currentPage === page
-                              ? 'font-bold text-primary underline decoration-2 underline-offset-4'
-                              : 'text-muted-foreground'
-                          )}
-                          >
-                          {page}
-                          </Button>
-                      )
-                      )}
-                      <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                      disabled={currentPage === totalPages}
-                      className="text-primary"
-                      >
-                      <ChevronRight className="h-5 w-5" />
-                      </Button>
-                  </div>
-              )}
               </>
           )}
         </div>
