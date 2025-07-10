@@ -178,9 +178,7 @@ function EditAttendanceDialog({ record, open, onOpenChange }: { record: Attendan
                         </div>
                     )}
                     <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-y-2 sm:gap-x-2 pt-2">
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
-                            Batal
-                        </Button>
+                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>Batal</Button>
                         <Button type="submit" disabled={isPending}>
                             Simpan Perubahan
                         </Button>
@@ -202,7 +200,6 @@ export function Attendance() {
     const { toast } = useToast();
     const [settings, setSettings] = useState<any>(null);
 
-    // Localized dialog states
     const [isViewOpen, setIsViewOpen] = useState(false);
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
@@ -224,7 +221,6 @@ export function Attendance() {
                     if (isViewOpen) setIsViewOpen(false);
                     else if (isDeleteOpen) setIsDeleteOpen(false);
                     else if (isEditOpen) setIsEditOpen(false);
-                    // Add other dialog checks here if needed
                 });
                 setListener(l);
             }
@@ -443,14 +439,12 @@ export function Attendance() {
         setIsViewOpen(true);
     };
 
-    const openDeleteDialog = (e: React.MouseEvent, id: string) => {
-        e.stopPropagation(); 
+    const openDeleteDialog = (id: string) => {
         setSelectedRecordId(id);
         setIsDeleteOpen(true);
     }
 
-    const openEditDialog = (e: React.MouseEvent, record: AttendanceRecord) => {
-        e.stopPropagation();
+    const openEditDialog = (record: AttendanceRecord) => {
         if (record.id.startsWith('absent-')) {
             toast({
                 variant: 'destructive',
@@ -608,20 +602,32 @@ export function Attendance() {
                     <div className="space-y-3">
                         {paginatedRecords.length > 0 ? (
                             paginatedRecords.map((item) => (
-                                <Card 
-                                    key={item.id} 
-                                    className="p-3 flex items-center gap-4 relative cursor-pointer hover:bg-accent/80 transition-colors"
-                                    onClick={() => openViewDialog(item)}
-                                >
-                                    <div className="absolute top-2 right-2 flex items-center gap-1.5">
-                                        {item.isFraudulent && (
-                                            <AlertTriangle className="h-5 w-5 text-destructive animate-medium-flash" />
-                                        )}
+                                <Card key={item.id} className="p-3 flex items-center gap-4">
+                                    <div className="flex-grow min-w-0" onClick={() => openViewDialog(item)}>
+                                        <div className="flex items-center gap-4">
+                                            <Avatar className="h-12 w-12">
+                                                <AvatarImage src={item.checkInPhotoUrl} alt={item.name} data-ai-hint="person portrait" />
+                                                <AvatarFallback>{item.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex-grow min-w-0">
+                                                <p className="font-semibold text-foreground truncate">{item.name}</p>
+                                                <p className="text-sm text-muted-foreground capitalize">{item.role}</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {item.status === 'Tidak Hadir'
+                                                        ? 'Belum absen masuk'
+                                                        : `Absen Masuk: ${item.checkInTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
+                                                    }
+                                                </p>
+                                            </div>
+                                            <Badge variant={getBadgeVariant(item)} className="w-24 justify-center shrink-0">{getBadgeText(item)}</Badge>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col gap-1.5 self-center">
                                         <Button
                                             variant="ghost"
                                             size="icon"
                                             className="h-7 w-7"
-                                            onClick={(e) => openEditDialog(e, item)}
+                                            onClick={() => openEditDialog(item)}
                                             disabled={item.id.startsWith('absent-')}
                                         >
                                             <Edit className="h-4 w-4" />
@@ -631,34 +637,13 @@ export function Attendance() {
                                             variant="ghost"
                                             size="icon"
                                             className="h-7 w-7 text-destructive/70 hover:text-destructive hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                                            onClick={(e) => openDeleteDialog(e, item.id)}
+                                            onClick={() => openDeleteDialog(item.id)}
                                             disabled={item.id.startsWith('absent-')}
                                         >
                                             <Trash2 className="h-4 w-4" />
                                             <span className="sr-only">Hapus Catatan</span>
                                         </Button>
                                     </div>
-                                    <Avatar className="h-12 w-12">
-                                        <AvatarImage src={item.checkInPhotoUrl} alt={item.name} data-ai-hint="person portrait" />
-                                        <AvatarFallback>{item.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex-grow min-w-0">
-                                        <p className="font-semibold text-foreground truncate pr-24">{item.name}</p>
-                                        <p className="text-sm text-muted-foreground capitalize">{item.role}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {item.status === 'Tidak Hadir'
-                                                ? 'Belum absen masuk'
-                                                : `Absen Masuk: ${item.checkInTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
-                                            }
-                                            <br />
-                                            {'Absen Keluar: '}
-                                            {item.status === 'Tidak Hadir' || !item.checkOutTime
-                                                ? 'Belum absen keluar'
-                                                : item.checkOutTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-                                            }
-                                        </p>
-                                    </div>
-                                    <Badge variant={getBadgeVariant(item)} className="w-24 justify-center shrink-0">{getBadgeText(item)}</Badge>
                                 </Card>
                             ))
                         ) : (
