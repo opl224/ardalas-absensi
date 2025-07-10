@@ -14,16 +14,16 @@ import { CenteredLoader } from "../ui/loader";
 const UserManagement = dynamic(() => import('./UserManagement').then(mod => mod.default), {
   loading: () => <CenteredLoader />,
 });
-const Reports = dynamic(() => import('./Reports'), {
+const Reports = dynamic(() => import('./Reports').then(mod => mod.Reports), {
   loading: () => <CenteredLoader />,
 });
 const Attendance = dynamic(() => import('./Attendance').then(mod => mod.default), {
   loading: () => <CenteredLoader />,
 });
-const Profile = dynamic(() => import('./Profile'), {
+const Profile = dynamic(() => import('./Profile').then(mod => mod.Profile), {
   loading: () => <CenteredLoader />,
 });
-const Privacy = dynamic(() => import('./Privacy'), {
+const Privacy = dynamic(() => import('./Privacy').then(mod => mod.Privacy), {
   loading: () => <CenteredLoader />,
 });
 
