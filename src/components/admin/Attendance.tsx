@@ -65,6 +65,7 @@ function EditAttendanceDialog({ record, open, onOpenChange }: { record: Attendan
     const { toast } = useToast();
     const formRef = useRef<HTMLFormElement>(null);
     const [listener, setListener] = useState<PluginListenerHandle | null>(null);
+    const [removeFraud, setRemoveFraud] = useState(false);
 
     const removeListener = useCallback(() => {
         if (listener) {
@@ -100,6 +101,7 @@ function EditAttendanceDialog({ record, open, onOpenChange }: { record: Attendan
         if (state.success) {
             toast({ title: 'Berhasil', description: 'Catatan kehadiran telah diperbarui.' });
             onOpenChange(false);
+            setRemoveFraud(false); // Reset state on close
         }
         if (state.error) {
             toast({ variant: 'destructive', title: 'Gagal', description: state.error });
@@ -120,14 +122,25 @@ function EditAttendanceDialog({ record, open, onOpenChange }: { record: Attendan
         event.preventDefault();
         if (!formRef.current) return;
         const formData = new FormData(formRef.current);
+        // Manually append the switch state to form data
+        if (removeFraud) {
+            formData.append('removeFraudWarning', 'on');
+        }
         startTransition(async () => {
             const result = await updateAttendanceRecord(formData);
             setState(result);
         });
     }
+    
+    const handleOpenChange = (isOpen: boolean) => {
+        if (!isOpen) {
+            setRemoveFraud(false); // Reset state when dialog is closed
+        }
+        onOpenChange(isOpen);
+    }
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Edit Kehadiran: {record.name}</DialogTitle>
@@ -172,6 +185,8 @@ function EditAttendanceDialog({ record, open, onOpenChange }: { record: Attendan
                             <Switch
                                 id="removeFraudWarning"
                                 name="removeFraudWarning"
+                                checked={removeFraud}
+                                onCheckedChange={setRemoveFraud}
                                 disabled={isPending}
                             />
                             <Label htmlFor="removeFraudWarning">Hapus Peringatan Kecurangan</Label>
