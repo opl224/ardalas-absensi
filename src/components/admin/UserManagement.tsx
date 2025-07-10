@@ -20,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { collection, getDocs, query, where, doc, getDoc, onSnapshot, orderBy, limit, startAfter, endBefore, limitToLast, QueryDocumentSnapshot } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, getDoc, orderBy, limit, startAfter, QueryDocumentSnapshot, collectionGroup } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader } from '../ui/loader';
 import { Separator } from '../ui/separator';
@@ -69,7 +69,6 @@ export function UserManagement() {
   const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot | null>(null);
   const [firstVisible, setFirstVisible] = useState<QueryDocumentSnapshot | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageDirection, setPageDirection] = useState<'next' | 'prev' | null>(null);
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const { toast } = useToast();
@@ -106,22 +105,47 @@ export function UserManagement() {
 
   const fetchUsers = useCallback(async (direction: 'next' | 'prev' | null = null, searchQuery = searchTerm) => {
     setLoading(true);
-    setPageDirection(direction);
 
     try {
-        const collections = ['teachers', 'users'];
-        const attendanceStatusMap = new Map<string, any>();
+        const [teachersSnapshot, adminsSnapshot] = await Promise.all([
+            getDocs(query(collection(db, 'teachers'), orderBy('name'))),
+            getDocs(query(collection(db, 'users'), where('role', '==', 'admin'), orderBy('name')))
+        ]);
+
+        let combinedUsers = [
+            ...adminsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Admin' })),
+            ...teachersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Guru' }))
+        ] as Omit<User, 'status' | 'isFraudulent'>[];
         
-        // Fetch today's attendance once
+        if (searchQuery) {
+            combinedUsers = combinedUsers.filter(user => user.name.toLowerCase().includes(searchQuery.toLowerCase()));
+        }
+
+        combinedUsers.sort((a, b) => {
+            if (a.role === 'Admin' && b.role !== 'Admin') return -1;
+            if (a.role !== 'Admin' && b.role === 'Admin') return 1;
+            return a.name.localeCompare(b.name);
+        });
+
+        const paginatedUserIds = combinedUsers.slice((currentPage - 1) * USERS_PER_PAGE, currentPage * USERS_PER_PAGE).map(u => u.id);
+        
+        if (paginatedUserIds.length === 0) {
+            setUsers([]);
+            setLoading(false);
+            return;
+        }
+
+        // Fetch attendance status only for the paginated users
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
-        const attendanceQuery = query(collection(db, "photo_attendances"), where("checkInTime", ">=", todayStart));
+        const attendanceQuery = query(collection(db, "photo_attendances"), where("checkInTime", ">=", todayStart), where('userId', 'in', paginatedUserIds));
         const attendanceSnapshot = await getDocs(attendanceQuery);
+        const attendanceStatusMap = new Map<string, any>();
         attendanceSnapshot.forEach(doc => {
             const data = doc.data();
             attendanceStatusMap.set(data.userId, { status: data.status, isFraudulent: data.isFraudulent });
         });
-
+        
         const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
         const settings = settingsDoc.exists() ? settingsDoc.data() : {};
         const now = new Date();
@@ -135,98 +159,48 @@ export function UserManagement() {
         const checkInGraceEnd = new Date(checkInDeadline.getTime() + gracePeriodMinutes * 60 * 1000);
         const isPastAbsentDeadline = now > checkInGraceEnd;
 
-        let allUsers: User[] = [];
-
-        for (const col of collections) {
-            let q = query(collection(db, col), orderBy('name'));
-
-            if (searchQuery) {
-                q = query(q, where('name', '>=', searchQuery), where('name', '<=', searchQuery + '\uf8ff'));
+        const finalUsers = combinedUsers.slice((currentPage - 1) * USERS_PER_PAGE, currentPage * USERS_PER_PAGE).map(user => {
+            let status: User['status'];
+            const attendanceInfo = attendanceStatusMap.get(user.id);
+            if (user.role === 'Admin') {
+                status = 'Admin';
+            } else if (attendanceInfo) {
+                status = attendanceInfo.status;
+            } else if (isOffDay) {
+                status = 'Libur';
+            } else if (isPastAbsentDeadline) {
+                status = 'Tidak Hadir';
+            } else {
+                status = 'Belum Absen';
             }
-
-            if (direction === 'next' && lastVisible) {
-                q = query(q, startAfter(lastVisible), limit(USERS_PER_PAGE));
-            } else if (direction === 'prev' && firstVisible) {
-                q = query(q, endBefore(firstVisible), limitToLast(USERS_PER_PAGE));
-            } else if (!direction) { // First load or search
-                q = query(q, limit(USERS_PER_PAGE));
-            }
-
-            const querySnapshot = await getDocs(q);
-            const docs = querySnapshot.docs;
-
-            if (!docs.length && direction) {
-                setLoading(false);
-                return; // No more pages
-            }
-
-            setFirstVisible(docs[0] || null);
-            setLastVisible(docs[docs.length - 1] || null);
             
-            const fetchedUsers = docs.map(doc => {
-              const data = doc.data();
-              let status: User['status'];
-              const attendanceInfo = attendanceStatusMap.get(doc.id);
-
-              if (data.role === 'admin') {
-                  status = 'Admin';
-              } else if (attendanceInfo) {
-                  status = attendanceInfo.status;
-              } else if (isOffDay) {
-                  status = 'Libur';
-              } else if (isPastAbsentDeadline) {
-                  status = 'Tidak Hadir';
-              } else {
-                  status = 'Belum Absen';
-              }
-              
-              return {
-                id: doc.id,
-                name: data.name,
-                email: data.email,
-                avatar: data.avatar || '',
-                role: data.role === 'admin' ? 'Admin' : 'Guru',
+            return {
+                ...user,
                 status,
                 isFraudulent: attendanceInfo?.isFraudulent ?? false,
-                nip: data.nip,
-                subject: data.subject,
-                class: data.class,
-                gender: data.gender,
-                phone: data.phone,
-                religion: data.religion,
-                address: data.address,
-              };
-            });
-            allUsers.push(...fetchedUsers);
-        }
-
-        allUsers.sort((a, b) => {
-            if (a.role === 'Admin' && b.role !== 'Admin') return -1;
-            if (a.role !== 'Admin' && b.role === 'Admin') return 1;
-            return a.name.localeCompare(b.name);
+            } as User;
         });
 
-        setUsers(allUsers.slice(0, USERS_PER_PAGE));
+        setUsers(finalUsers);
+        setLastVisible(finalUsers.length === USERS_PER_PAGE ? new (class {}) as QueryDocumentSnapshot : null); 
+        setFirstVisible(currentPage > 1 ? new (class {}) as QueryDocumentSnapshot : null);
 
     } catch (error) {
         console.error("Error fetching users:", error);
         toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat data pengguna.' });
     } finally {
         setLoading(false);
-        setPageDirection(null);
     }
-  }, [searchTerm, toast, lastVisible, firstVisible]);
+  }, [searchTerm, toast, currentPage]);
 
   useEffect(() => {
+    setCurrentPage(1); // Reset page on new search
     if (searchTimeout.current) {
         clearTimeout(searchTimeout.current);
     }
     searchTimeout.current = setTimeout(() => {
-        setCurrentPage(1);
-        setLastVisible(null);
-        setFirstVisible(null);
         fetchUsers(null, searchTerm);
-    }, 500); // 500ms debounce
+    }, 500);
     
     return () => {
         if (searchTimeout.current) clearTimeout(searchTimeout.current);
@@ -234,16 +208,17 @@ export function UserManagement() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm]);
 
+  useEffect(() => {
+      fetchUsers();
+  }, [currentPage, fetchUsers])
+
+
   const handleNextPage = () => {
-    if (lastVisible) {
-        setCurrentPage(prev => prev + 1);
-        fetchUsers('next');
-    }
+    setCurrentPage(prev => prev + 1);
   };
   const handlePrevPage = () => {
     if (currentPage > 1) {
         setCurrentPage(prev => prev - 1);
-        fetchUsers('prev');
     }
   };
 
@@ -265,13 +240,15 @@ export function UserManagement() {
     toast({ title: 'Mempersiapkan Unduhan...', description: 'Ini bisa memakan waktu beberapa saat.' });
 
     try {
-        const collectionsToFetch = ['teachers', 'users'];
-        let allUsersData: any[] = [];
-        for (const col of collectionsToFetch) {
-            const q = query(collection(db, col));
-            const snapshot = await getDocs(q);
-            snapshot.forEach(doc => allUsersData.push({ id: doc.id, ...doc.data() }));
-        }
+        const [teachersSnapshot, adminsSnapshot] = await Promise.all([
+            getDocs(query(collection(db, 'teachers'))),
+            getDocs(query(collection(db, 'users'), where('role', '==', 'admin')))
+        ]);
+
+        let allUsersData: any[] = [
+            ...adminsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+            ...teachersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        ];
 
         if (allUsersData.length === 0) {
             toast({ variant: 'destructive', title: 'Gagal Mengunduh', description: 'Tidak ada data pengguna untuk diunduh.' });
@@ -406,7 +383,7 @@ export function UserManagement() {
             </DropdownMenu>
           </div>
 
-          {loading && (!users.length || pageDirection) ? (
+          {loading && !users.length ? (
               <div className="flex justify-center items-center h-64">
                   <Loader scale={1.6} />
               </div>
@@ -453,7 +430,7 @@ export function UserManagement() {
                     <ChevronLeft className="h-4 w-4 mr-1" />
                     Sebelumnya
                 </Button>
-                <Button variant="outline" onClick={handleNextPage} disabled={!lastVisible || users.length < USERS_PER_PAGE || loading}>
+                <Button variant="outline" onClick={handleNextPage} disabled={!lastVisible || loading}>
                     Berikutnya
                     <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
