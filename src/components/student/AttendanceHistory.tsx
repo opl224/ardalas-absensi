@@ -1,106 +1,131 @@
+'use client';
 
-'use client'
+import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import type { User as FirebaseUser } from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
+import { useRouter } from 'next/navigation';
+import { CenteredLoader } from '@/components/ui/loader';
+import useIdleTimer from '@/hooks/useIdleTimer';
 
-import { useState, useEffect } from 'react';
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useAuth } from '@/hooks/useAuth';
-import { collection, query, where, onSnapshot, Timestamp, orderBy, doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { Loader } from '../ui/loader';
-
-interface HistoryRecord {
-    id: string;
-    checkInTime: Timestamp;
-    checkOutTime?: Timestamp;
-    status: 'Hadir' | 'Terlambat' | 'Tidak Hadir';
-    isFraudulent?: boolean;
+export interface UserProfile {
+    uid: string;
+    email: string;
+    name: string;
+    role: 'admin' | 'guru';
+    avatar?: string;
+    subject?: string;
+    class?: string;
+    gender?: string;
+    phone?: string;
+    religion?: string;
+    address?: string;
+    nip?: string;
 }
 
-export function AttendanceHistory() {
-    const { userProfile } = useAuth();
-    const [history, setHistory] = useState<HistoryRecord[]>([]);
+export interface AuthContextType {
+    user: FirebaseUser | null;
+    userProfile: UserProfile | null;
+    loading: boolean;
+    logout: (message?: string) => void;
+}
+
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+    const [user, setUser] = useState<FirebaseUser | null>(null);
+    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
+    const router = useRouter();
+
+    const logout = useCallback(async (message?: string) => {
+        if (message) {
+            sessionStorage.setItem('logoutMessage', message);
+        } else {
+            sessionStorage.removeItem('logoutMessage');
+        }
+        await signOut(auth);
+        router.push('/');
+    }, [router]);
+
+    const handleIdle = useCallback(() => {
+        if (auth.currentUser) {
+            logout("Sesi Anda telah berakhir karena tidak ada aktivitas. Silakan masuk kembali.");
+        }
+    }, [logout]);
+
+    useIdleTimer(handleIdle, 1000 * 60 * 60); // 1 hour
 
     useEffect(() => {
-      if (!userProfile?.uid) {
-          setLoading(false);
-          return;
-      };
+        let profileListenerUnsubscribe: (() => void) | undefined;
 
-      const q = query(
-          collection(db, "photo_attendances"),
-          where("userId", "==", userProfile.uid),
-          orderBy("checkInTime", "desc")
-      );
+        const authStateUnsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+            if (profileListenerUnsubscribe) {
+                profileListenerUnsubscribe();
+            }
 
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-          setLoading(true);
-          const historyData = snapshot.docs.map(doc => {
-              return { id: doc.id, ...doc.data() } as HistoryRecord;
-          });
+            if (firebaseUser) {
+                const baseUserDocRef = doc(db, 'users', firebaseUser.uid);
+                const baseUserSnap = await getDoc(baseUserDocRef);
 
-          setHistory(historyData);
-          setLoading(false);
-      }, (error) => {
-          console.error("Error fetching attendance history: ", error);
-          setLoading(false);
-      });
+                if (!baseUserSnap.exists()) {
+                    console.error(`User document for user ${firebaseUser.uid} not found in 'users' collection.`);
+                    logout("Profil pengguna tidak ditemukan.");
+                    return;
+                }
+                
+                const baseUserData = baseUserSnap.data();
+                const userRole = baseUserData.role;
+                setUser(firebaseUser);
 
-      return () => unsubscribe();
-    }, [userProfile]);
+                let profileDocRef = baseUserDocRef;
+                let specificProfileData = {};
 
-    if (!userProfile) {
-        return <div className="p-4 text-center">Memuat data pengguna...</div>
+                if (userRole === 'guru') {
+                    const teacherDocRef = doc(db, 'teachers', firebaseUser.uid);
+                    const teacherSnap = await getDoc(teacherDocRef);
+                    if (teacherSnap.exists()) {
+                        specificProfileData = teacherSnap.data();
+                        profileDocRef = teacherDocRef;
+                    }
+                }
+                
+                profileListenerUnsubscribe = onSnapshot(profileDocRef, (profileSnap) => {
+                    const finalProfileData = {
+                        uid: firebaseUser.uid,
+                        ...baseUserData,
+                        ...(profileSnap.exists() ? profileSnap.data() : specificProfileData),
+                        role: userRole,
+                    };
+                    setUserProfile(finalProfileData as UserProfile);
+                    setLoading(false);
+                }, (error) => {
+                    console.error("Error listening to user profile:", error);
+                    logout("Gagal memuat profil pengguna.");
+                });
+            } else {
+                setUser(null);
+                setUserProfile(null);
+                setLoading(false);
+            }
+        });
+
+        return () => {
+            authStateUnsubscribe();
+            if (profileListenerUnsubscribe) {
+                profileListenerUnsubscribe();
+            }
+        };
+    }, [logout]);
+
+    if (loading) {
+        return <CenteredLoader />;
     }
 
     return (
-        <div className="bg-gray-50 dark:bg-zinc-900">
-            <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                <h1 className="text-xl font-bold text-foreground">Riwayat Kehadiran</h1>
-            </header>
-
-            <div className="p-4">
-                {loading ? (
-                    <div className="flex justify-center items-center h-64">
-                        <Loader scale={1.6} />
-                    </div>
-                ) : (
-                    <div className="space-y-3">
-                        {history.length === 0 ? (
-                            <p className="text-muted-foreground text-center py-8">Belum ada riwayat kehadiran.</p>
-                        ) : (
-                            history.map((item) => (
-                                <Card key={item.id} className="p-3 flex items-center gap-4">
-                                    <Avatar className="h-12 w-12">
-                                        <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait" />
-                                        <AvatarFallback>{userProfile.name.slice(0,2).toUpperCase()}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex-grow">
-                                        <p className="font-semibold text-foreground">{item.checkInTime.toDate().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-                                        <p className="text-sm text-muted-foreground">
-                                            Absen Masuk: {item.checkInTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                                            {item.checkOutTime && (
-                                                <>
-                                                    <br />
-                                                    {`Absen Keluar: ${item.checkOutTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`}
-                                                </>
-                                            )}
-                                        </p>
-                                    </div>
-                                    <Badge variant={
-                                        item.isFraudulent ? 'destructive' :
-                                        item.status === 'Hadir' ? 'success' :
-                                        item.status === 'Terlambat' ? 'warning' : 
-                                        item.status === 'Tidak Hadir' ? 'outline' : 'destructive'
-                                    } className="w-24 justify-center">{item.isFraudulent ? 'Kecurangan' : item.status}</Badge>
-                                </Card>
-                            ))
-                        )}
-                    </div>
-                )}
-            </div>
-        </div>
+        <AuthContext.Provider value={{ user, userProfile, loading, logout }}>
+            {children}
+        </AuthContext.Provider>
     );
-}
+};

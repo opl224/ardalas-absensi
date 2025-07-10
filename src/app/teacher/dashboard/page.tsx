@@ -56,81 +56,6 @@ interface Stats {
 
 export default function TeacherDashboard() {
   const { userProfile } = useAuth();
-  const [studentAttendanceData, setStudentAttendanceData] = useState<StudentAttendanceRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<Stats>({ total: 0, present: 0, late: 0, absent: 0 });
-  const [statsLoading, setStatsLoading] = useState(true);
-
-  useEffect(() => {
-    if (!userProfile || !userProfile.subject) return;
-
-    setStatsLoading(true);
-    
-    const setupListeners = async () => {
-        let totalStudentCount = 0;
-        try {
-            // Assume teacher's subject is the class name for students
-            const studentsQuery = query(collection(db, "users"), where("role", "==", "siswa"), where("class", "==", userProfile.subject));
-            const studentsSnapshot = await getDocs(studentsQuery);
-            totalStudentCount = studentsSnapshot.size;
-        } catch (error) {
-            console.error("Error fetching total students:", error);
-        }
-
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        const todayEnd = new Date();
-        todayEnd.setHours(23, 59, 59, 999);
-
-        // This query fetches all students' attendance for today.
-        // It's assumed teachers can see all students. For per-class filtering,
-        // a 'className' field would be needed in the 'photo_attendances' collection.
-        const q = query(
-          collection(db, "photo_attendances"),
-          where("role", "==", "siswa"),
-          where("checkInTime", ">=", todayStart),
-          where("checkInTime", "<=", todayEnd),
-          orderBy("checkInTime", "desc")
-        );
-
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-          const data = querySnapshot.docs.map(doc => ({
-              id: doc.id,
-              ...doc.data(),
-              checkInTime: doc.data().checkInTime,
-          })) as StudentAttendanceRecord[];
-          
-          setStudentAttendanceData(data);
-          
-          // Calculate stats
-          const presentCount = data.filter(s => s.status === 'Hadir').length;
-          const lateCount = data.filter(s => s.status === 'Terlambat').length;
-          const presentAndLateCount = presentCount + lateCount;
-          const absentCount = totalStudentCount - presentAndLateCount;
-
-          setStats({
-              total: totalStudentCount,
-              present: presentAndLateCount,
-              late: lateCount,
-              absent: absentCount >= 0 ? absentCount : 0,
-          });
-
-          setLoading(false);
-          setStatsLoading(false);
-        }, (error) => {
-            console.error("Error fetching student attendance: ", error);
-            setLoading(false);
-            setStatsLoading(false);
-        });
-        
-        return unsubscribe;
-    }
-
-    const unsubscribePromise = setupListeners();
-    return () => {
-        unsubscribePromise.then(unsub => unsub && unsub());
-    };
-  }, [userProfile]);
   
   if (!userProfile) {
       return <CenteredLoader />
@@ -198,116 +123,17 @@ export default function TeacherDashboard() {
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                         type="search"
-                        placeholder="Cari siswa..."
+                        placeholder="Cari..."
                         className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
                     />
                     </div>
                     <ThemeToggle />
                     <UserNav />
                 </header>
-                <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-                    <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Total Siswa</CardTitle>
-                                <Users className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                {statsLoading ? <Skeleton className="h-8 w-1/2" /> : (
-                                    <>
-                                        <div className="text-2xl font-bold">{stats.total}</div>
-                                        <p className="text-xs text-muted-foreground">di kelas Anda</p>
-                                    </>
-                                )}
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Hadir Hari Ini</CardTitle>
-                                <UserCheck className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                {statsLoading ? <Skeleton className="h-8 w-1/2" /> : (
-                                    <>
-                                        <div className="text-2xl font-bold text-primary">{stats.present}</div>
-                                        <p className="text-xs text-muted-foreground">Total siswa yang sudah absen</p>
-                                    </>
-                                )}
-                            </CardContent>
-                        </Card>
-                         <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Terlambat Hari Ini</CardTitle>
-                                <Clock className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                {statsLoading ? <Skeleton className="h-8 w-1/2" /> : (
-                                    <>
-                                        <div className="text-2xl font-bold text-warning">{stats.late}</div>
-                                        <p className="text-xs text-muted-foreground">Dari siswa yang hadir</p>
-                                    </>
-                                )}
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Tidak Hadir Hari Ini</CardTitle>
-                                <UserX className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                {statsLoading ? <Skeleton className="h-8 w-1/2" /> : (
-                                    <>
-                                        <div className="text-2xl font-bold text-destructive">{stats.absent}</div>
-                                        <p className="text-xs text-muted-foreground">Siswa yang belum absen</p>
-                                    </>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </div>
-                    <div className="grid gap-4 md:gap-8 lg:grid-cols-3">
-                        <Card className="lg:col-span-2">
-                            <CardHeader>
-                            <CardTitle>Absensi Hari Ini - {user.subject}</CardTitle>
-                            <CardDescription>
-                                Catatan kehadiran siswa untuk kelas Anda hari ini.
-                            </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                    <TableHead>Siswa</TableHead>
-                                    <TableHead className="hidden sm:table-cell">Waktu Absen Masuk</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {loading && <TableRow><TableCell colSpan={3} className="py-8"><div className="flex justify-center"><Loader scale={0.8}/></div></TableCell></TableRow>}
-                                    {!loading && studentAttendanceData.length === 0 && <TableRow><TableCell colSpan={3}>Belum ada data absensi hari ini.</TableCell></TableRow>}
-                                    {!loading && studentAttendanceData.map((item) => (
-                                    <TableRow key={item.id}>
-                                        <TableCell>
-                                        <div className="font-medium">{item.name}</div>
-                                        </TableCell>
-                                        <TableCell className="hidden sm:table-cell">{item.checkInTime.toDate().toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'})}</TableCell>
-                                        <TableCell>
-                                        <Badge variant={
-                                            item.isFraudulent ? 'destructive' :
-                                            item.status === 'Hadir' ? 'success' :
-                                            item.status === 'Terlambat' ? 'warning' : 
-                                            item.status === 'Tidak Hadir' ? 'outline' : 'destructive'
-                                        }>{item.isFraudulent ? 'Kecurangan' : item.status}</Badge>
-                                        </TableCell>
-                                    </TableRow>
-                                    ))}
-                                </TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
-                        <div className="lg:col-span-1">
-                            <CheckinCard />
-                        </div>
-                    </div>
+                <main className="flex flex-1 items-center justify-center p-4 md:p-8">
+                  <div className="w-full max-w-lg">
+                    <CheckinCard />
+                  </div>
                 </main>
             </div>
           </SidebarInset>

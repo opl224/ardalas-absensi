@@ -14,7 +14,7 @@ export interface UserProfile {
     uid: string;
     email: string;
     name: string;
-    role: 'admin' | 'guru' | 'siswa' | 'orang tua';
+    role: 'admin' | 'guru';
     avatar?: string;
     subject?: string;
     class?: string;

@@ -150,7 +150,7 @@ export function Profile({ setActiveView }: ProfileProps) {
                             <CardTitle className="text-lg">Pengaturan</CardTitle>
                         </CardHeader>
                         <CardContent className="divide-y divide-border pt-0">
-                            <ClickableRow icon={Shield} label="Privasi" onClick={() => setActiveView('privacy')} showChevron={false} />
+                            <ClickableRow icon={Shield} label="Privasi" onClick={() => setActiveView('privacy')} showChevron={true} />
                         </CardContent>
                     </Card>
                     

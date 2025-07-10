@@ -30,7 +30,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [showAccessDeniedDialog, setShowAccessDeniedDialog] = useState(false);
   const [showDesktopAccessDeniedDialog, setShowDesktopAccessDeniedDialog] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
   const router = useRouter();
@@ -97,9 +96,13 @@ export default function LoginPage() {
           return;
         }
 
-        if (role === 'siswa' || role === 'orang tua') {
+        if (role !== 'admin' && role !== 'guru') {
             await signOut(auth);
-            setShowAccessDeniedDialog(true);
+            toast({
+                variant: 'destructive',
+                title: 'Akses Ditolak',
+                description: 'Peran Anda tidak diizinkan untuk mengakses aplikasi ini.',
+            });
             setLoading(false);
             return;
         }
@@ -117,6 +120,7 @@ export default function LoginPage() {
         } else if (role === 'guru') {
           router.push('/teacher/dashboard');
         } else {
+          // This case should ideally not be reached due to the check above
           await signOut(auth);
           toast({
             variant: 'destructive',
@@ -216,20 +220,6 @@ export default function LoginPage() {
           </Card>
         </div>
       </main>
-
-      <AlertDialog open={showAccessDeniedDialog} onOpenChange={setShowAccessDeniedDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Akses Ditolak</AlertDialogTitle>
-            <AlertDialogDescription>
-              Halaman ini hanya untuk Admin dan Guru. Anda tidak memiliki izin untuk mengakses.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => window.location.reload()}>Kembali</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <AlertDialog open={showDesktopAccessDeniedDialog} onOpenChange={setShowDesktopAccessDeniedDialog}>
         <AlertDialogContent>
