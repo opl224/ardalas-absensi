@@ -37,7 +37,7 @@ function CheckoutButton({ disabled, pending }: { disabled: boolean, pending: boo
     return (
       <Button type="submit" className="w-full" disabled={pending || disabled}>
         {pending && <Loader scale={0.48} />}
-        <span className={pending ? 'invisible' : 'visible'}>Absen Keluar</span>
+        Absen Keluar
       </Button>
     );
 }

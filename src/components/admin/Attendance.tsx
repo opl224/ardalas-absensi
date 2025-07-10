@@ -170,13 +170,13 @@ function EditAttendanceDialog({ record, open, onOpenChange }: { record: Attendan
                             <Label htmlFor="removeFraudWarning">Hapus Peringatan Kecurangan</Label>
                         </div>
                     )}
-                    <DialogFooter className='pt-4 flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2'>
+                    <DialogFooter className='pt-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-y-2 sm:gap-x-2'>
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
                             Batal
                         </Button>
                         <Button type="submit" disabled={isPending}>
                             {isPending && <Loader scale={0.48} />}
-                            <span>Simpan Perubahan</span>
+                            Simpan Perubahan
                         </Button>
                     </DialogFooter>
                 </form>
