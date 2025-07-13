@@ -389,7 +389,7 @@ export default function UserManagement() {
 
         <div className="p-4">
           <div className="flex flex-col sm:flex-row items-center gap-2 mb-4">
-            <div className="relative flex-grow w-full">
+            <div className="relative w-full sm:w-2/3">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input 
                   placeholder="Cari pengguna..." 
@@ -398,16 +398,15 @@ export default function UserManagement() {
                   onChange={handleSearchChange}
                 />
             </div>
-            <div className='flex gap-2 w-full sm:w-auto'>
+            <div className='flex gap-2 w-full sm:w-1/3'>
                 <Button variant="outline" className="w-full" onClick={() => setIsAbsentListOpen(true)}>
                     <UserX className="mr-2 h-4 w-4" />
                     Belum Absen
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="w-full">
-                        <Download className="mr-2 h-4 w-4" />
-                        Unduh
+                    <Button variant="outline" className="w-auto px-3">
+                        <Download className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
