@@ -4,6 +4,8 @@
 import { z } from "zod";
 import { doc, setDoc, collection, updateDoc, getDoc, Timestamp, deleteField, where, query, getDocs, limit } from "firebase/firestore"; 
 import { db } from "@/lib/firebase";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { app } from "@/lib/firebase";
 
 const checkinSchema = z.object({
   photoDataUri: z.string(),
@@ -22,9 +24,8 @@ export type CheckinState = {
   success?: boolean;
 }
 
-// Helper function to calculate distance between two lat/lon points in meters (Haversine formula)
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371e3; // Earth's radius in meters
+    const R = 6371e3; 
     const phi1 = lat1 * Math.PI / 180;
     const phi2 = lat2 * Math.PI / 180;
     const deltaPhi = (lat2 - lat1) * Math.PI / 180;
@@ -60,9 +61,8 @@ export async function handleCheckin(
     }
 
     const { photoDataUri, latitude, longitude, userId, userName, userRole, clientTime } = validatedFields.data;
-    const now = new Date(); // Official timestamp from server (UTC)
+    const now = new Date(); 
 
-    // Get attendance settings
     const settingsRef = doc(db, "settings", "attendance");
     const settingsDoc = await getDoc(settingsRef);
     if (!settingsDoc.exists()) {
@@ -70,8 +70,6 @@ export async function handleCheckin(
     }
     
     const settings = settingsDoc.data();
-
-    // Defensively get all required settings with defaults to prevent crashes
     const schoolLatitude = settings.schoolLatitude ?? -6.241169;
     const schoolLongitude = settings.schoolLongitude ?? 107.037800;
     const schoolRadius = settings.schoolRadius ?? 100;
@@ -81,7 +79,6 @@ export async function handleCheckin(
       ? checkInEndValue
       : '09:00';
 
-    // Self-healing: If any core values were missing, write them back to Firestore.
     if (
         settings.schoolLatitude === undefined ||
         settings.schoolLongitude === undefined ||
@@ -362,12 +359,26 @@ export type CreateUserState = {
     error?: string;
 };
 
-export async function createUser(formData: FormData): Promise<CreateUserState> {
-    // This feature is temporarily disabled due to server permission issues.
-    // To add a new user, please do so directly from the Firebase Console.
-    return {
-      error: "Fitur penambahan pengguna dinonaktifkan sementara. Silakan tambahkan pengguna melalui Firebase Console."
-    };
+export async function createUser(data: z.infer<typeof createUserSchema>): Promise<CreateUserState> {
+  const validatedFields = createUserSchema.safeParse(data);
+
+  if (!validatedFields.success) {
+    const errors = validatedFields.error.flatten().fieldErrors;
+    const firstError = Object.values(errors)[0]?.[0] ?? "Data masukan tidak valid.";
+    return { error: firstError };
+  }
+  
+  try {
+    const functions = getFunctions(app);
+    const createUserCallable = httpsCallable(functions, 'createUser');
+    const result = await createUserCallable(validatedFields.data);
+    console.log(result);
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error calling createUser function:", error);
+    const message = error.details?.message || error.message || "Terjadi kesalahan saat membuat pengguna.";
+    return { error: message };
+  }
 }
 
 export type MarkAbsenteesState = {
@@ -382,7 +393,6 @@ export async function markAbsentees(): Promise<MarkAbsenteesState> {
         const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
 
-        // 1. Get all teachers
         const teachersQuery = query(collection(db, "teachers"));
         const teachersSnapshot = await getDocs(teachersQuery);
         const allTeachers = new Map(teachersSnapshot.docs.map(doc => [doc.id, doc.data()]));
@@ -391,7 +401,6 @@ export async function markAbsentees(): Promise<MarkAbsenteesState> {
             return { success: true, message: "Tidak ada data guru yang ditemukan untuk diproses." };
         }
 
-        // 2. Get all attendance records for today
         const attendanceQuery = query(
             collection(db, "photo_attendances"),
             where("checkInTime", ">=", startOfToday),
@@ -400,16 +409,14 @@ export async function markAbsentees(): Promise<MarkAbsenteesState> {
         const attendanceSnapshot = await getDocs(attendanceQuery);
         const presentUserIds = new Set(attendanceSnapshot.docs.map(doc => doc.data().userId));
 
-        // 3. Find teachers who are not in the attendance list
         let absentTeachersMarked = 0;
         for (const [teacherId, teacherData] of allTeachers.entries()) {
             if (!presentUserIds.has(teacherId)) {
-                // This teacher is absent, create a record
                 const absentRecord = {
                     userId: teacherId,
                     name: teacherData.name,
                     role: teacherData.role || 'guru',
-                    checkInTime: new Date(), // Mark as of now
+                    checkInTime: new Date(), 
                     checkInLocation: null,
                     checkInPhotoUrl: null,
                     isFraudulent: false,
@@ -417,11 +424,9 @@ export async function markAbsentees(): Promise<MarkAbsenteesState> {
                     status: "Tidak Hadir",
                 };
 
-                // Use a combination of a static prefix and the user ID to ensure a unique doc ID for today
                 const absentDocId = `absent-${today.toISOString().slice(0, 10)}-${teacherId}`;
                 const attendanceRef = doc(db, "photo_attendances", absentDocId);
 
-                // Use setDoc to avoid creating duplicate absent records if the function is run multiple times
                 await setDoc(attendanceRef, absentRecord);
                 absentTeachersMarked++;
             }

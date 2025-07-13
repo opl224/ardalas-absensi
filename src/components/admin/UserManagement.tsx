@@ -31,7 +31,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { App as CapacitorApp } from '@capacitor/app';
-import { createUser, type CreateUserState } from '@/app/actions';
+import { AddUserDialog } from './AddUserDialog';
 
 interface User {
   id: string;
@@ -99,12 +99,14 @@ export default function UserManagement() {
 
   const handleBackButton = useCallback((e: any) => {
     e.canGoBack = false;
-    if (isDetailOpen) {
+    if (isAddUserOpen) {
+        setIsAddUserOpen(false);
+    } else if (isDetailOpen) {
         setIsDetailOpen(false);
     } else if (isAbsentListOpen) {
         setIsAbsentListOpen(false);
     }
-  }, [isDetailOpen, isAbsentListOpen]);
+  }, [isAddUserOpen, isDetailOpen, isAbsentListOpen]);
   
   useEffect(() => {
     const setupListener = async () => {
@@ -118,15 +120,42 @@ export default function UserManagement() {
     return () => { removeListener() };
   }, [handleBackButton, removeListener]);
 
-  // Effect to fetch ALL users and listen for settings/attendance
   useEffect(() => {
     setLoading(true);
 
+    const usersQuery = query(collection(db, "users"));
+    const unsubUsers = onSnapshot(usersQuery, (snapshot) => {
+        const usersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+        setAllUsers(usersData);
+    });
+    
+    const settingsRef = doc(db, "settings", "attendance");
+    const unsubSettings = onSnapshot(settingsRef, (docSnap) => {
+        setSettings(docSnap.exists() ? docSnap.data() : {});
+    });
+    
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const attendanceQuery = query(collection(db, "photo_attendances"), where("checkInTime", ">=", todayStart));
+    
+    const unsubAttendance = onSnapshot(attendanceQuery, (snapshot) => {
+        const newMap = new Map<string, AttendanceStatus>();
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            newMap.set(data.userId, { status: data.status, isFraudulent: data.isFraudulent });
+        });
+        setAttendanceStatusMap(newMap);
+    });
+
+    // Fetch teachers and admins for combined list
+    const teacherQuery = query(collection(db, "teachers"));
+    const adminQuery = query(collection(db, "admin"));
+
+    const unsubTeachers = onSnapshot(teacherQuery, () => fetchAllUsers());
+    const unsubAdmins = onSnapshot(adminQuery, () => fetchAllUsers());
+    
     const fetchAllUsers = async () => {
         try {
-            const adminQuery = query(collection(db, "admin"), where('role', '==', 'admin'));
-            const teacherQuery = query(collection(db, "teachers"));
-
             const [adminSnapshot, teacherSnapshot] = await Promise.all([
                 getDocs(adminQuery),
                 getDocs(teacherQuery)
@@ -144,41 +173,19 @@ export default function UserManagement() {
     };
     
     fetchAllUsers();
-    
-    const settingsRef = doc(db, "settings", "attendance");
-    const unsubSettings = onSnapshot(settingsRef, (docSnap) => {
-        setSettings(docSnap.exists() ? docSnap.data() : {});
-    }, (error) => {
-        console.error("Error fetching settings: ", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat pengaturan.' });
-    });
-    
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const attendanceQuery = query(collection(db, "photo_attendances"), where("checkInTime", ">=", todayStart));
-    
-    const unsubAttendance = onSnapshot(attendanceQuery, (snapshot) => {
-        const newMap = new Map<string, AttendanceStatus>();
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            newMap.set(data.userId, { status: data.status, isFraudulent: data.isFraudulent });
-        });
-        setAttendanceStatusMap(newMap);
-    }, (error) => {
-        console.error("Error fetching attendance: ", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat data kehadiran.' });
-    });
 
     return () => {
+      unsubUsers();
       unsubSettings();
       unsubAttendance();
+      unsubTeachers();
+      unsubAdmins();
     }
-
   }, [toast]);
   
-  // Effect to combine all data sources into processedUsers and absentUsers
   useEffect(() => {
-    if (!settings) {
+    if (!settings || allUsers.length === 0) {
+        setLoading(allUsers.length === 0);
         return;
     }
     
@@ -197,7 +204,7 @@ export default function UserManagement() {
       } else if (attendanceInfo) {
         status = attendanceInfo.status;
       } else {
-        status = 'Guru';
+        status = 'Guru'; 
       }
       
       return {
@@ -398,9 +405,13 @@ export default function UserManagement() {
                   />
               </div>
               <div className='flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0'>
-                  <Button variant="outline" className="w-full" onClick={() => setIsAbsentListOpen(true)}>
+                  <Button variant="outline" className="w-1/2" onClick={() => setIsAbsentListOpen(true)}>
                       <UserX className="mr-2 h-4 w-4" />
                       Belum Absen
+                  </Button>
+                  <Button className="w-1/2" onClick={() => setIsAddUserOpen(true)}>
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Tambah
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -551,6 +562,7 @@ export default function UserManagement() {
             </ScrollArea>
         </DialogContent>
       </Dialog>
+      <AddUserDialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen} />
     </>
   );
 }
