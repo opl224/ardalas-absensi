@@ -175,10 +175,11 @@ export default function UserManagement() {
   
   // Effect to combine all data sources into processedUsers and absentUsers
   useEffect(() => {
-    if (!settings || allUsers.length === 0) {
-      if (allUsers.length > 0) setLoading(false);
-      return;
+    if (!settings) {
+        return;
     }
+    
+    setLoading(true);
 
     const now = new Date();
     const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
@@ -386,7 +387,7 @@ export default function UserManagement() {
 
         <div className="p-4">
           <div className="flex flex-col sm:flex-row items-center gap-2 mb-4">
-              <div className="relative flex-grow">
+              <div className="relative flex-grow w-full flex items-center gap-2">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input 
                     placeholder="Cari pengguna..." 
@@ -394,33 +395,31 @@ export default function UserManagement() {
                     value={searchTerm}
                     onChange={handleSearchChange}
                   />
-              </div>
-              <div className='flex items-center gap-2 w-full sm:w-auto'>
-                  <Button variant="outline" size="icon" className="w-full sm:w-auto">
+                  <Button variant="outline" size="icon" className="shrink-0">
                       <UserPlus className="h-4 w-4" />
                       <span className="sr-only">Tambah Pengguna</span>
                   </Button>
-                  <div className='flex gap-2 flex-grow'>
-                      <Button variant="outline" className="w-full" onClick={() => setIsAbsentListOpen(true)}>
-                          <UserX className="mr-2 h-4 w-4" />
-                          Belum Absen
+              </div>
+              <div className='flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0'>
+                  <Button variant="outline" className="w-full" onClick={() => setIsAbsentListOpen(true)}>
+                      <UserX className="mr-2 h-4 w-4" />
+                      Belum Absen
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="w-auto px-3">
+                          <Download className="h-4 w-4" />
                       </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" className="w-auto px-3">
-                              <Download className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onSelect={() => handleDownload('pdf')}>
-                                Unduh sebagai PDF
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => handleDownload('csv')}>
-                                Unduh sebagai CSV
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                  </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={() => handleDownload('pdf')}>
+                            Unduh sebagai PDF
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleDownload('csv')}>
+                            Unduh sebagai CSV
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
               </div>
           </div>
 
