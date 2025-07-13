@@ -1,5 +1,6 @@
 
 
+
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -372,7 +373,8 @@ export default function UserManagement() {
   }
 
   const handleUserAdded = () => {
-    setRefreshKey(oldKey => oldKey + 1);
+    // This is no longer needed as the user list updates automatically via onSnapshot
+    // setRefreshKey(oldKey => oldKey + 1);
   };
 
   const hasPrevPage = currentPage > 1;

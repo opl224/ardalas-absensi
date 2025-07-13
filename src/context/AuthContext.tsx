@@ -49,6 +49,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         await signOut(auth);
         setUser(null);
         setUserProfile(null);
+        setLoading(false); // Set loading to false on logout to prevent splash screen
         router.push('/');
     }, [router]);
 
@@ -71,31 +72,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (firebaseUser) {
                 setLoading(true);
                 setUser(firebaseUser);
+                
                 let profileDocRef;
                 let userRole: 'admin' | 'guru' | null = null;
                 let profileUid: string | null = null;
+                
+                // 1. Check for teacher in 'teachers' collection by UID (most common case for existing users)
+                const teacherDocRef = doc(db, 'teachers', firebaseUser.uid);
+                const teacherSnap = await getDoc(teacherDocRef);
 
-                // 1. Check for admin in 'admin' collection by email
-                const adminQuery = query(collection(db, 'admin'), where('email', '==', firebaseUser.email), limit(1));
-                const adminSnapshot = await getDocs(adminQuery);
-
-                if (!adminSnapshot.empty) {
-                    const adminDoc = adminSnapshot.docs[0];
-                    userRole = 'admin';
-                    profileDocRef = doc(db, 'admin', adminDoc.id);
-                    profileUid = adminDoc.id; // Use the actual document ID from firestore
+                if (teacherSnap.exists()) {
+                    userRole = 'guru';
+                    profileDocRef = teacherDocRef;
+                    profileUid = firebaseUser.uid;
                 } else {
-                    // 2. If not admin, check for teacher in 'teachers' collection by UID
-                    const teacherDocRef = doc(db, 'teachers', firebaseUser.uid);
-                    const teacherSnap = await getDoc(teacherDocRef);
-                    if (teacherSnap.exists()) {
-                        userRole = 'guru';
-                        profileDocRef = teacherDocRef;
+                    // 2. If not a teacher, check for admin in 'admin' collection by UID
+                    const adminDocRefByUid = doc(db, 'admin', firebaseUser.uid);
+                    const adminSnapByUid = await getDoc(adminDocRefByUid);
+
+                    if (adminSnapByUid.exists()) {
+                        userRole = 'admin';
+                        profileDocRef = adminDocRefByUid;
                         profileUid = firebaseUser.uid;
+                    } else {
+                         // 3. Fallback for admin: check by email (handles initial admin case)
+                        const adminQuery = query(collection(db, 'admin'), where('email', '==', firebaseUser.email), limit(1));
+                        const adminSnapshot = await getDocs(adminQuery);
+                        if (!adminSnapshot.empty) {
+                            const adminDoc = adminSnapshot.docs[0];
+                            userRole = 'admin';
+                            profileDocRef = doc(db, 'admin', adminDoc.id);
+                            profileUid = adminDoc.id;
+                        }
                     }
                 }
                 
-                // 3. If user exists in a collection, set up listener. Otherwise, log out.
+                // 4. If user exists in a collection, set up listener. Otherwise, log out.
                 if (userRole && profileDocRef && profileUid) {
                     profileListenerUnsubscribe = onSnapshot(profileDocRef, (profileSnap) => {
                         if (profileSnap.exists()) {
@@ -120,7 +132,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 } else {
                     console.error(`User document for user ${firebaseUser.uid} not found in 'admin' or 'teachers'.`);
                     logout("Profil pengguna tidak ditemukan di basis data.");
-                    setLoading(false);
                 }
 
             } else {

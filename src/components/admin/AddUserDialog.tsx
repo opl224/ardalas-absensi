@@ -45,7 +45,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
   } = useForm<CreateUserForm>({
     resolver: zodResolver(createUserSchema),
     defaultValues: {
-      role: 'guru', // Set a default value
+      role: 'guru',
     }
   });
   
@@ -63,8 +63,8 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
                 role: data.role,
             });
 
-            if (result.success) {
-                toast({ title: 'Berhasil', description: 'Pengguna baru berhasil dibuat.' });
+            if (result.success && result.userData) {
+                toast({ title: 'Berhasil', description: `Pengguna '${result.userData.name}' berhasil dibuat.` });
                 onSuccess();
                 handleClose();
             } else {

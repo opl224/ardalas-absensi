@@ -352,12 +352,13 @@ const createUserSchema = z.object({
   uid: z.string().min(1, "UID diperlukan."),
   name: z.string().min(3, "Nama harus memiliki setidaknya 3 karakter."),
   email: z.string().email("Format email tidak valid."),
-  role: z.enum(['admin', 'guru']),
+  role: z.enum(['admin', 'guru'], { required_error: "Peran harus dipilih." }),
 });
 
 export type CreateUserState = {
     success?: boolean;
     error?: string;
+    userData?: z.infer<typeof createUserSchema>;
 };
 
 export async function saveUserToFirestore(data: z.infer<typeof createUserSchema>): Promise<CreateUserState> {
@@ -373,6 +374,8 @@ export async function saveUserToFirestore(data: z.infer<typeof createUserSchema>
 
     try {
         const collectionName = role === 'admin' ? 'admin' : 'teachers';
+        const userDocRef = doc(db, collectionName, uid);
+        
         const userData = {
             name,
             email,
@@ -380,9 +383,9 @@ export async function saveUserToFirestore(data: z.infer<typeof createUserSchema>
             uid,
         };
 
-        await setDoc(doc(db, collectionName, uid), userData, { merge: true });
+        await setDoc(userDocRef, userData, { merge: true });
 
-        return { success: true };
+        return { success: true, userData: validatedFields.data };
 
     } catch (error: any) {
         console.error("Error saving user to Firestore:", error);
