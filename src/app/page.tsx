@@ -10,19 +10,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Checkbox } from '@/components/ui/checkbox';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -30,31 +20,29 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [showDesktopAccessDeniedDialog, setShowDesktopAccessDeniedDialog] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(false);
+  const { userProfile, loading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+  
+  // Redirect if user is already logged in and has a profile
+  useEffect(() => {
+    if (!authLoading && userProfile) {
+        if (userProfile.role === 'admin') {
+            router.push('/admin/dashboard');
+        } else if (userProfile.role === 'guru') {
+            router.push('/teacher/dashboard');
+        }
+    }
+  }, [userProfile, authLoading, router]);
 
   useEffect(() => {
-    const checkDeviceSize = () => {
-      setIsDesktop(window.innerWidth >= 768);
-    };
-    checkDeviceSize();
-    window.addEventListener('resize', checkDeviceSize);
-
     // Load saved credentials from localStorage
     const savedEmail = localStorage.getItem('rememberedEmail');
-    const savedPassword = localStorage.getItem('rememberedPassword');
-    if (savedEmail && savedPassword) {
+    if (savedEmail) {
       setEmail(savedEmail);
-      setPassword(savedPassword);
       setRememberMe(true);
     }
 
-    return () => window.removeEventListener('resize', checkDeviceSize);
-  }, []);
-
-  useEffect(() => {
     const logoutMessage = sessionStorage.getItem('logoutMessage');
     if (logoutMessage) {
       toast({
@@ -76,60 +64,34 @@ export default function LoginPage() {
       // Handle "Remember Me" logic
       if (rememberMe) {
         localStorage.setItem('rememberedEmail', email);
-        localStorage.setItem('rememberedPassword', password);
       } else {
         localStorage.removeItem('rememberedEmail');
-        localStorage.removeItem('rememberedPassword');
       }
 
-      // Check admin collection first
-      const adminDocRef = doc(db, 'admin', user.uid);
-      const adminDoc = await getDoc(adminDocRef);
-
-      if (adminDoc.exists() && adminDoc.data()?.role === 'admin') {
-          const idToken = await user.getIdToken();
-          await fetch('/api/auth/session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ idToken }),
-          });
-          router.push('/admin/dashboard');
-          return; // <-- Explicitly return after handling admin
-      }
-
-      // If not admin, check teachers collection
-      const teacherDocRef = doc(db, 'teachers', user.uid);
-      const teacherDoc = await getDoc(teacherDocRef);
-      if (teacherDoc.exists() && teacherDoc.data()?.role === 'guru') {
-          if (isDesktop) {
-              await signOut(auth);
-              setShowDesktopAccessDeniedDialog(true);
-          } else {
-              const idToken = await user.getIdToken();
-              await fetch('/api/auth/session', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ idToken }),
-              });
-              router.push('/teacher/dashboard');
-          }
-          return; // <-- Explicitly return after handling teacher
-      }
-
-      // If user exists in Auth but not in Firestore collections, or role is wrong
-      await signOut(auth);
-      toast({
-          variant: 'destructive',
-          title: 'Gagal Masuk',
-          description: 'Profil pengguna tidak ditemukan atau peran tidak valid. Silakan hubungi administrator.',
+      // Set session cookie
+      const idToken = await user.getIdToken();
+      await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
       });
       
+      // AuthContext will handle redirection based on the new auth state
+      // No need for explicit redirection here as the useEffect hook will catch it.
+      // We show a temporary success toast.
+       toast({
+        title: 'Login Berhasil',
+        description: 'Mengarahkan ke dasbor Anda...',
+      });
+
 
     } catch (error: any) {
       console.error("Login Error: ", error);
       let description = 'Email atau kata sandi salah.';
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         description = 'Kombinasi email dan kata sandi tidak cocok.';
+      } else if (error.code === 'auth/too-many-requests') {
+        description = 'Terlalu banyak percobaan gagal. Silakan coba lagi nanti.';
       }
       toast({
         variant: 'destructive',
@@ -169,7 +131,7 @@ export default function LoginPage() {
                       required 
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      disabled={loading}
+                      disabled={loading || authLoading}
                     />
                   </div>
                 </div>
@@ -185,9 +147,9 @@ export default function LoginPage() {
                       required 
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      disabled={loading}
+                      disabled={loading || authLoading}
                     />
-                    <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => setShowPassword(!showPassword)} disabled={loading}>
+                    <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => setShowPassword(!showPassword)} disabled={loading || authLoading}>
                       <span className="sr-only">{showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}</span>
                       {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </Button>
@@ -197,34 +159,20 @@ export default function LoginPage() {
                     <Checkbox 
                       id="remember-me" 
                       checked={rememberMe} 
-                      onCheckedChange={() => setTimeout(() => setRememberMe(!rememberMe), 0)}
+                      onCheckedChange={() => setRememberMe(!rememberMe)}
                     />
                     <Label htmlFor="remember-me" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                         Ingatkan Saya
                     </Label>
                 </div>
-                <Button type="submit" className="w-full !mt-6" size="lg" disabled={loading}>
-                  Masuk
+                <Button type="submit" className="w-full !mt-6" size="lg" disabled={loading || authLoading}>
+                  {loading || authLoading ? 'Memeriksa...' : 'Masuk'}
                 </Button>
               </form>
             </CardContent>
           </Card>
         </div>
       </main>
-
-      <AlertDialog open={showDesktopAccessDeniedDialog} onOpenChange={setShowDesktopAccessDeniedDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Akses Ditolak di Perangkat Ini</AlertDialogTitle>
-            <AlertDialogDescription>
-              Untuk keamanan dan validasi lokasi, akun guru hanya dapat diakses melalui perangkat seluler.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setShowDesktopAccessDeniedDialog(false)}>Mengerti</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

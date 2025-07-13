@@ -47,6 +47,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             sessionStorage.removeItem('logoutMessage');
         }
         await signOut(auth);
+        setUser(null);
+        setUserProfile(null);
         router.push('/');
     }, [router]);
 
@@ -67,6 +69,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
 
             if (firebaseUser) {
+                setLoading(true);
                 setUser(firebaseUser);
                 let profileDocRef;
                 let userRole: 'admin' | 'guru' | null = null;
@@ -102,7 +105,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                             };
                             setUserProfile(finalProfileData);
                         } else {
-                            // This can happen if the doc is deleted while user is logged in
                              logout("Sesi Anda tidak valid. Profil tidak ditemukan.");
                         }
                         setLoading(false);
@@ -112,12 +114,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                         setLoading(false);
                     });
                 } else {
-                    // User is authenticated but has no valid profile in Firestore.
-                    // This could be a new user who just signed up but has no profile yet,
-                    // or a user whose profile was deleted. We will not log them out here,
-                    // but the app should handle this state gracefully.
-                    console.warn(`User document for user ${firebaseUser.uid} not found in 'admin' or 'teachers'.`);
-                    setUserProfile(null);
+                    console.error(`User document for user ${firebaseUser.uid} not found in 'admin' or 'teachers'.`);
+                    logout("Profil pengguna tidak ditemukan di basis data.");
                     setLoading(false);
                 }
 
