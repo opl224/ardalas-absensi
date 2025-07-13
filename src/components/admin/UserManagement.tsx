@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useTransition } from 'react';
@@ -259,7 +260,7 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                 </form>
             </div>
             
-            <div className="mt-auto border-t bg-background p-4">
+            <div className="mt-auto border-t bg-background p-4 sticky bottom-0">
                 <div className="flex gap-2 max-w-lg mx-auto">
                     <Button type="button" variant="outline" onClick={onBack} disabled={isPending} className="flex-1">Batal</Button>
                     <Button type="submit" form="edit-user-form" disabled={isPending || !isDirty} className="flex-1">
@@ -762,3 +763,4 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
     </>
   );
 }
+
