@@ -1,6 +1,4 @@
 
-
-
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -9,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, Download, Eye, ChevronLeft, ChevronRight, Briefcase, BookCopy, Phone, Home, VenetianMask, BookMarked, Fingerprint, AlertTriangle, UserX, UserPlus } from 'lucide-react';
+import { Search, Download, Eye, ChevronLeft, ChevronRight, Briefcase, BookCopy, Phone, Home, VenetianMask, BookMarked, Fingerprint, AlertTriangle, UserX, UserPlus, MoreVertical, Trash2, Edit } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -22,6 +20,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { collection, query, where, onSnapshot, DocumentData, getDocs, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -33,6 +32,8 @@ import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { App as CapacitorApp } from '@capacitor/app';
 import { AddUserDialog } from './AddUserDialog';
+import { EditUserDialog } from './EditUserDialog';
+
 
 interface User {
   id: string;
@@ -88,6 +89,8 @@ export default function UserManagement() {
   const [selectedUser, setSelectedUser] = useState<ProcessedUser | null>(null);
   const { toast } = useToast();
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isAbsentListOpen, setIsAbsentListOpen] = useState(false);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [backButtonListener, setBackButtonListener] = useState<PluginListenerHandle | null>(null);
@@ -122,14 +125,12 @@ export default function UserManagement() {
 
   const handleBackButton = useCallback((e: any) => {
     e.canGoBack = false;
-    if (isAddUserOpen) {
-        setIsAddUserOpen(false);
-    } else if (isDetailOpen) {
-        setIsDetailOpen(false);
-    } else if (isAbsentListOpen) {
-        setIsAbsentListOpen(false);
-    }
-  }, [isAddUserOpen, isDetailOpen, isAbsentListOpen]);
+    if (isAddUserOpen) setIsAddUserOpen(false);
+    else if (isEditOpen) setIsEditOpen(false);
+    else if (isDetailOpen) setIsDetailOpen(false);
+    else if (isDeleteOpen) setIsDeleteOpen(false);
+    else if (isAbsentListOpen) setIsAbsentListOpen(false);
+  }, [isAddUserOpen, isEditOpen, isDetailOpen, isDeleteOpen, isAbsentListOpen]);
   
   useEffect(() => {
     const setupListener = async () => {
@@ -358,21 +359,22 @@ export default function UserManagement() {
     }
   };
 
-  const handleOpenDetailDialog = (user: ProcessedUser) => {
+  const openDetailDialog = (user: ProcessedUser) => {
     setSelectedUser(user);
     setIsDetailOpen(true);
   };
-
-  const handleCloseDetailDialog = () => {
-    setIsDetailOpen(false);
-    setSelectedUser(null);
+  
+  const openEditDialog = (user: ProcessedUser) => {
+    setSelectedUser(user);
+    setIsEditOpen(true);
   };
   
-  const handleCloseAbsentDialog = () => {
-    setIsAbsentListOpen(false);
+  const openDeleteDialog = (user: ProcessedUser) => {
+    setSelectedUser(user);
+    setIsDeleteOpen(true);
   }
 
-  const handleUserAdded = () => {
+  const handleUserActionSuccess = () => {
     // This is no longer needed as the user list updates automatically via onSnapshot
     // setRefreshKey(oldKey => oldKey + 1);
   };
@@ -454,11 +456,29 @@ export default function UserManagement() {
                                     )}
                                   </div>
                               </div>
-                              <div className="flex gap-2">
-                                  <Button variant="ghost" size="icon" className="h-9 w-9 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200" onClick={() => handleOpenDetailDialog(user)}>
-                                    <Eye className="h-4 w-4" />
-                                  </Button>
-                              </div>
+                               <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
+                                            <MoreVertical className="h-4 w-4" />
+                                            <span className="sr-only">Opsi</span>
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onSelect={() => openDetailDialog(user)}>
+                                            <Eye className="mr-2 h-4 w-4" />
+                                            <span>Lihat Detail</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => openEditDialog(user)}>
+                                            <Edit className="mr-2 h-4 w-4" />
+                                            <span>Edit</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onSelect={() => openDeleteDialog(user)} className="text-destructive">
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            <span>Hapus</span>
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                           </div>
                       </Card>
                   ))
@@ -483,7 +503,7 @@ export default function UserManagement() {
           )}
         </div>
       </div>
-      <Dialog open={isDetailOpen} onOpenChange={handleCloseDetailDialog}>
+      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <DialogContent className="sm:max-w-md">
             <DialogHeader>
             <DialogTitle>Detail Pengguna</DialogTitle>
@@ -526,7 +546,7 @@ export default function UserManagement() {
             )}
         </DialogContent>
       </Dialog>
-      <Dialog open={isAbsentListOpen} onOpenChange={handleCloseAbsentDialog}>
+      <Dialog open={isAbsentListOpen} onOpenChange={setIsAbsentListOpen}>
         <DialogContent className="sm:max-w-md">
             <DialogHeader>
                 <DialogTitle>Guru yang Belum Absen</DialogTitle>
@@ -556,7 +576,8 @@ export default function UserManagement() {
             </ScrollArea>
         </DialogContent>
       </Dialog>
-      <AddUserDialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen} onSuccess={handleUserAdded} />
+      <AddUserDialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen} onSuccess={handleUserActionSuccess} />
+      {selectedUser && <EditUserDialog key={selectedUser.id} user={selectedUser} open={isEditOpen} onOpenChange={setIsEditOpen} onSuccess={handleUserActionSuccess} />}
     </>
   );
 }

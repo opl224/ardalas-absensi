@@ -115,24 +115,6 @@ export default function TeacherDashboard() {
                     <span>Beranda</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="Kelas Saya">
-                    <BookOpen />
-                    <span>Kelas Saya</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="Siswa">
-                    <GraduationCap />
-                    <span>Siswa</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="Laporan">
-                    <LineChart />
-                    <span>Laporan</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarContent>
           </Sidebar>
