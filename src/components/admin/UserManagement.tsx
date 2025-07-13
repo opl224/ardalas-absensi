@@ -114,7 +114,7 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
             name: user.name || '',
             password: '',
             nip: user.nip || '',
-            gender: user.gender as 'Laki-laki' | 'Perempuan' | undefined,
+            gender: user.gender as 'Laki-laki' | 'Perempuan' | '' | undefined,
             phone: user.phone || '',
             address: user.address || '',
             subject: user.subject || '',
@@ -133,8 +133,8 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
             }
         });
 
-        startTransition(async () => {
-            const result: UpdateUserState = await updateUser(formData);
+        startTransition(true);
+        updateUser(formData).then((result) => {
             if (result.success) {
                 toast({ title: 'Berhasil', description: `Data pengguna '${user.name}' berhasil diperbarui.` });
                 onSuccess();
@@ -142,12 +142,13 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
             } else {
                 toast({ variant: 'destructive', title: 'Gagal', description: result.error });
             }
+            startTransition(false);
         });
     };
 
     return (
-        <div className="flex flex-col h-full">
-            <header className="sticky top-0 z-10 flex items-center gap-4 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex flex-col h-full bg-gray-50 dark:bg-zinc-900">
+             <header className="sticky top-0 z-10 flex items-center gap-4 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8">
                     <ArrowLeft className="h-5 w-5" />
                     <span className="sr-only">Kembali</span>
@@ -158,8 +159,8 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                 </div>
             </header>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="flex-grow overflow-y-auto">
-                <div className="space-y-6 p-4 pb-24">
+            <form onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto pb-24">
+                <div className="space-y-6 p-4">
                     {/* Personal Info */}
                     <div className="space-y-4">
                         <h3 className="font-semibold text-foreground border-b pb-2">Informasi Pribadi</h3>
@@ -234,7 +235,7 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                     </div>
                 </div>
 
-                <div className="fixed bottom-0 left-0 right-0 border-t bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                 <div className="fixed bottom-0 left-0 right-0 border-t bg-background p-4">
                     <div className="max-w-3xl mx-auto flex gap-2">
                         <Button type="button" variant="outline" onClick={onBack} disabled={isPending} className="flex-1">Batal</Button>
                         <Button type="submit" disabled={isPending || !isDirty} className="flex-1">{isPending ? 'Menyimpan...' : 'Simpan Perubahan'}</Button>
