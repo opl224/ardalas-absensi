@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useTransition } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { collection, query, where, onSnapshot, DocumentData, getDocs, doc, deleteDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { Loader } from '../ui/loader';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
@@ -38,6 +38,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { updateUser, type UpdateUserState } from '@/app/actions';
+import { getAuth, updatePassword } from 'firebase/auth';
 
 
 interface User {
@@ -80,7 +81,7 @@ const DetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, lab
 };
 
 // Form schema for Edit
-const updateUserSchema = z.object({
+const updateUserFormSchema = z.object({
   name: z.string().min(3, "Nama harus memiliki setidaknya 3 karakter."),
   password: z.string().optional(),
   nip: z.string().optional(),
@@ -94,14 +95,15 @@ const updateUserSchema = z.object({
   path: ["password"],
 });
 
-type UpdateUserFormValues = z.infer<typeof updateUserSchema>;
+type UpdateUserFormValues = z.infer<typeof updateUserFormSchema>;
 
 
 // The new Edit User Form Component
 function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => void, onSuccess: () => void }) {
     const { toast } = useToast();
-    const [isPending, startTransition] = useState(false);
+    const [isPending, startTransition] = useTransition();
     const [showPassword, setShowPassword] = useState(false);
+    const currentUser = auth.currentUser;
 
     const {
         register,
@@ -109,7 +111,7 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
         control,
         formState: { errors, isDirty },
     } = useForm<UpdateUserFormValues>({
-        resolver: zodResolver(updateUserSchema),
+        resolver: zodResolver(updateUserFormSchema),
         defaultValues: {
             name: user.name || '',
             password: '',
@@ -123,31 +125,56 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
     });
 
     const onSubmit = (data: UpdateUserFormValues) => {
-        const formData = new FormData();
-        formData.append('userId', user.id);
-        formData.append('role', user.role);
+        startTransition(async () => {
+            try {
+                // Update Firestore data
+                const formData = new FormData();
+                formData.append('userId', user.id);
+                formData.append('role', user.role);
+                formData.append('name', data.name);
+                
+                // Add other fields to formData
+                Object.entries(data).forEach(([key, value]) => {
+                    if (key !== 'password' && key !== 'name' && value !== undefined && value !== null) {
+                        formData.append(key, String(value));
+                    }
+                });
 
-        Object.entries(data).forEach(([key, value]) => {
-            if (value !== undefined && value !== null) {
-                formData.append(key, String(value));
-            }
-        });
+                const firestoreResult = await updateUser(formData);
 
-        startTransition(true);
-        updateUser(formData).then((result) => {
-            if (result.success) {
+                if (!firestoreResult.success) {
+                    toast({ variant: 'destructive', title: 'Gagal', description: firestoreResult.error });
+                    return;
+                }
+                
+                // Update password in Auth if provided
+                if (data.password && currentUser) {
+                    if (currentUser.uid !== user.id) {
+                         toast({ variant: 'destructive', title: 'Gagal', description: "Anda hanya dapat mengubah kata sandi Anda sendiri." });
+                         return;
+                    }
+                    await updatePassword(currentUser, data.password);
+                }
+
                 toast({ title: 'Berhasil', description: `Data pengguna '${user.name}' berhasil diperbarui.` });
                 onSuccess();
-                onBack(); // Go back to the list after success
-            } else {
-                toast({ variant: 'destructive', title: 'Gagal', description: result.error });
+                onBack();
+
+            } catch (error: any) {
+                console.error("Error updating user:", error);
+                let description = 'Terjadi kesalahan saat memperbarui pengguna.';
+                if(error.code === 'auth/requires-recent-login') {
+                    description = 'Harap keluar dan masuk kembali untuk mengubah kata sandi Anda.';
+                } else if (error.code === 'auth/weak-password') {
+                    description = 'Kata sandi terlalu lemah.';
+                }
+                toast({ variant: 'destructive', title: 'Gagal', description });
             }
-            startTransition(false);
         });
     };
 
     return (
-        <div className="flex flex-col h-full bg-gray-50 dark:bg-zinc-900">
+        <div className="flex flex-1 flex-col h-full bg-gray-50 dark:bg-zinc-900">
              <header className="sticky top-0 z-10 flex items-center gap-4 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8">
                     <ArrowLeft className="h-5 w-5" />
@@ -160,7 +187,7 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
             </header>
 
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col overflow-hidden">
-                <div className="flex-1 overflow-y-auto p-4">
+                <div className="flex-1 overflow-y-auto p-4 pb-24">
                     <div className="space-y-6">
                         {/* Personal Info */}
                         <div className="space-y-4">
@@ -225,19 +252,20 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                             <div className="space-y-2">
                                 <Label htmlFor="password">Kata Sandi Baru</Label>
                                 <div className="relative">
-                                    <Input id="password" type={showPassword ? 'text' : 'password'} {...register('password')} placeholder="Biarkan kosong jika tidak ingin mengubah" disabled={isPending} className="pr-10" />
+                                    <Input id="password" type={showPassword ? 'text' : 'password'} {...register('password')} placeholder="Biarkan kosong jika tidak ingin mengubah" disabled={isPending || (currentUser?.uid !== user.id)} className="pr-10" />
                                     <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground" onClick={() => setShowPassword(!showPassword)} disabled={isPending}>
                                         <span className="sr-only">Toggle password visibility</span>
                                         {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                                     </Button>
                                 </div>
                                 {errors.password && <p className="text-destructive text-xs">{errors.password.message}</p>}
+                                {currentUser?.uid !== user.id && <p className="text-destructive text-xs mt-1">Hanya admin yang sedang login yang dapat mengubah kata sandinya sendiri.</p>}
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="mt-auto border-t bg-background p-4">
+                <div className="mt-auto border-t bg-background p-4 fixed bottom-0 left-0 right-0">
                     <div className="flex gap-2">
                         <Button type="button" variant="outline" onClick={onBack} disabled={isPending} className="flex-1">Batal</Button>
                         <Button type="submit" disabled={isPending || !isDirty} className="flex-1">{isPending ? 'Menyimpan...' : 'Simpan Perubahan'}</Button>
@@ -740,4 +768,3 @@ export default function UserManagement() {
     </>
   );
 }
-

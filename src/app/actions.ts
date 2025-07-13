@@ -4,9 +4,6 @@
 import { z } from "zod";
 import { doc, setDoc, collection, updateDoc, getDoc, Timestamp, deleteField, where, query, getDocs, limit } from "firebase/firestore"; 
 import { db } from "@/lib/firebase";
-import { getAuth } from "firebase-admin/auth";
-import { credential } from "firebase-admin";
-import { initializeApp, getApps, deleteApp } from "firebase-admin/app";
 
 // This file no longer uses firebase-admin to avoid permission issues.
 // User creation is now handled on the client-side, and this file only saves user data to Firestore.
@@ -461,24 +458,6 @@ export async function markAbsentees(): Promise<MarkAbsenteesState> {
     }
 }
 
-
-const adminCredential = {
-  projectId: process.env.PROJECT_ID!,
-  clientEmail: process.env.CLIENT_EMAIL!,
-  privateKey: process.env.PRIVATE_KEY!.replace(/\\n/g, '\n'),
-}
-
-function getAdminApp() {
-    const appName = "firebase-admin-app-user-update";
-    const existingApp = getApps().find(app => app.name === appName);
-    if (existingApp) {
-        return existingApp;
-    }
-    return initializeApp({
-        credential: credential.cert(adminCredential)
-    }, appName);
-}
-
 const updateUserSchema = z.object({
   userId: z.string().min(1),
   role: z.enum(['Admin', 'Guru']),
@@ -492,7 +471,6 @@ const updateUserSchema = z.object({
   class: z.string().optional(),
   // Admin
   name: z.string().min(3, "Nama harus memiliki setidaknya 3 karakter."),
-  password: z.string().min(6, "Kata sandi baru harus memiliki setidaknya 6 karakter.").optional().or(z.literal('')),
 });
 
 export type UpdateUserState = {
@@ -509,7 +487,7 @@ export async function updateUser(formData: FormData): Promise<UpdateUserState> {
     return { error: "Data masukan tidak valid." };
   }
 
-  const { userId, role, name, password, ...otherData } = validatedFields.data;
+  const { userId, role, name, ...otherData } = validatedFields.data;
 
   try {
     const firestoreData: {[key: string]: any} = { name };
@@ -525,32 +503,11 @@ export async function updateUser(formData: FormData): Promise<UpdateUserState> {
     const collectionName = role === 'Guru' ? 'teachers' : 'admin';
     const userDocRef = doc(db, collectionName, userId);
     await updateDoc(userDocRef, firestoreData);
-
-    // Update Firebase Auth if password is provided
-    if (password) {
-        const adminApp = getAdminApp();
-        const auth = getAuth(adminApp);
-        
-        const updatePayload: { displayName: string; password?: string } = {
-            displayName: name,
-            password: password,
-        };
-
-        await auth.updateUser(userId, updatePayload);
-    }
-
+    
     return { success: true };
   } catch (error: any) {
     console.error("Error updating user:", error);
     let errorMessage = "Terjadi kesalahan saat memperbarui pengguna.";
-    if (error.code === 'auth/user-not-found') {
-        errorMessage = "Pengguna tidak ditemukan di Firebase Authentication.";
-    }
-    // Clean up the temporary app if it was created, even on error
-    const adminApp = getApps().find(app => app.name === "firebase-admin-app-user-update");
-    if (adminApp) {
-        await deleteApp(adminApp);
-    }
     return { error: errorMessage };
   }
 }
