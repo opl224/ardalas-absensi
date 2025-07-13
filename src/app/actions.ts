@@ -320,11 +320,24 @@ export async function updateAttendanceRecord(formData: FormData): Promise<Attend
   
   try {
     const recordRef = doc(db, "photo_attendances", attendanceId);
+    const recordSnap = await getDoc(recordRef);
 
+    if (!recordSnap.exists()) {
+      return { error: "Catatan kehadiran tidak ditemukan." };
+    }
+    const originalData = recordSnap.data();
+    const originalCheckInTime = originalData.checkInTime as Timestamp;
+
+    const newCheckInDate = new Date(checkInTime);
+    
     const updateData: any = {
       status,
-      checkInTime: Timestamp.fromDate(new Date(checkInTime)),
     };
+
+    // Only update checkInTime if it has actually changed to preserve original timestamp precision
+    if (originalCheckInTime.toMillis() !== newCheckInDate.getTime()) {
+      updateData.checkInTime = Timestamp.fromDate(newCheckInDate);
+    }
 
     if (checkOutTime && checkOutTime.length > 0) {
       updateData.checkOutTime = Timestamp.fromDate(new Date(checkOutTime));
