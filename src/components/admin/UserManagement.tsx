@@ -79,6 +79,7 @@ export default function UserManagement() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [refreshKey, setRefreshKey] = useState(0);
   
   const [attendanceStatusMap, setAttendanceStatusMap] = useState<Map<string, AttendanceStatus>>(new Map());
   const [settings, setSettings] = useState<any>(null);
@@ -89,6 +90,27 @@ export default function UserManagement() {
   const [isAbsentListOpen, setIsAbsentListOpen] = useState(false);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [backButtonListener, setBackButtonListener] = useState<PluginListenerHandle | null>(null);
+
+  const fetchAllUsers = useCallback(async () => {
+    try {
+        const adminQuery = query(collection(db, "admin"));
+        const teacherQuery = query(collection(db, "teachers"));
+        
+        const [adminSnapshot, teacherSnapshot] = await Promise.all([
+            getDocs(adminQuery),
+            getDocs(teacherQuery)
+        ]);
+        
+        const adminUsers: User[] = adminSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Admin' } as User));
+        const teacherUsers: User[] = teacherSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Guru' } as User));
+
+        const combined = [...adminUsers, ...teacherUsers];
+        setAllUsers(Array.from(new Map(combined.map(u => [u.id, u])).values()));
+    } catch (error) {
+        console.error("Error fetching all users:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat daftar pengguna.' });
+    }
+  }, [toast]);
 
   const removeListener = useCallback(() => {
     if (backButtonListener) {
@@ -122,12 +144,6 @@ export default function UserManagement() {
 
   useEffect(() => {
     setLoading(true);
-
-    const usersQuery = query(collection(db, "users"));
-    const unsubUsers = onSnapshot(usersQuery, (snapshot) => {
-        const usersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
-        setAllUsers(usersData);
-    });
     
     const settingsRef = doc(db, "settings", "attendance");
     const unsubSettings = onSnapshot(settingsRef, (docSnap) => {
@@ -146,42 +162,14 @@ export default function UserManagement() {
         });
         setAttendanceStatusMap(newMap);
     });
-
-    // Fetch teachers and admins for combined list
-    const teacherQuery = query(collection(db, "teachers"));
-    const adminQuery = query(collection(db, "admin"));
-
-    const unsubTeachers = onSnapshot(teacherQuery, () => fetchAllUsers());
-    const unsubAdmins = onSnapshot(adminQuery, () => fetchAllUsers());
-    
-    const fetchAllUsers = async () => {
-        try {
-            const [adminSnapshot, teacherSnapshot] = await Promise.all([
-                getDocs(adminQuery),
-                getDocs(teacherQuery)
-            ]);
-            
-            const adminUsers: User[] = adminSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Admin' } as User));
-            const teacherUsers: User[] = teacherSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Guru' } as User));
-
-            const combined = [...adminUsers, ...teacherUsers];
-            setAllUsers(Array.from(new Map(combined.map(u => [u.id, u])).values()));
-        } catch (error) {
-            console.error("Error fetching all users:", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat daftar pengguna.' });
-        }
-    };
     
     fetchAllUsers();
 
     return () => {
-      unsubUsers();
       unsubSettings();
       unsubAttendance();
-      unsubTeachers();
-      unsubAdmins();
     }
-  }, [toast]);
+  }, [toast, fetchAllUsers, refreshKey]);
   
   useEffect(() => {
     if (!settings || allUsers.length === 0) {
@@ -383,6 +371,10 @@ export default function UserManagement() {
     setIsAbsentListOpen(false);
   }
 
+  const handleUserAdded = () => {
+    setRefreshKey(oldKey => oldKey + 1);
+  };
+
   const hasPrevPage = currentPage > 1;
   const hasNextPage = currentPage * USERS_PER_PAGE < totalFilteredCount;
 
@@ -562,7 +554,7 @@ export default function UserManagement() {
             </ScrollArea>
         </DialogContent>
       </Dialog>
-      <AddUserDialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen} />
+      <AddUserDialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen} onSuccess={handleUserAdded} />
     </>
   );
 }

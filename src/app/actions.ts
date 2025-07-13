@@ -4,19 +4,9 @@
 import { z } from "zod";
 import { doc, setDoc, collection, updateDoc, getDoc, Timestamp, deleteField, where, query, getDocs, limit } from "firebase/firestore"; 
 import { db } from "@/lib/firebase";
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { app } from "@/lib/firebase";
 
-// Using dynamic import for firebase-admin to ensure it's only loaded on the server.
-async function getAdminApp() {
-  const admin = await import('firebase-admin');
-  if (admin.apps.length > 0) {
-    return admin.app('admin-app');
-  }
-  return admin.initializeApp({
-    // SDK will automatically find credentials in a GCP environment.
-  }, 'admin-app');
-}
+// This file no longer uses firebase-admin to avoid permission issues.
+// User creation is now handled on the client-side, and this file only saves user data to Firestore.
 
 const checkinSchema = z.object({
   photoDataUri: z.string(),
@@ -358,10 +348,12 @@ export async function updateAttendanceRecord(formData: FormData): Promise<Attend
   }
 }
 
+// This action now only saves user data to Firestore, as user creation
+// is handled on the client.
 const createUserSchema = z.object({
+  uid: z.string().min(1, "UID diperlukan."),
   name: z.string().min(3, "Nama harus memiliki setidaknya 3 karakter."),
   email: z.string().email("Format email tidak valid."),
-  password: z.string().min(6, "Kata sandi harus memiliki setidaknya 6 karakter."),
   role: z.enum(['admin', 'guru']),
 });
 
@@ -370,7 +362,7 @@ export type CreateUserState = {
     error?: string;
 };
 
-export async function createUser(data: z.infer<typeof createUserSchema>): Promise<CreateUserState> {
+export async function saveUserToFirestore(data: z.infer<typeof createUserSchema>): Promise<CreateUserState> {
     const validatedFields = createUserSchema.safeParse(data);
 
     if (!validatedFields.success) {
@@ -379,46 +371,24 @@ export async function createUser(data: z.infer<typeof createUserSchema>): Promis
         return { error: firstError };
     }
 
-    const { email, password, name, role } = validatedFields.data;
+    const { uid, email, name, role } = validatedFields.data;
 
     try {
-        const adminApp = await getAdminApp();
-        const auth = adminApp.auth();
-        const firestore = adminApp.firestore();
-
-        // Create the user in Firebase Authentication.
-        const userRecord = await auth.createUser({
-            email,
-            password,
-            displayName: name,
-        });
-
-        // Set a custom claim for the user's role.
-        await auth.setCustomUserClaims(userRecord.uid, { role });
-
-        // Determine the collection and data for Firestore.
         const collectionName = role === 'admin' ? 'admin' : 'teachers';
         const userData = {
             name,
             email,
             role,
-            uid: userRecord.uid,
+            uid,
         };
 
-        // Create a document for the user in the appropriate Firestore collection.
-        await firestore.collection(collectionName).doc(userRecord.uid).set(userData);
+        await setDoc(doc(db, collectionName, uid), userData);
 
         return { success: true };
 
     } catch (error: any) {
-        console.error("Error creating new user:", error);
-        if (error.code === 'auth/email-already-exists') {
-            return { error: 'Alamat email sudah digunakan oleh akun lain.' };
-        }
-        if (error.code === 'permission-denied' || error.code === 'insufficient-permission') {
-            return { error: 'Izin tidak cukup. Pastikan akun layanan Anda memiliki peran "Firebase Admin SDK".' };
-        }
-        return { error: 'Terjadi kesalahan saat membuat pengguna.' };
+        console.error("Error saving user to Firestore:", error);
+        return { error: 'Terjadi kesalahan saat menyimpan data pengguna.' };
     }
 }
 

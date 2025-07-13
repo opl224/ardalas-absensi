@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,9 +10,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { createUser, type CreateUserState } from '@/app/actions';
+import { saveUserToFirestore, type CreateUserState } from '@/app/actions';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Eye, EyeOff } from 'lucide-react';
+import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
+import { app } from '@/lib/firebase';
 
 const createUserSchema = z.object({
   name: z.string().min(3, "Nama harus memiliki setidaknya 3 karakter."),
@@ -26,9 +28,10 @@ type CreateUserForm = z.infer<typeof createUserSchema>;
 interface AddUserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
 }
 
-export function AddUserDialog({ open, onOpenChange }: AddUserDialogProps) {
+export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [showPassword, setShowPassword] = useState(false);
@@ -37,19 +40,44 @@ export function AddUserDialog({ open, onOpenChange }: AddUserDialogProps) {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitSuccessful },
+    formState: { errors },
   } = useForm<CreateUserForm>({
     resolver: zodResolver(createUserSchema),
   });
   
   const onSubmit = (data: CreateUserForm) => {
     startTransition(async () => {
-        const result: CreateUserState = await createUser(data);
-        if (result.success) {
-            toast({ title: 'Berhasil', description: 'Pengguna baru berhasil dibuat.' });
-            handleClose();
-        } else {
-            toast({ variant: 'destructive', title: 'Gagal', description: result.error });
+        try {
+            // Step 1: Create user in Firebase Auth on the client
+            const auth = getAuth(app);
+            const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+            const user = userCredential.user;
+
+            // Step 2: Call server action to save user data to Firestore
+            const result: CreateUserState = await saveUserToFirestore({
+                uid: user.uid,
+                name: data.name,
+                email: data.email,
+                role: data.role,
+            });
+
+            if (result.success) {
+                toast({ title: 'Berhasil', description: 'Pengguna baru berhasil dibuat.' });
+                onSuccess();
+                handleClose();
+            } else {
+                toast({ variant: 'destructive', title: 'Gagal Menyimpan Data', description: result.error });
+            }
+
+        } catch (error: any) {
+            console.error("Error creating user:", error);
+            let description = 'Terjadi kesalahan saat membuat pengguna.';
+            if (error.code === 'auth/email-already-in-use') {
+                description = 'Alamat email ini sudah digunakan oleh akun lain.';
+            } else if (error.code === 'auth/weak-password') {
+                description = 'Kata sandi terlalu lemah. Gunakan setidaknya 6 karakter.';
+            }
+            toast({ variant: 'destructive', title: 'Gagal Membuat Akun', description });
         }
     });
   };
