@@ -33,7 +33,7 @@ interface AttendanceRecord {
     name: string;
     role: string;
     checkInTime: Timestamp;
-    status: 'Hadir' | 'Terlambat' | 'Tidak Hadir';
+    status: 'Hadir' | 'Terlambat' | 'Tidak Hadir' | 'Libur';
     isFraudulent?: boolean;
 }
 
@@ -41,6 +41,7 @@ interface Stats {
     present: number;
     absent: number;
     late: number;
+    offDay: number;
     total: number;
     rate: number;
 }
@@ -61,7 +62,7 @@ const isCheckinTimeOver = (settings: any): boolean => {
 
 export function DashboardHome() {
     const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
-    const [stats, setStats] = useState<Stats>({ present: 0, absent: 0, late: 0, total: 0, rate: 0 });
+    const [stats, setStats] = useState<Stats>({ present: 0, absent: 0, late: 0, offDay: 0, total: 0, rate: 0 });
     const [loading, setLoading] = useState(true);
     const [showSettingsDialog, setShowSettingsDialog] = useState(false);
     const [settings, setSettings] = useState<any | null>(null);
@@ -100,15 +101,15 @@ export function DashboardHome() {
         const now = new Date();
         const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
 
-        if (settings.offDays?.includes(todayStr) && totalGurus > 0) {
-            setStats({ present: 0, absent: totalGurus, late: 0, total: totalGurus, rate: 0 });
+        if (settings.offDays?.includes(todayStr)) {
+            setStats({ present: 0, absent: 0, late: 0, offDay: totalGurus, total: totalGurus, rate: 0 });
             setAttendanceData([]);
             setLoading(false);
             return;
         }
         
         if (totalGurus === 0) {
-            setStats({ present: 0, absent: 0, late: 0, total: 0, rate: 0 });
+            setStats({ present: 0, absent: 0, late: 0, offDay: 0, total: 0, rate: 0 });
             setAttendanceData([]);
             setLoading(false);
             return;
@@ -145,6 +146,7 @@ export function DashboardHome() {
                 present: presentCount,
                 absent: absentCount,
                 late: lateCount,
+                offDay: 0,
                 total: totalGurus,
                 rate: attendanceRate
             });
@@ -175,6 +177,13 @@ export function DashboardHome() {
         });
     }
 
+    const StatCircle = ({ value, label, colorClass, labelColorClass = 'text-muted-foreground' }: { value: number; label: string; colorClass: string; labelColorClass?: string; }) => (
+        <div>
+            <div className={`w-20 h-20 ${colorClass} rounded-full flex items-center justify-center text-3xl font-bold`}>{value}</div>
+            <p className={`mt-2 text-sm font-medium ${labelColorClass}`}>{label}</p>
+        </div>
+    );
+
     return (
         <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
             <Card>
@@ -194,23 +203,20 @@ export function DashboardHome() {
                     ) : (
                         <>
                             <div className="flex justify-around text-center py-4">
-                                <div>
-                                    <div className="w-20 h-20 bg-green-500 text-white rounded-full flex items-center justify-center text-3xl font-bold">{stats.present}</div>
-                                    <p className="mt-2 text-sm font-medium text-muted-foreground">Hadir</p>
-                                </div>
-                                <div>
-                                    <div className="w-20 h-20 bg-red-500 text-white rounded-full flex items-center justify-center text-3xl font-bold">{stats.absent}</div>
-                                    <p className="mt-2 text-sm font-medium text-muted-foreground">Tidak Hadir</p>
-                                </div>
-                                <div>
-                                    <div className="w-20 h-20 bg-yellow-400 text-black rounded-full flex items-center justify-center text-3xl font-bold">{stats.late}</div>
-                                    <p className="mt-2 text-sm font-medium text-muted-foreground">Terlambat</p>
-                                </div>
+                                {stats.offDay > 0 ? (
+                                    <StatCircle value={stats.offDay} label="Libur" colorClass="bg-secondary text-secondary-foreground" />
+                                ) : (
+                                    <>
+                                        <StatCircle value={stats.present} label="Hadir" colorClass="bg-green-500 text-white" />
+                                        <StatCircle value={stats.absent} label="Tidak Hadir" colorClass="bg-red-500 text-white" />
+                                        <StatCircle value={stats.late} label="Terlambat" colorClass="bg-yellow-400 text-black" />
+                                    </>
+                                )}
                             </div>
                             <Separator className="my-4" />
                             <div className="flex justify-between items-center text-sm">
                                 <p className="font-medium text-foreground">Tingkat Kehadiran Guru</p>
-                                <p className="font-bold text-primary text-base">{stats.rate}%</p>
+                                <p className="font-bold text-primary text-base">{stats.offDay > 0 ? '-' : `${stats.rate}%`}</p>
                             </div>
                         </>
                     )}
@@ -236,6 +242,8 @@ export function DashboardHome() {
                         <TableBody>
                             {loading ? (
                                 <TableRow key="loading-row"><TableCell colSpan={4} className="py-8"><div className="flex justify-center"><Loader scale={0.8}/></div></TableCell></TableRow>
+                            ) : stats.offDay > 0 ? (
+                                <TableRow key="off-day-row"><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Hari ini libur.</TableCell></TableRow>
                             ) : attendanceData.length > 0 ? (
                                 attendanceData.map((item) => (
                                     <TableRow key={item.id}>
