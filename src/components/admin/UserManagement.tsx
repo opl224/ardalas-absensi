@@ -159,84 +159,86 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                 </div>
             </header>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto pb-24">
-                <div className="space-y-6 p-4">
-                    {/* Personal Info */}
-                    <div className="space-y-4">
-                        <h3 className="font-semibold text-foreground border-b pb-2">Informasi Pribadi</h3>
-                        {user.role === 'Guru' && (
+            <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4">
+                    <div className="space-y-6">
+                        {/* Personal Info */}
+                        <div className="space-y-4">
+                            <h3 className="font-semibold text-foreground border-b pb-2">Informasi Pribadi</h3>
+                            {user.role === 'Guru' && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="nip">NIP</Label>
+                                    <Input id="nip" {...register('nip')} placeholder="Nomor Induk Pegawai" disabled={isPending} />
+                                </div>
+                            )}
                             <div className="space-y-2">
-                                <Label htmlFor="nip">NIP</Label>
-                                <Input id="nip" {...register('nip')} placeholder="Nomor Induk Pegawai" disabled={isPending} />
+                              <Label htmlFor="gender">Jenis Kelamin</Label>
+                              <Controller
+                                  name="gender"
+                                  control={control}
+                                  render={({ field }) => (
+                                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isPending}>
+                                          <SelectTrigger id="gender">
+                                              <SelectValue placeholder="Pilih jenis kelamin" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                              <SelectItem value="Laki-laki">Laki-laki</SelectItem>
+                                              <SelectItem value="Perempuan">Perempuan</SelectItem>
+                                          </SelectContent>
+                                      </Select>
+                                  )}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="phone">No. Telepon</Label>
+                                <Input id="phone" {...register('phone')} placeholder="Nomor telepon aktif" disabled={isPending} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="address">Alamat</Label>
+                                <Input id="address" {...register('address')} placeholder="Alamat lengkap" disabled={isPending} />
+                            </div>
+                        </div>
+
+                        {/* Academic Info */}
+                        {user.role === 'Guru' && (
+                            <div className="space-y-4">
+                                <h3 className="font-semibold text-foreground border-b pb-2">Informasi Akademik</h3>
+                                <div className="space-y-2">
+                                    <Label htmlFor="subject">Mata Pelajaran</Label>
+                                    <Input id="subject" {...register('subject')} placeholder="Contoh: Matematika" disabled={isPending} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="class">Mengajar Kelas</Label>
+                                    <Input id="class" {...register('class')} placeholder="Contoh: 10A, 11B" disabled={isPending} />
+                                </div>
                             </div>
                         )}
-                        <div className="space-y-2">
-                          <Label htmlFor="gender">Jenis Kelamin</Label>
-                          <Controller
-                              name="gender"
-                              control={control}
-                              render={({ field }) => (
-                                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isPending}>
-                                      <SelectTrigger id="gender">
-                                          <SelectValue placeholder="Pilih jenis kelamin" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                          <SelectItem value="Laki-laki">Laki-laki</SelectItem>
-                                          <SelectItem value="Perempuan">Perempuan</SelectItem>
-                                      </SelectContent>
-                                  </Select>
-                              )}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="phone">No. Telepon</Label>
-                            <Input id="phone" {...register('phone')} placeholder="Nomor telepon aktif" disabled={isPending} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="address">Alamat</Label>
-                            <Input id="address" {...register('address')} placeholder="Alamat lengkap" disabled={isPending} />
-                        </div>
-                    </div>
 
-                    {/* Academic Info */}
-                    {user.role === 'Guru' && (
+                        {/* Admin Info */}
                         <div className="space-y-4">
-                            <h3 className="font-semibold text-foreground border-b pb-2">Informasi Akademik</h3>
+                            <h3 className="font-semibold text-foreground border-b pb-2">Informasi Administrasi</h3>
                             <div className="space-y-2">
-                                <Label htmlFor="subject">Mata Pelajaran</Label>
-                                <Input id="subject" {...register('subject')} placeholder="Contoh: Matematika" disabled={isPending} />
+                                <Label htmlFor="name">Nama Lengkap</Label>
+                                <Input id="name" {...register('name')} placeholder="Nama lengkap pengguna" disabled={isPending} />
+                                {errors.name && <p className="text-destructive text-xs">{errors.name.message}</p>}
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="class">Mengajar Kelas</Label>
-                                <Input id="class" {...register('class')} placeholder="Contoh: 10A, 11B" disabled={isPending} />
+                                <Label htmlFor="password">Kata Sandi Baru</Label>
+                                <div className="relative">
+                                    <Input id="password" type={showPassword ? 'text' : 'password'} {...register('password')} placeholder="Biarkan kosong jika tidak ingin mengubah" disabled={isPending} className="pr-10" />
+                                    <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground" onClick={() => setShowPassword(!showPassword)} disabled={isPending}>
+                                        <span className="sr-only">Toggle password visibility</span>
+                                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                    </Button>
+                                </div>
+                                {errors.password && <p className="text-destructive text-xs">{errors.password.message}</p>}
                             </div>
-                        </div>
-                    )}
-
-                    {/* Admin Info */}
-                    <div className="space-y-4">
-                        <h3 className="font-semibold text-foreground border-b pb-2">Informasi Administrasi</h3>
-                        <div className="space-y-2">
-                            <Label htmlFor="name">Nama Lengkap</Label>
-                            <Input id="name" {...register('name')} placeholder="Nama lengkap pengguna" disabled={isPending} />
-                            {errors.name && <p className="text-destructive text-xs">{errors.name.message}</p>}
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="password">Kata Sandi Baru</Label>
-                            <div className="relative">
-                                <Input id="password" type={showPassword ? 'text' : 'password'} {...register('password')} placeholder="Biarkan kosong jika tidak ingin mengubah" disabled={isPending} className="pr-10" />
-                                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground" onClick={() => setShowPassword(!showPassword)} disabled={isPending}>
-                                    <span className="sr-only">Toggle password visibility</span>
-                                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                                </Button>
-                            </div>
-                            {errors.password && <p className="text-destructive text-xs">{errors.password.message}</p>}
                         </div>
                     </div>
                 </div>
 
-                 <div className="fixed bottom-0 left-0 right-0 border-t bg-background p-4">
-                    <div className="max-w-3xl mx-auto flex gap-2">
+                <div className="mt-auto border-t bg-background p-4">
+                    <div className="flex gap-2">
                         <Button type="button" variant="outline" onClick={onBack} disabled={isPending} className="flex-1">Batal</Button>
                         <Button type="submit" disabled={isPending || !isDirty} className="flex-1">{isPending ? 'Menyimpan...' : 'Simpan Perubahan'}</Button>
                     </div>
@@ -738,3 +740,4 @@ export default function UserManagement() {
     </>
   );
 }
+
