@@ -50,7 +50,7 @@ interface User {
   nip?: string;
   subject?: string;
   class?: string;
-  gender?: string;
+  gender?: 'Laki-laki' | 'Perempuan' | '';
   phone?: string;
   religion?: string;
   address?: string;
@@ -80,7 +80,6 @@ const DetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, lab
     );
 };
 
-// Form schema for Edit
 const updateUserFormSchema = z.object({
   name: z.string().min(3, "Nama harus memiliki setidaknya 3 karakter."),
   password: z.string().optional(),
@@ -98,7 +97,6 @@ const updateUserFormSchema = z.object({
 type UpdateUserFormValues = z.infer<typeof updateUserFormSchema>;
 
 
-// The new Edit User Form Component
 function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => void, onSuccess: () => void }) {
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
@@ -116,7 +114,7 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
             name: user.name || '',
             password: '',
             nip: user.nip || '',
-            gender: user.gender as 'Laki-laki' | 'Perempuan' | '' | undefined,
+            gender: user.gender,
             phone: user.phone || '',
             address: user.address || '',
             subject: user.subject || '',
@@ -156,7 +154,8 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
     };
 
     const isEditingSelf = currentUser?.uid === user.id;
-    const canEditPassword = (currentUser?.role === 'Admin' && user.role === 'Guru') || isEditingSelf;
+    const canEditPasswordForGuru = currentUser?.role === 'Admin' && user.role === 'Guru';
+    const canEditPassword = isEditingSelf || canEditPasswordForGuru;
 
     return (
         <div className="flex flex-col h-full bg-background">
@@ -172,8 +171,7 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
             </header>
             
             <div className="flex-1 overflow-y-auto">
-                <form id="edit-user-form" onSubmit={handleSubmit(onSubmit)} className="p-4 space-y-6 pb-24">
-                    {/* Personal Info */}
+                <form id="edit-user-form" onSubmit={handleSubmit(onSubmit)} className="p-4 space-y-6">
                     <div className="space-y-4">
                         <h3 className="font-semibold text-foreground border-b pb-2">Informasi Pribadi</h3>
                         {user.role === 'Guru' && (
@@ -210,7 +208,6 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                         </div>
                     </div>
 
-                    {/* Academic Info */}
                     {user.role === 'Guru' && (
                         <div className="space-y-4">
                             <h3 className="font-semibold text-foreground border-b pb-2">Informasi Akademik</h3>
@@ -225,7 +222,6 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                         </div>
                     )}
 
-                    {/* Admin Info */}
                     <div className="space-y-4">
                         <h3 className="font-semibold text-foreground border-b pb-2">Informasi Administrasi</h3>
                         <div className="space-y-2">
@@ -256,7 +252,7 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                 </form>
             </div>
             
-            <div className="mt-auto border-t bg-background p-4 sticky bottom-0 left-0 right-0 z-20 md:relative">
+            <div className="mt-auto border-t bg-background p-4">
                 <div className="flex gap-2 max-w-lg mx-auto">
                     <Button type="button" variant="outline" onClick={onBack} disabled={isPending} className="flex-1">Batal</Button>
                     <Button type="submit" form="edit-user-form" disabled={isPending || !isDirty} className="flex-1">
@@ -280,7 +276,7 @@ export default function UserManagement({ setIsEditing }: { setIsEditing?: (isEdi
   const [settings, setSettings] = useState<any>(null);
 
   const [selectedUser, setSelectedUser] = useState<ProcessedUser | null>(null);
-  const [editingUser, setEditingUserInternal] = useState<User | null>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
 
   const { toast } = useToast();
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -289,13 +285,6 @@ export default function UserManagement({ setIsEditing }: { setIsEditing?: (isEdi
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [backButtonListener, setBackButtonListener] = useState<PluginListenerHandle | null>(null);
 
-  // Propagate editing state to parent
-  const setEditingUser = (user: User | null) => {
-    setEditingUserInternal(user);
-    if (setIsEditing) {
-      setIsEditing(!!user);
-    }
-  };
   
   const fetchAllUsers = useCallback(async () => {
     try {
@@ -410,13 +399,6 @@ export default function UserManagement({ setIsEditing }: { setIsEditing?: (isEdi
         if (a.role === 'Admin' && b.role !== 'Admin') return -1;
         if (a.role !== 'Admin' && b.role === 'Admin') return 1;
         return (a.name || '').localeCompare(b.name || '');
-    });
-
-    const notCheckedInUsers = allUsers.filter(user => {
-        if (user.role !== 'Guru' || isOffDay) {
-            return false;
-        }
-        return !attendanceStatusMap.has(user.id);
     });
 
     setProcessedUsers(usersWithStatus);
@@ -588,126 +570,127 @@ export default function UserManagement({ setIsEditing }: { setIsEditing?: (isEdi
   }
 
   return (
-    <>
-      <div className="bg-gray-50 dark:bg-zinc-900 h-full overflow-y-auto">
-        <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <h1 className="text-xl font-bold text-foreground">Manajemen Pengguna</h1>
-        </header>
-
-        <div className="p-4">
-          <div className="flex flex-col sm:flex-row items-center gap-2 mb-4">
-              <div className="relative flex-grow w-full">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input 
-                    placeholder="Cari pengguna..." 
-                    className="pl-10 w-full" 
-                    value={searchTerm}
-                    onChange={handleSearchChange}
-                  />
-              </div>
-              <div className='flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0'>
-                  <Button variant="outline" className="w-1/2 sm:w-auto" onClick={() => setIsAbsentListOpen(true)}>
-                      <UserX className="mr-2 h-4 w-4" />
-                      Belum Absen
-                  </Button>
-                  <Button className="w-1/2 sm:w-auto" onClick={() => setIsAddUserOpen(true)}>
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Tambah
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="w-auto px-3">
-                          <Download className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => handleDownload('pdf')}>
-                            Unduh sebagai PDF
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => handleDownload('csv')}>
-                            Unduh sebagai CSV
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-              </div>
-          </div>
-
-          {loading ? (
-              <div className="flex justify-center items-center h-64">
-                  <Loader scale={1.6} />
-              </div>
-          ) : (
-              <>
-              <div className="space-y-3">
-                  {displayedUsers.length > 0 ? (
-                      displayedUsers.map((user) => (
-                      <Card key={user.id} className="p-3">
-                          <div className="flex items-center gap-4">
-                              <Avatar className="h-12 w-12">
-                                  <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="person portrait" />
-                                  <AvatarFallback>{user.name?.charAt(0)}</AvatarFallback>
-                              </Avatar>
-                              <div className="flex-grow min-w-0">
-                                  <p className="font-semibold text-foreground truncate">{user.name}</p>
-                                  <p className="text-sm text-muted-foreground -mt-1 truncate">{user.email}</p>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    {user.role === 'Admin' ? (
-                                      <div className="glowing-admin-badge">Admin</div>
-                                    ) : (
-                                      <Badge variant={getBadgeVariant(user.status)}>
-                                        {user.isFraudulent && <AlertTriangle className="h-3 w-3 mr-1.5 animate-medium-flash" />}
-                                        {user.status}
-                                      </Badge>
-                                    )}
-                                  </div>
-                              </div>
-                               <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
-                                            <MoreVertical className="h-4 w-4" />
-                                            <span className="sr-only">Opsi</span>
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onSelect={() => openDetailDialog(user)}>
-                                            <Eye className="mr-2 h-4 w-4" />
-                                            <span>Lihat Detail</span>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => openEditDialog(user)}>
-                                            <EditIcon className="mr-2 h-4 w-4" />
-                                            <span>Edit</span>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem onSelect={() => openDeleteDialog(user)} className="text-destructive">
-                                            <Trash2 className="mr-2 h-4 w-4" />
-                                            <span>Hapus</span>
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                          </div>
-                      </Card>
-                  ))
-                  ) : (
-                      <p className="text-center text-muted-foreground py-8">Tidak ada pengguna yang ditemukan.</p>
-                  )}
-              </div>
-              
-              {(hasPrevPage || hasNextPage) && (
-                <div className="flex items-center justify-center space-x-2 mt-6">
-                    <Button variant="outline" onClick={handlePrevPage} disabled={!hasPrevPage}>
-                        <ChevronLeft className="h-4 w-4 mr-1" />
-                        Sebelumnya
+    <div className="bg-gray-50 dark:bg-zinc-900 h-full flex flex-col">
+      <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <h1 className="text-xl font-bold text-foreground">Manajemen Pengguna</h1>
+      </header>
+      
+      <div className="p-4">
+        <div className="flex flex-col sm:flex-row items-center gap-2 mb-4">
+            <div className="relative flex-grow w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input 
+                  placeholder="Cari pengguna..." 
+                  className="pl-10 w-full" 
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                />
+            </div>
+            <div className='flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0'>
+                <Button variant="outline" className="w-1/2 sm:w-auto" onClick={() => setIsAbsentListOpen(true)}>
+                    <UserX className="mr-2 h-4 w-4" />
+                    Belum Absen
+                </Button>
+                <Button className="w-1/2 sm:w-auto" onClick={() => setIsAddUserOpen(true)}>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Tambah
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-auto px-3">
+                        <Download className="h-4 w-4" />
                     </Button>
-                    <Button variant="outline" onClick={handleNextPage} disabled={!hasNextPage}>
-                        Berikutnya
-                        <ChevronRight className="h-4 w-4 ml-1" />
-                    </Button>
-                </div>
-              )}
-              </>
-          )}
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                      <DropdownMenuItem onSelect={() => handleDownload('pdf')}>
+                          Unduh sebagai PDF
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => handleDownload('csv')}>
+                          Unduh sebagai CSV
+                      </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
         </div>
       </div>
+      
+      <div className="flex-1 overflow-y-auto px-4">
+        {loading ? (
+            <div className="flex justify-center items-center h-64">
+                <Loader scale={1.6} />
+            </div>
+        ) : (
+            <>
+            <div className="space-y-3">
+                {displayedUsers.length > 0 ? (
+                    displayedUsers.map((user) => (
+                    <Card key={user.id} className="p-3">
+                        <div className="flex items-center gap-4">
+                            <Avatar className="h-12 w-12">
+                                <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="person portrait" />
+                                <AvatarFallback>{user.name?.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-grow min-w-0">
+                                <p className="font-semibold text-foreground truncate">{user.name}</p>
+                                <p className="text-sm text-muted-foreground -mt-1 truncate">{user.email}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  {user.role === 'Admin' ? (
+                                    <div className="glowing-admin-badge">Admin</div>
+                                  ) : (
+                                    <Badge variant={getBadgeVariant(user.status)}>
+                                      {user.isFraudulent && <AlertTriangle className="h-3 w-3 mr-1.5 animate-medium-flash" />}
+                                      {user.status}
+                                    </Badge>
+                                  )}
+                                </div>
+                            </div>
+                              <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
+                                          <MoreVertical className="h-4 w-4" />
+                                          <span className="sr-only">Opsi</span>
+                                      </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onSelect={() => openDetailDialog(user)}>
+                                          <Eye className="mr-2 h-4 w-4" />
+                                          <span>Lihat Detail</span>
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onSelect={() => openEditDialog(user)}>
+                                          <EditIcon className="mr-2 h-4 w-4" />
+                                          <span>Edit</span>
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onSelect={() => openDeleteDialog(user)} className="text-destructive">
+                                          <Trash2 className="mr-2 h-4 w-4" />
+                                          <span>Hapus</span>
+                                      </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                              </DropdownMenu>
+                        </div>
+                    </Card>
+                ))
+                ) : (
+                    <p className="text-center text-muted-foreground py-8">Tidak ada pengguna yang ditemukan.</p>
+                )}
+            </div>
+            
+            {(hasPrevPage || hasNextPage) && (
+              <div className="flex items-center justify-center space-x-2 mt-6">
+                  <Button variant="outline" onClick={handlePrevPage} disabled={!hasPrevPage}>
+                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      Sebelumnya
+                  </Button>
+                  <Button variant="outline" onClick={handleNextPage} disabled={!hasNextPage}>
+                      Berikutnya
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+              </div>
+            )}
+            </>
+        )}
+      </div>
+
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <DialogContent className="sm:max-w-md">
             <DialogHeader>
@@ -767,6 +750,6 @@ export default function UserManagement({ setIsEditing }: { setIsEditing?: (isEdi
         </DialogContent>
       </Dialog>
       <AddUserDialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen} onSuccess={handleUserActionSuccess} />
-    </>
+    </div>
   );
 }

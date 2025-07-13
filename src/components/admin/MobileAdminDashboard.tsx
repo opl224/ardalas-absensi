@@ -73,7 +73,6 @@ export function MobileAdminDashboard() {
     index: 0,
   });
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
-  const [isEditingUser, setIsEditingUser] = useState(false);
 
 
   const NavLink = ({
@@ -173,14 +172,8 @@ export function MobileAdminDashboard() {
 
   const { showExitDialog, setShowExitDialog, handleConfirmExit } = useAndroidBackHandler({
     currentView: page.view,
-    isSubView: isSubView || isEditingUser,
-    onBack: () => {
-        if (isEditingUser) {
-            setIsEditingUser(false);
-        } else if (page.view === 'privacy') {
-            changeView('profile');
-        }
-    },
+    isSubView,
+    onBack,
     onDialogClose,
     homeViewId: 'home',
     changeView,
@@ -190,10 +183,8 @@ export function MobileAdminDashboard() {
       setActiveView: changeView,
       onBack: onBack,
       setShowSettingsDialog: setShowSettingsDialog,
-      setIsEditing: setIsEditingUser, // Pass this down
   };
 
-  const isEditing = page.view === 'users' && isEditingUser;
 
   return (
     <div className="bg-gray-50 dark:bg-zinc-900 min-h-screen flex flex-col">
@@ -218,8 +209,7 @@ export function MobileAdminDashboard() {
         </AnimatePresence>
       </main>
 
-      {/* Bottom Nav - Hide if a subview is active OR if we are in edit mode */}
-      {!isSubView && !isEditingUser && (
+      {!isSubView && (
         <nav className="fixed bottom-0 left-0 right-0 bg-card border-t p-2 flex justify-around z-10">
           <NavLink index={0} setView={changeView} label="Beranda">
             <Home className="h-6 w-6" />
