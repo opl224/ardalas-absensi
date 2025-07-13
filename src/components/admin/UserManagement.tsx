@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, Download, Eye, ChevronLeft, ChevronRight, Briefcase, BookCopy, Phone, Home, VenetianMask, BookMarked, Fingerprint, AlertTriangle, UserX } from 'lucide-react';
+import { Search, Download, Eye, ChevronLeft, ChevronRight, Briefcase, BookCopy, Phone, Home, VenetianMask, BookMarked, Fingerprint, AlertTriangle, UserX, UserPlus } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -115,7 +115,7 @@ export default function UserManagement() {
     return () => { removeListener() };
   }, [handleBackButton, removeListener]);
 
-  // Effect to fetch ALL users ONCE and listen for settings
+  // Effect to fetch ALL users and listen for settings/attendance
   useEffect(() => {
     setLoading(true);
 
@@ -133,8 +133,7 @@ export default function UserManagement() {
             const teacherUsers: User[] = teacherSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'Guru' } as User));
 
             const combined = [...adminUsers, ...teacherUsers];
-            const uniqueUsers = Array.from(new Map(combined.map(u => [u.id, u])).values());
-            setAllUsers(uniqueUsers.sort((a,b) => (a.name || '').localeCompare(b.name || '')));
+            setAllUsers(Array.from(new Map(combined.map(u => [u.id, u])).values()));
         } catch (error) {
             console.error("Error fetching all users:", error);
             toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat daftar pengguna.' });
@@ -151,17 +150,11 @@ export default function UserManagement() {
         toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat pengaturan.' });
     });
     
-    return () => unsubSettings();
-
-  }, [toast]);
-  
-  // Effect for real-time attendance updates
-  useEffect(() => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const attendanceQuery = query(collection(db, "photo_attendances"), where("checkInTime", ">=", todayStart));
     
-    const unsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
+    const unsubAttendance = onSnapshot(attendanceQuery, (snapshot) => {
         const newMap = new Map<string, AttendanceStatus>();
         snapshot.forEach(doc => {
             const data = doc.data();
@@ -173,9 +166,13 @@ export default function UserManagement() {
         toast({ variant: 'destructive', title: 'Error', description: 'Gagal memuat data kehadiran.' });
     });
 
-    return () => unsubscribe();
-  }, [toast]);
+    return () => {
+      unsubSettings();
+      unsubAttendance();
+    }
 
+  }, [toast]);
+  
   // Effect to combine all data sources into processedUsers and absentUsers
   useEffect(() => {
     if (!settings || allUsers.length === 0) {
@@ -389,36 +386,42 @@ export default function UserManagement() {
 
         <div className="p-4">
           <div className="flex flex-col sm:flex-row items-center gap-2 mb-4">
-            <div className="relative w-full sm:w-2/3">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input 
-                  placeholder="Cari pengguna..." 
-                  className="pl-10 w-full" 
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                />
-            </div>
-            <div className='flex gap-2 w-full sm:w-1/3'>
-                <Button variant="outline" className="w-full" onClick={() => setIsAbsentListOpen(true)}>
-                    <UserX className="mr-2 h-4 w-4" />
-                    Belum Absen
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="w-auto px-3">
-                        <Download className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                      <DropdownMenuItem onSelect={() => handleDownload('pdf')}>
-                          Unduh sebagai PDF
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => handleDownload('csv')}>
-                          Unduh sebagai CSV
-                      </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
+              <div className="relative flex-grow">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input 
+                    placeholder="Cari pengguna..." 
+                    className="pl-10 w-full" 
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                  />
+              </div>
+              <div className='flex items-center gap-2 w-full sm:w-auto'>
+                  <Button variant="outline" size="icon" className="w-full sm:w-auto">
+                      <UserPlus className="h-4 w-4" />
+                      <span className="sr-only">Tambah Pengguna</span>
+                  </Button>
+                  <div className='flex gap-2 flex-grow'>
+                      <Button variant="outline" className="w-full" onClick={() => setIsAbsentListOpen(true)}>
+                          <UserX className="mr-2 h-4 w-4" />
+                          Belum Absen
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" className="w-auto px-3">
+                              <Download className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={() => handleDownload('pdf')}>
+                                Unduh sebagai PDF
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleDownload('csv')}>
+                                Unduh sebagai CSV
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                  </div>
+              </div>
           </div>
 
           {loading ? (
