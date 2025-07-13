@@ -73,7 +73,6 @@ export function MobileAdminDashboard() {
     index: 0,
   });
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
-  // This state will now be managed by the UserManagement component itself
   const [isEditingUser, setIsEditingUser] = useState(false);
 
 
@@ -177,7 +176,7 @@ export function MobileAdminDashboard() {
     isSubView: isSubView || isEditingUser,
     onBack: () => {
         if (isEditingUser) {
-            setIsEditingUser(false); // This will be handled by the child, but as a fallback
+            setIsEditingUser(false);
         } else if (page.view === 'privacy') {
             changeView('profile');
         }
@@ -191,14 +190,10 @@ export function MobileAdminDashboard() {
       setActiveView: changeView,
       onBack: onBack,
       setShowSettingsDialog: setShowSettingsDialog,
+      setIsEditing: setIsEditingUser, // Pass this down
   };
-  
-  if (page.view === 'profile') {
-      props.onBack = onBack;
-  }
-  if (page.view === 'users') {
-      props.setIsEditing = setIsEditingUser;
-  }
+
+  const isEditing = page.view === 'users' && isEditingUser;
 
   return (
     <div className="bg-gray-50 dark:bg-zinc-900 min-h-screen flex flex-col">
@@ -206,14 +201,14 @@ export function MobileAdminDashboard() {
         <AnimatePresence initial={false} custom={page.direction}>
             <motion.div
                 key={page.view}
-                className="absolute w-full h-full" // Removed overflow-y-auto, child will handle it
+                className="absolute w-full h-full"
                 custom={page.direction}
                 variants={variants}
                 initial="enter"
                 animate="center"
                 exit="exit"
                 transition={transition}
-                drag={!isSubView && !isEditingUser ? "x" : false} // Disable drag when editing
+                drag={isSubView ? false : "x"}
                 dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={0.1}
                 onDragEnd={handleDragEnd}

@@ -156,7 +156,7 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
     };
 
     const isEditingSelf = currentUser?.uid === user.id;
-    const canEditPassword = isEditingSelf || (currentUser?.role === 'Admin' && user.role === 'Guru');
+    const canEditPassword = (currentUser?.role === 'Admin' && user.role === 'Guru') || isEditingSelf;
 
     return (
         <div className="flex flex-col h-full bg-background">
@@ -256,8 +256,7 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                 </form>
             </div>
             
-            {/* Fixed bottom action buttons for mobile & desktop */}
-            <div className="mt-auto border-t bg-background p-4 fixed bottom-0 left-0 right-0 z-20 md:relative">
+            <div className="mt-auto border-t bg-background p-4 sticky bottom-0 left-0 right-0 z-20 md:relative">
                 <div className="flex gap-2 max-w-lg mx-auto">
                     <Button type="button" variant="outline" onClick={onBack} disabled={isPending} className="flex-1">Batal</Button>
                     <Button type="submit" form="edit-user-form" disabled={isPending || !isDirty} className="flex-1">
@@ -328,12 +327,14 @@ export default function UserManagement({ setIsEditing }: { setIsEditing?: (isEdi
 
   const handleBackButton = useCallback((e: any) => {
     e.canGoBack = false;
-    if (editingUser) setEditingUser(null);
+    if (editingUser) {
+        setEditingUser(null);
+    }
     else if (isAddUserOpen) setIsAddUserOpen(false);
     else if (isDetailOpen) setIsDetailOpen(false);
     else if (isDeleteOpen) setIsDeleteOpen(false);
     else if (isAbsentListOpen) setIsAbsentListOpen(false);
-  }, [editingUser, isAddUserOpen, isDetailOpen, isDeleteOpen, isAbsentListOpen]);
+  }, [editingUser, isAddUserOpen, isDetailOpen, isDeleteOpen, isAbsentListOpen, setEditingUser]);
   
   useEffect(() => {
     const setupListener = async () => {
