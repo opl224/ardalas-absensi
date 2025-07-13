@@ -4,6 +4,8 @@
 import { z } from "zod";
 import { doc, setDoc, collection, updateDoc, getDoc, Timestamp, deleteField, where, query, getDocs, limit } from "firebase/firestore"; 
 import { db } from "@/lib/firebase";
+import { getAuth, updatePassword as adminUpdatePassword, deleteUser as adminDeleteUser } from "firebase-admin/auth";
+import { getAdminApp } from "@/lib/firebase-admin";
 
 // This file no longer uses firebase-admin to avoid permission issues.
 // User creation is now handled on the client-side, and this file only saves user data to Firestore.
@@ -471,6 +473,7 @@ const updateUserSchema = z.object({
   class: z.string().optional(),
   // Admin
   name: z.string().min(3, "Nama harus memiliki setidaknya 3 karakter."),
+  password: z.string().optional(),
 });
 
 export type UpdateUserState = {
@@ -487,7 +490,7 @@ export async function updateUser(formData: FormData): Promise<UpdateUserState> {
     return { error: "Data masukan tidak valid." };
   }
 
-  const { userId, role, name, ...otherData } = validatedFields.data;
+  const { userId, role, name, password, ...otherData } = validatedFields.data;
 
   try {
     const firestoreData: {[key: string]: any} = { name };
@@ -497,7 +500,12 @@ export async function updateUser(formData: FormData): Promise<UpdateUserState> {
         firestoreData[key] = value;
       }
     }
-
+    
+    // Update password if provided
+    if (password && password.length >= 6) {
+        getAdminApp(); // Ensure admin app is initialized
+        await adminUpdatePassword(getAuth(), userId, password);
+    }
 
     // Update Firestore
     const collectionName = role === 'Guru' ? 'teachers' : 'admin';
@@ -508,6 +516,11 @@ export async function updateUser(formData: FormData): Promise<UpdateUserState> {
   } catch (error: any) {
     console.error("Error updating user:", error);
     let errorMessage = "Terjadi kesalahan saat memperbarui pengguna.";
+    if (error.code === 'auth/user-not-found') {
+        errorMessage = 'Pengguna tidak ditemukan di Firebase Authentication.';
+    } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'Kata sandi terlalu lemah. Gunakan setidaknya 6 karakter.';
+    }
     return { error: errorMessage };
   }
 }

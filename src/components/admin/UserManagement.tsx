@@ -23,7 +23,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { collection, query, where, onSnapshot, DocumentData, getDocs, doc, deleteDoc } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { Loader } from '../ui/loader';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
@@ -38,7 +38,6 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { updateUser, type UpdateUserState } from '@/app/actions';
-import { getAuth, updatePassword } from 'firebase/auth';
 import { useAuth } from '@/hooks/useAuth';
 
 
@@ -104,7 +103,7 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
     const [showPassword, setShowPassword] = useState(false);
-    const { user: currentUser } = useAuth(); // Get the currently logged-in user
+    const { userProfile: currentUser } = useAuth();
 
     const {
         register,
@@ -128,47 +127,37 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
     const onSubmit = (data: UpdateUserFormValues) => {
         startTransition(async () => {
             try {
-                // Update Firestore data
                 const formData = new FormData();
                 formData.append('userId', user.id);
                 formData.append('role', user.role);
-                formData.append('name', data.name);
-                
+
                 Object.entries(data).forEach(([key, value]) => {
-                    if (key !== 'password' && key !== 'name' && value !== undefined && value !== null) {
-                        formData.append(key, String(value));
-                    }
+                  if (value !== undefined && value !== null) {
+                    formData.append(key, String(value));
+                  }
                 });
 
-                const firestoreResult = await updateUser(formData);
+                const result = await updateUser(formData);
 
-                if (!firestoreResult.success) {
-                    toast({ variant: 'destructive', title: 'Gagal', description: firestoreResult.error });
-                    return;
+                if (result.success) {
+                    toast({ title: 'Berhasil', description: `Data pengguna '${user.name}' berhasil diperbarui.` });
+                    onSuccess();
+                    onBack();
+                } else {
+                    toast({ variant: 'destructive', title: 'Gagal', description: result.error });
                 }
-                
-                if (data.password && currentUser && currentUser.uid === user.id) {
-                    await updatePassword(currentUser, data.password);
-                }
-
-                toast({ title: 'Berhasil', description: `Data pengguna '${user.name}' berhasil diperbarui.` });
-                onSuccess();
-                onBack();
 
             } catch (error: any) {
                 console.error("Error updating user:", error);
                 let description = 'Terjadi kesalahan saat memperbarui pengguna.';
-                if(error.code === 'auth/requires-recent-login') {
-                    description = 'Harap keluar dan masuk kembali untuk mengubah kata sandi Anda.';
-                } else if (error.code === 'auth/weak-password') {
-                    description = 'Kata sandi terlalu lemah.';
-                }
                 toast({ variant: 'destructive', title: 'Gagal', description });
             }
         });
     };
 
     const isEditingSelf = currentUser?.uid === user.id;
+    const isEditingOtherAdmin = currentUser?.role === 'Admin' && user.role === 'Admin' && !isEditingSelf;
+    const canEditPassword = isEditingSelf || (currentUser?.role === 'Admin' && user.role === 'Guru');
 
     return (
         <div className="flex flex-col h-full bg-gray-50 dark:bg-zinc-900">
@@ -182,9 +171,8 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                     <p className="text-sm text-muted-foreground truncate">{user.name}</p>
                 </div>
             </header>
-
-            <div className="flex-1 overflow-y-auto">
-                <form onSubmit={handleSubmit(onSubmit)} className="p-4 pb-24 space-y-6">
+            <div className="flex-1 overflow-y-auto pb-24">
+                <form id="edit-user-form" onSubmit={handleSubmit(onSubmit)} className="p-4 space-y-6">
                     {/* Personal Info */}
                     <div className="space-y-4">
                         <h3 className="font-semibold text-foreground border-b pb-2">Informasi Pribadi</h3>
@@ -252,26 +240,25 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                                     id="password" 
                                     type={showPassword ? 'text' : 'password'} 
                                     {...register('password')} 
-                                    placeholder="Biarkan kosong jika tidak ingin mengubah" 
-                                    disabled={isPending || !isEditingSelf} 
+                                    placeholder={canEditPassword ? "Biarkan kosong jika tidak ingin mengubah" : "Tidak dapat mengubah kata sandi"}
+                                    disabled={isPending || !canEditPassword} 
                                     className="pr-10"
                                 />
-                                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground" onClick={() => setShowPassword(!showPassword)} disabled={isPending}>
+                                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground" onClick={() => setShowPassword(!showPassword)} disabled={isPending || !canEditPassword}>
                                     <span className="sr-only">Toggle password visibility</span>
                                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                                 </Button>
                             </div>
                             {errors.password && <p className="text-destructive text-xs">{errors.password.message}</p>}
-                            {!isEditingSelf && <p className="text-muted-foreground text-xs mt-1">Hanya pengguna yang sedang login yang dapat mengubah kata sandinya sendiri.</p>}
+                            {isEditingOtherAdmin && <p className="text-muted-foreground text-xs mt-1">Admin tidak dapat mengubah kata sandi admin lain.</p>}
                         </div>
                     </div>
                 </form>
             </div>
-
-            <div className="mt-auto border-t bg-background p-4 fixed bottom-0 left-0 right-0 z-20">
+            <div className="mt-auto border-t bg-background p-4">
                 <div className="flex gap-2">
                     <Button type="button" variant="outline" onClick={onBack} disabled={isPending} className="flex-1">Batal</Button>
-                    <Button type="button" onClick={handleSubmit(onSubmit)} disabled={isPending || !isDirty} className="flex-1">
+                    <Button type="submit" form="edit-user-form" disabled={isPending || !isDirty} className="flex-1">
                         {isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
                     </Button>
                 </div>
