@@ -4,7 +4,7 @@
 import { z } from "zod";
 import { doc, setDoc, collection, updateDoc, getDoc, Timestamp, deleteField, where, query, getDocs, limit } from "firebase/firestore"; 
 import { db } from "@/lib/firebase";
-import { getApp, getApps, initializeApp, type App } from 'firebase-admin/app';
+import { credential as adminCredential, getApp, getApps, initializeApp, type App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 
@@ -379,26 +379,26 @@ export async function createUser(formData: FormData): Promise<CreateUserState> {
     
     // This function encapsulates the Firebase Admin SDK logic
     const getAdminApp = (): App => {
-        const serviceAccount = {
-            projectId: process.env.FIREBASE_PROJECT_ID,
-            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-            privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-        };
+        const projectId = process.env.FIREBASE_PROJECT_ID;
+        const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+        const privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
-        if (!serviceAccount.privateKey) {
-             throw new Error("Kunci privat Firebase Admin (FIREBASE_PRIVATE_KEY) tidak diatur. Fitur ini dinonaktifkan hingga kredensial server dikonfigurasi dengan benar.");
+        if (!projectId || !clientEmail || !privateKey) {
+             throw new Error("Variabel lingkungan Firebase Admin (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) tidak diatur atau tidak lengkap. Fitur ini dinonaktifkan hingga kredensial server dikonfigurasi dengan benar.");
         }
         
         if (getApps().some(app => app.name === 'firebase-admin')) {
             return getApp('firebase-admin');
         }
 
+        const cert = {
+            projectId,
+            clientEmail,
+            privateKey: privateKey.replace(/\\n/g, '\n'),
+        };
+
         return initializeApp({
-            credential: {
-                projectId: serviceAccount.projectId!,
-                clientEmail: serviceAccount.clientEmail!,
-                privateKey: serviceAccount.privateKey,
-            }
+            credential: adminCredential.cert(cert)
         }, 'firebase-admin');
     }
 
@@ -505,6 +505,8 @@ export async function markAbsentees(): Promise<MarkAbsenteesState> {
     } catch (e) {
         console.error("Error marking absentees: ", e);
         const errorMessage = e instanceof Error ? e.message : "Terjadi kesalahan yang tidak terduga.";
-        return { error: `Kesalahan server: ${errorMessage}` };
+        return { error: `Kesalahan server: ${errorMessage}.` };
     }
 }
+
+    
