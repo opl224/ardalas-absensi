@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { updateUser, type UpdateUserState } from '@/app/actions';
 import { Eye, EyeOff } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 interface User {
   id: string;
@@ -32,7 +33,7 @@ const updateUserSchema = z.object({
   name: z.string().min(3, "Nama harus memiliki setidaknya 3 karakter."),
   password: z.string().optional(),
   nip: z.string().optional(),
-  gender: z.string().optional(),
+  gender: z.enum(['Laki-laki', 'Perempuan']).optional(),
   phone: z.string().optional(),
   address: z.string().optional(),
   subject: z.string().optional(),
@@ -61,6 +62,7 @@ export function EditUserDialog({ user, open, onOpenChange, onSuccess }: EditUser
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors, isDirty },
   } = useForm<UpdateUserForm>({
     resolver: zodResolver(updateUserSchema),
@@ -68,7 +70,7 @@ export function EditUserDialog({ user, open, onOpenChange, onSuccess }: EditUser
       name: user.name || '',
       password: '',
       nip: user.nip || '',
-      gender: user.gender || '',
+      gender: user.gender as 'Laki-laki' | 'Perempuan' | undefined,
       phone: user.phone || '',
       address: user.address || '',
       subject: user.subject || '',
@@ -121,76 +123,90 @@ export function EditUserDialog({ user, open, onOpenChange, onSuccess }: EditUser
             Ubah detail untuk pengguna ini. Hanya isi bidang yang ingin Anda ubah.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <ScrollArea className="max-h-[60vh] -mx-6 px-6">
-            <div className="space-y-4 py-4">
-                {/* Informasi Pribadi */}
-                <h3 className="font-semibold text-foreground">Informasi Pribadi</h3>
-                {user.role === 'Guru' && (
-                    <div className="space-y-2">
-                        <Label htmlFor="nip">NIP</Label>
-                        <Input id="nip" {...register('nip')} placeholder="Nomor Induk Pegawai" disabled={isPending} />
-                    </div>
-                )}
-                <div className="space-y-2">
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <ScrollArea className="max-h-[60vh] -mx-6 px-6">
+              <div className="space-y-4 py-4">
+                  {/* Informasi Pribadi */}
+                  <h3 className="font-semibold text-foreground">Informasi Pribadi</h3>
+                  {user.role === 'Guru' && (
+                      <div className="space-y-2">
+                          <Label htmlFor="nip">NIP</Label>
+                          <Input id="nip" {...register('nip')} placeholder="Nomor Induk Pegawai" disabled={isPending} />
+                      </div>
+                  )}
+                  <div className="space-y-2">
                     <Label htmlFor="gender">Jenis Kelamin</Label>
-                    <Input id="gender" {...register('gender')} placeholder="Laki-laki / Perempuan" disabled={isPending} />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="phone">No. Telepon</Label>
-                    <Input id="phone" {...register('phone')} placeholder="Nomor telepon aktif" disabled={isPending} />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="address">Alamat</Label>
-                    <Input id="address" {...register('address')} placeholder="Alamat lengkap" disabled={isPending} />
-                </div>
-                
-                <Separator />
+                    <Controller
+                        name="gender"
+                        control={control}
+                        render={({ field }) => (
+                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isPending}>
+                                <SelectTrigger id="gender">
+                                    <SelectValue placeholder="Pilih jenis kelamin" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Laki-laki">Laki-laki</SelectItem>
+                                    <SelectItem value="Perempuan">Perempuan</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        )}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                      <Label htmlFor="phone">No. Telepon</Label>
+                      <Input id="phone" {...register('phone')} placeholder="Nomor telepon aktif" disabled={isPending} />
+                  </div>
+                  <div className="space-y-2">
+                      <Label htmlFor="address">Alamat</Label>
+                      <Input id="address" {...register('address')} placeholder="Alamat lengkap" disabled={isPending} />
+                  </div>
+                  
+                  <Separator />
 
-                {/* Informasi Akademik */}
-                {user.role === 'Guru' && (
-                    <>
-                        <h3 className="font-semibold text-foreground">Informasi Akademik</h3>
-                        <div className="space-y-2">
-                            <Label htmlFor="subject">Mata Pelajaran</Label>
-                            <Input id="subject" {...register('subject')} placeholder="Contoh: Matematika" disabled={isPending} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="class">Mengajar Kelas</Label>
-                            <Input id="class" {...register('class')} placeholder="Contoh: 10A, 11B" disabled={isPending} />
-                        </div>
-                        <Separator />
-                    </>
-                )}
-                
-                {/* Informasi Administrasi */}
-                <h3 className="font-semibold text-foreground">Informasi Administrasi</h3>
-                <div className="space-y-2">
-                    <Label htmlFor="name">Nama Lengkap</Label>
-                    <Input id="name" {...register('name')} placeholder="Nama lengkap pengguna" disabled={isPending} />
-                    {errors.name && <p className="text-destructive text-xs">{errors.name.message}</p>}
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="password">Kata Sandi Baru</Label>
-                    <div className="relative">
-                        <Input
-                            id="password"
-                            type={showPassword ? 'text' : 'password'}
-                            {...register('password')}
-                            placeholder="Biarkan kosong jika tidak ingin mengubah"
-                            disabled={isPending}
-                            className="pr-10"
-                        />
-                        <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground" onClick={() => setShowPassword(!showPassword)} disabled={isPending}>
-                            <span className="sr-only">Toggle password visibility</span>
-                            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                        </Button>
-                    </div>
-                    {errors.password && <p className="text-destructive text-xs">{errors.password.message}</p>}
-                </div>
-            </div>
-            </ScrollArea>
-          <DialogFooter className="pt-4 border-t">
+                  {/* Informasi Akademik */}
+                  {user.role === 'Guru' && (
+                      <>
+                          <h3 className="font-semibold text-foreground">Informasi Akademik</h3>
+                          <div className="space-y-2">
+                              <Label htmlFor="subject">Mata Pelajaran</Label>
+                              <Input id="subject" {...register('subject')} placeholder="Contoh: Matematika" disabled={isPending} />
+                          </div>
+                          <div className="space-y-2">
+                              <Label htmlFor="class">Mengajar Kelas</Label>
+                              <Input id="class" {...register('class')} placeholder="Contoh: 10A, 11B" disabled={isPending} />
+                          </div>
+                          <Separator />
+                      </>
+                  )}
+                  
+                  {/* Informasi Administrasi */}
+                  <h3 className="font-semibold text-foreground">Informasi Administrasi</h3>
+                  <div className="space-y-2">
+                      <Label htmlFor="name">Nama Lengkap</Label>
+                      <Input id="name" {...register('name')} placeholder="Nama lengkap pengguna" disabled={isPending} />
+                      {errors.name && <p className="text-destructive text-xs">{errors.name.message}</p>}
+                  </div>
+                  <div className="space-y-2">
+                      <Label htmlFor="password">Kata Sandi Baru</Label>
+                      <div className="relative">
+                          <Input
+                              id="password"
+                              type={showPassword ? 'text' : 'password'}
+                              {...register('password')}
+                              placeholder="Biarkan kosong jika tidak ingin mengubah"
+                              disabled={isPending}
+                              className="pr-10"
+                          />
+                          <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground" onClick={() => setShowPassword(!showPassword)} disabled={isPending}>
+                              <span className="sr-only">Toggle password visibility</span>
+                              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                          </Button>
+                      </div>
+                      {errors.password && <p className="text-destructive text-xs">{errors.password.message}</p>}
+                  </div>
+              </div>
+          </ScrollArea>
+          <DialogFooter className="pt-4 border-t mt-4">
             <Button type="button" variant="outline" onClick={handleClose} disabled={isPending}>Batal</Button>
             <Button type="submit" disabled={isPending || !isDirty}>
               {isPending ? 'Menyimpan...' : 'Simpan Perubahan'}

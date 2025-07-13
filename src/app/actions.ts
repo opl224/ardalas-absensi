@@ -484,7 +484,7 @@ const updateUserSchema = z.object({
   role: z.enum(['Admin', 'Guru']),
   // Personal
   nip: z.string().optional(),
-  gender: z.string().optional(),
+  gender: z.enum(['Laki-laki', 'Perempuan', '']).optional(),
   phone: z.string().optional(),
   address: z.string().optional(),
   // Academic
@@ -512,7 +512,14 @@ export async function updateUser(formData: FormData): Promise<UpdateUserState> {
   const { userId, role, name, password, ...otherData } = validatedFields.data;
 
   try {
-    const firestoreData = { name, ...otherData };
+    const firestoreData: {[key: string]: any} = { name };
+    // Filter out empty strings from otherData so they don't overwrite existing fields with blanks
+    for (const [key, value] of Object.entries(otherData)) {
+      if (value !== '' && value !== undefined) {
+        firestoreData[key] = value;
+      }
+    }
+
 
     // Update Firestore
     const collectionName = role === 'Guru' ? 'teachers' : 'admin';
@@ -530,10 +537,6 @@ export async function updateUser(formData: FormData): Promise<UpdateUserState> {
         };
 
         await auth.updateUser(userId, updatePayload);
-        // Clean up the temporary app if it was created
-        if (adminApp.name === "firebase-admin-app-user-update") {
-            await deleteApp(adminApp);
-        }
     }
 
     return { success: true };
@@ -542,6 +545,11 @@ export async function updateUser(formData: FormData): Promise<UpdateUserState> {
     let errorMessage = "Terjadi kesalahan saat memperbarui pengguna.";
     if (error.code === 'auth/user-not-found') {
         errorMessage = "Pengguna tidak ditemukan di Firebase Authentication.";
+    }
+    // Clean up the temporary app if it was created, even on error
+    const adminApp = getApps().find(app => app.name === "firebase-admin-app-user-update");
+    if (adminApp) {
+        await deleteApp(adminApp);
     }
     return { error: errorMessage };
   }
