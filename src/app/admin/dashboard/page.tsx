@@ -46,13 +46,15 @@ const breadcrumbTitles: Record<ViewID, string> = {
 export default function AdminDashboard() {
   const { userProfile } = useAuth();
   const [activeView, setActiveView] = useState<ViewID>('home');
+  // State to satisfy the prop requirement for UserManagement on desktop, though it won't be used visually here.
+  const [isEditingUser, setIsEditingUser] = useState(false);
 
   if (!userProfile) return <CenteredLoader />;
   
   const renderView = () => {
     switch (activeView) {
       case 'users':
-        return <UserManagement />;
+        return <UserManagement setIsEditingUser={setIsEditingUser} />;
       case 'reports':
         return <Reports />;
       case 'attendance':

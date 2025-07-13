@@ -181,7 +181,7 @@ export function MobileAdminDashboard() {
       setActiveView: changeView,
       onBack: onBack,
       setShowSettingsDialog: setShowSettingsDialog,
-      setIsEditingUser: setIsEditingUser,
+      setIsEditingUser: setIsEditingUser, // Pass this to all components that might need it.
   };
 
 
