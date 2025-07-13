@@ -177,44 +177,8 @@ export default function Attendance() {
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
-    const [refreshKey, setRefreshKey] = useState(0);
-
-    const [backButtonListener, setBackButtonListener] = useState<PluginListenerHandle | null>(null);
-
-    const removeListener = useCallback(() => {
-        if (backButtonListener) {
-            backButtonListener.remove();
-            setBackButtonListener(null);
-        }
-    }, [backButtonListener]);
-
-    const handleBackButton = useCallback((e: any) => {
-        e.canGoBack = false;
-        if (isViewOpen) setIsViewOpen(false);
-        else if (isDeleteOpen) setIsDeleteOpen(false);
-        else if (isEditOpen) setIsEditOpen(false);
-    }, [isViewOpen, isDeleteOpen, isEditOpen]);
     
-    useEffect(() => {
-        const setupListener = async () => {
-            if (Capacitor.isNativePlatform()) {
-                if (backButtonListener) await backButtonListener.remove();
-                const listener = await CapacitorApp.addListener('backButton', handleBackButton);
-                setBackButtonListener(listener);
-            }
-        };
-        setupListener();
-        return () => { removeListener() };
-    }, [handleBackButton, removeListener]);
-
-    const handleEditSuccess = () => {
-        setStatusFilter('Semua Kehadiran');
-        setCurrentPage(1);
-        setLastVisible(null);
-        setFirstVisible(null);
-        setPageHistory([null]);
-        setRefreshKey(k => k + 1);
-    }
+    const [backButtonListener, setBackButtonListener] = useState<PluginListenerHandle | null>(null);
 
     const fetchAttendanceData = useCallback(async (pageDirection: 'next' | 'prev' | 'first') => {
         if (!date) return;
@@ -278,11 +242,47 @@ export default function Attendance() {
         }
     }, [date, statusFilter, lastVisible, firstVisible, currentPage, pageHistory, toast]);
 
+    const handleEditSuccess = useCallback(() => {
+        setStatusFilter('Semua Kehadiran');
+        setCurrentPage(1);
+        setLastVisible(null);
+        setFirstVisible(null);
+        setPageHistory([null]);
+        // Directly call fetch after resetting state
+        fetchAttendanceData('first');
+    }, [fetchAttendanceData]);
+
+    const removeListener = useCallback(() => {
+        if (backButtonListener) {
+            backButtonListener.remove();
+            setBackButtonListener(null);
+        }
+    }, [backButtonListener]);
+
+    const handleBackButton = useCallback((e: any) => {
+        e.canGoBack = false;
+        if (isViewOpen) setIsViewOpen(false);
+        else if (isDeleteOpen) setIsDeleteOpen(false);
+        else if (isEditOpen) setIsEditOpen(false);
+    }, [isViewOpen, isDeleteOpen, isEditOpen]);
+    
+    useEffect(() => {
+        const setupListener = async () => {
+            if (Capacitor.isNativePlatform()) {
+                if (backButtonListener) await backButtonListener.remove();
+                const listener = await CapacitorApp.addListener('backButton', handleBackButton);
+                setBackButtonListener(listener);
+            }
+        };
+        setupListener();
+        return () => { removeListener() };
+    }, [handleBackButton, removeListener]);
+
     useEffect(() => {
         fetchAttendanceData('first');
-    // The refreshKey dependency ensures this effect re-runs when we want to force a refresh.
+    // We only want this to run when the date or filter changes, not on every re-render of fetchAttendanceData
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [date, statusFilter, refreshKey]);
+    }, [date, statusFilter]);
 
     const handleNextPage = () => {
         if (!lastVisible) return;
@@ -411,6 +411,7 @@ export default function Attendance() {
                     title: "Berhasil",
                     description: "Catatan kehadiran telah dihapus.",
                 });
+                // Remove the item from state to update UI immediately
                 setAttendanceData(prevData => prevData.filter(record => record.id !== id));
             } else {
                  toast({
@@ -420,7 +421,7 @@ export default function Attendance() {
                 });
             }
             setIsDeleteOpen(false);
-            setSelectedRecordId(null);
+            setSelectedRecordId(null); // Clear selected ID after operation
         });
     };
     
