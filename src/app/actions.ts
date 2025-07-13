@@ -1,4 +1,5 @@
 
+'use server';
 
 import { z } from "zod";
 import { doc, setDoc, collection, updateDoc, getDoc, Timestamp, deleteField } from "firebase/firestore"; 
@@ -289,7 +290,7 @@ export async function updateAvatar(formData: FormData): Promise<AvatarUpdateStat
         if (userRole === 'guru') {
             collectionName = 'teachers';
         } else if (userRole === 'admin') {
-            collectionName = 'users';
+            collectionName = 'admin';
         } else {
              return { error: 'Peran pengguna tidak valid.' };
         }
@@ -381,29 +382,6 @@ export type CreateUserState = {
     error?: string;
 };
 
-function getAdminApp() {
-    if (getApps().length > 0 && getApps().some(app => app.name === 'firebase-admin')) {
-        return getApp('firebase-admin');
-    }
-    
-    const projectId = process.env.FIREBASE_PROJECT_ID;
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY;
-
-    if (!projectId || !clientEmail || !privateKey) {
-        throw new Error("Variabel lingkungan Firebase Admin (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) tidak diatur.");
-    }
-
-    return initializeApp({
-        credential: {
-            projectId,
-            clientEmail,
-            privateKey: privateKey.replace(/\\n/g, '\n'),
-        },
-        databaseURL: `https://${projectId}.firebaseio.com`,
-    }, 'firebase-admin');
-}
-
 export async function createUser(formData: FormData): Promise<CreateUserState> {
     const validatedFields = createUserSchema.safeParse(Object.fromEntries(formData));
 
@@ -416,6 +394,29 @@ export async function createUser(formData: FormData): Promise<CreateUserState> {
     const { name, email, password, role } = validatedFields.data;
 
     try {
+        const getAdminApp = () => {
+            if (getApps().length > 0 && getApps().some(app => app.name === 'firebase-admin')) {
+                return getApp('firebase-admin');
+            }
+            
+            const projectId = process.env.FIREBASE_PROJECT_ID;
+            const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+            const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+        
+            if (!projectId || !clientEmail || !privateKey) {
+                throw new Error("Variabel lingkungan Firebase Admin (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) tidak diatur.");
+            }
+        
+            return initializeApp({
+                credential: {
+                    projectId,
+                    clientEmail,
+                    privateKey: privateKey.replace(/\\n/g, '\n'),
+                },
+                databaseURL: `https://${projectId}.firebaseio.com`,
+            }, 'firebase-admin');
+        }
+
         const adminApp = getAdminApp();
         const auth = getAuth(adminApp);
         const firestore = getFirestore(adminApp);
