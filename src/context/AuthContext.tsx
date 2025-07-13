@@ -67,44 +67,57 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
 
             if (firebaseUser) {
-                // First, try to find user in 'users' (admins)
-                let userDocRef = doc(db, 'users', firebaseUser.uid);
-                let userSnap = await getDoc(userDocRef);
-                let userData = userSnap.data();
-                let userRole = userData?.role;
-                let profileDocRef = userDocRef;
+                setUser(firebaseUser);
+                let profileDocRef;
+                let userRole: 'admin' | 'guru' | null = null;
 
-                // If not in 'users', check 'teachers'
-                if (!userSnap.exists()) {
-                    profileDocRef = doc(db, 'teachers', firebaseUser.uid);
-                    userSnap = await getDoc(profileDocRef);
-                    if (userSnap.exists()) {
-                       // Teacher specific data + base data from auth
-                       userData = { ...userSnap.data(), email: firebaseUser.email, name: userSnap.data()?.name || firebaseUser.displayName };
-                       userRole = 'guru';
-                    } else {
-                       console.error(`User document for user ${firebaseUser.uid} not found.`);
-                       logout("Profil pengguna tidak ditemukan.");
-                       return;
+                // 1. Check for admin in 'users' collection
+                const adminDocRef = doc(db, 'users', firebaseUser.uid);
+                const adminSnap = await getDoc(adminDocRef);
+
+                if (adminSnap.exists() && adminSnap.data()?.role === 'admin') {
+                    userRole = 'admin';
+                    profileDocRef = adminDocRef;
+                } else {
+                    // 2. If not admin, check for teacher in 'teachers' collection
+                    const teacherDocRef = doc(db, 'teachers', firebaseUser.uid);
+                    const teacherSnap = await getDoc(teacherDocRef);
+                    if (teacherSnap.exists()) {
+                        userRole = 'guru';
+                        profileDocRef = teacherDocRef;
                     }
                 }
-
-                setUser(firebaseUser);
                 
-                profileListenerUnsubscribe = onSnapshot(profileDocRef, (profileSnap) => {
-                    const profileData = profileSnap.exists() ? profileSnap.data() : {};
-                    const finalProfileData = {
-                        uid: firebaseUser.uid,
-                        email: firebaseUser.email,
-                        ...profileData, // Contains name, avatar, etc.
-                        role: userRole,
-                    };
-                    setUserProfile(finalProfileData as UserProfile);
+                // 3. If user exists in a collection, set up listener. Otherwise, log out.
+                if (userRole && profileDocRef) {
+                    profileListenerUnsubscribe = onSnapshot(profileDocRef, (profileSnap) => {
+                        if (profileSnap.exists()) {
+                            const profileData = profileSnap.data();
+                            const finalProfileData: UserProfile = {
+                                uid: firebaseUser.uid,
+                                email: firebaseUser.email || profileData.email,
+                                name: profileData.name || firebaseUser.displayName || 'Pengguna',
+                                role: userRole,
+                                ...profileData,
+                            };
+                            setUserProfile(finalProfileData);
+                        } else {
+                            // This can happen if the doc is deleted while user is logged in
+                             logout("Sesi Anda tidak valid. Profil tidak ditemukan.");
+                        }
+                        setLoading(false);
+                    }, (error) => {
+                        console.error("Error listening to user profile:", error);
+                        logout("Gagal memuat profil pengguna.");
+                        setLoading(false);
+                    });
+                } else {
+                    // User is authenticated but has no valid profile in Firestore.
+                    console.error(`User document for user ${firebaseUser.uid} not found in 'users' or 'teachers'.`);
+                    logout("Profil pengguna tidak ditemukan di basis data.");
                     setLoading(false);
-                }, (error) => {
-                    console.error("Error listening to user profile:", error);
-                    logout("Gagal memuat profil pengguna.");
-                });
+                }
+
             } else {
                 setUser(null);
                 setUserProfile(null);
