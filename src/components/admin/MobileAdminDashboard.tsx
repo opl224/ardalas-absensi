@@ -73,6 +73,8 @@ export function MobileAdminDashboard() {
     index: 0,
   });
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  // State to track if we are in an edit mode that should hide the nav
+  const [isEditing, setIsEditing] = useState(false);
 
 
   const NavLink = ({
@@ -178,12 +180,15 @@ export function MobileAdminDashboard() {
   const props: any = {
       setActiveView: changeView,
       onBack: onBack,
-      // Pass a function to open the settings dialog
       setShowSettingsDialog: setShowSettingsDialog,
+      setIsEditing: setIsEditing, // Pass setter to child components
   };
   
   if (page.view === 'profile') {
       props.onBack = onBack;
+  }
+  if (page.view === 'users') {
+      props.setIsEditing = setIsEditing;
   }
 
   return (
@@ -192,14 +197,14 @@ export function MobileAdminDashboard() {
         <AnimatePresence initial={false} custom={page.direction}>
             <motion.div
                 key={page.view}
-                className="absolute w-full h-full overflow-y-auto pb-24"
+                className="absolute w-full h-full" // Removed overflow-y-auto, child will handle it
                 custom={page.direction}
                 variants={variants}
                 initial="enter"
                 animate="center"
                 exit="exit"
                 transition={transition}
-                drag={!isSubView ? "x" : false}
+                drag={!isSubView && !isEditing ? "x" : false} // Disable drag when editing
                 dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={0.1}
                 onDragEnd={handleDragEnd}
@@ -209,8 +214,8 @@ export function MobileAdminDashboard() {
         </AnimatePresence>
       </main>
 
-      {/* Bottom Nav */}
-      {!isSubView && (
+      {/* Bottom Nav - Hide if a subview is active OR if we are in edit mode */}
+      {!isSubView && !isEditing && (
         <nav className="fixed bottom-0 left-0 right-0 bg-card border-t p-2 flex justify-around z-10">
           <NavLink index={0} setView={changeView} label="Beranda">
             <Home className="h-6 w-6" />
@@ -236,7 +241,6 @@ export function MobileAdminDashboard() {
         onConfirm={handleConfirmExit}
       />
       
-      {/* Settings Dialog is controlled at the dashboard level for back button handling */}
       <AttendanceSettingsDialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog} />
 
     </div>

@@ -156,12 +156,11 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
     };
 
     const isEditingSelf = currentUser?.uid === user.id;
-    const isEditingOtherAdmin = currentUser?.role === 'Admin' && user.role === 'Admin' && !isEditingSelf;
     const canEditPassword = isEditingSelf || (currentUser?.role === 'Admin' && user.role === 'Guru');
 
     return (
-        <div className="flex flex-col h-full bg-gray-50 dark:bg-zinc-900">
-             <header className="sticky top-0 z-10 flex items-center gap-4 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex flex-col h-full bg-background">
+            <header className="sticky top-0 z-10 flex items-center gap-4 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8">
                     <ArrowLeft className="h-5 w-5" />
                     <span className="sr-only">Kembali</span>
@@ -171,7 +170,9 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                     <p className="text-sm text-muted-foreground truncate">{user.name}</p>
                 </div>
             </header>
-            <div className="flex-1 overflow-y-auto pb-24">
+            
+            {/* Scrollable form content */}
+            <div className="flex-1 overflow-y-auto">
                 <form id="edit-user-form" onSubmit={handleSubmit(onSubmit)} className="p-4 space-y-6">
                     {/* Personal Info */}
                     <div className="space-y-4">
@@ -250,11 +251,13 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                                 </Button>
                             </div>
                             {errors.password && <p className="text-destructive text-xs">{errors.password.message}</p>}
-                            {isEditingOtherAdmin && <p className="text-muted-foreground text-xs mt-1">Admin tidak dapat mengubah kata sandi admin lain.</p>}
+                            {!canEditPassword && <p className="text-muted-foreground text-xs mt-1">Admin tidak dapat mengubah kata sandi admin lain.</p>}
                         </div>
                     </div>
                 </form>
             </div>
+            
+            {/* Fixed bottom action buttons */}
             <div className="mt-auto border-t bg-background p-4">
                 <div className="flex gap-2">
                     <Button type="button" variant="outline" onClick={onBack} disabled={isPending} className="flex-1">Batal</Button>
@@ -267,7 +270,7 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
     );
 }
 
-export default function UserManagement() {
+export default function UserManagement({ setIsEditing }: { setIsEditing?: (isEditing: boolean) => void }) {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [processedUsers, setProcessedUsers] = useState<ProcessedUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -279,7 +282,7 @@ export default function UserManagement() {
   const [settings, setSettings] = useState<any>(null);
 
   const [selectedUser, setSelectedUser] = useState<ProcessedUser | null>(null);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editingUser, setEditingUserInternal] = useState<User | null>(null);
 
   const { toast } = useToast();
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -288,6 +291,14 @@ export default function UserManagement() {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [backButtonListener, setBackButtonListener] = useState<PluginListenerHandle | null>(null);
 
+  // Propagate editing state to parent
+  const setEditingUser = (user: User | null) => {
+    setEditingUserInternal(user);
+    if (setIsEditing) {
+      setIsEditing(!!user);
+    }
+  };
+  
   const fetchAllUsers = useCallback(async () => {
     try {
         const adminQuery = query(collection(db, "admin"));
@@ -578,7 +589,7 @@ export default function UserManagement() {
 
   return (
     <>
-      <div className="bg-gray-50 dark:bg-zinc-900">
+      <div className="bg-gray-50 dark:bg-zinc-900 h-full overflow-y-auto">
         <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <h1 className="text-xl font-bold text-foreground">Manajemen Pengguna</h1>
         </header>
