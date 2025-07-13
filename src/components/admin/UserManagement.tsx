@@ -39,6 +39,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { updateUser, type UpdateUserState } from '@/app/actions';
 import { getAuth, updatePassword } from 'firebase/auth';
+import { useAuth } from '@/hooks/useAuth';
 
 
 interface User {
@@ -103,7 +104,7 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
     const [showPassword, setShowPassword] = useState(false);
-    const currentUser = auth.currentUser;
+    const { user: currentUser } = useAuth(); // Get the currently logged-in user
 
     const {
         register,
@@ -133,7 +134,6 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                 formData.append('role', user.role);
                 formData.append('name', data.name);
                 
-                // Add other fields to formData
                 Object.entries(data).forEach(([key, value]) => {
                     if (key !== 'password' && key !== 'name' && value !== undefined && value !== null) {
                         formData.append(key, String(value));
@@ -147,12 +147,7 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                     return;
                 }
                 
-                // Update password in Auth if provided
-                if (data.password && currentUser) {
-                    if (currentUser.uid !== user.id) {
-                         toast({ variant: 'destructive', title: 'Gagal', description: "Anda hanya dapat mengubah kata sandi Anda sendiri." });
-                         return;
-                    }
+                if (data.password && currentUser && currentUser.uid === user.id) {
                     await updatePassword(currentUser, data.password);
                 }
 
@@ -173,8 +168,10 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
         });
     };
 
+    const isEditingSelf = currentUser?.uid === user.id;
+
     return (
-        <div className="flex flex-1 flex-col h-full bg-gray-50 dark:bg-zinc-900">
+        <div className="flex flex-col h-full bg-gray-50 dark:bg-zinc-900">
              <header className="sticky top-0 z-10 flex items-center gap-4 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8">
                     <ArrowLeft className="h-5 w-5" />
@@ -186,92 +183,99 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                 </div>
             </header>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col overflow-hidden">
-                <div className="flex-1 overflow-y-auto p-4 pb-24">
-                    <div className="space-y-6">
-                        {/* Personal Info */}
-                        <div className="space-y-4">
-                            <h3 className="font-semibold text-foreground border-b pb-2">Informasi Pribadi</h3>
-                            {user.role === 'Guru' && (
-                                <div className="space-y-2">
-                                    <Label htmlFor="nip">NIP</Label>
-                                    <Input id="nip" {...register('nip')} placeholder="Nomor Induk Pegawai" disabled={isPending} />
-                                </div>
-                            )}
-                            <div className="space-y-2">
-                              <Label htmlFor="gender">Jenis Kelamin</Label>
-                              <Controller
-                                  name="gender"
-                                  control={control}
-                                  render={({ field }) => (
-                                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isPending}>
-                                          <SelectTrigger id="gender">
-                                              <SelectValue placeholder="Pilih jenis kelamin" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                              <SelectItem value="Laki-laki">Laki-laki</SelectItem>
-                                              <SelectItem value="Perempuan">Perempuan</SelectItem>
-                                          </SelectContent>
-                                      </Select>
-                                  )}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="phone">No. Telepon</Label>
-                                <Input id="phone" {...register('phone')} placeholder="Nomor telepon aktif" disabled={isPending} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="address">Alamat</Label>
-                                <Input id="address" {...register('address')} placeholder="Alamat lengkap" disabled={isPending} />
-                            </div>
-                        </div>
-
-                        {/* Academic Info */}
+            <div className="flex-1 overflow-y-auto">
+                <form onSubmit={handleSubmit(onSubmit)} className="p-4 pb-24 space-y-6">
+                    {/* Personal Info */}
+                    <div className="space-y-4">
+                        <h3 className="font-semibold text-foreground border-b pb-2">Informasi Pribadi</h3>
                         {user.role === 'Guru' && (
-                            <div className="space-y-4">
-                                <h3 className="font-semibold text-foreground border-b pb-2">Informasi Akademik</h3>
-                                <div className="space-y-2">
-                                    <Label htmlFor="subject">Mata Pelajaran</Label>
-                                    <Input id="subject" {...register('subject')} placeholder="Contoh: Matematika" disabled={isPending} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="class">Mengajar Kelas</Label>
-                                    <Input id="class" {...register('class')} placeholder="Contoh: 10A, 11B" disabled={isPending} />
-                                </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="nip">NIP</Label>
+                                <Input id="nip" {...register('nip')} placeholder="Nomor Induk Pegawai" disabled={isPending} />
                             </div>
                         )}
-
-                        {/* Admin Info */}
-                        <div className="space-y-4">
-                            <h3 className="font-semibold text-foreground border-b pb-2">Informasi Administrasi</h3>
-                            <div className="space-y-2">
-                                <Label htmlFor="name">Nama Lengkap</Label>
-                                <Input id="name" {...register('name')} placeholder="Nama lengkap pengguna" disabled={isPending} />
-                                {errors.name && <p className="text-destructive text-xs">{errors.name.message}</p>}
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="password">Kata Sandi Baru</Label>
-                                <div className="relative">
-                                    <Input id="password" type={showPassword ? 'text' : 'password'} {...register('password')} placeholder="Biarkan kosong jika tidak ingin mengubah" disabled={isPending || (currentUser?.uid !== user.id)} className="pr-10" />
-                                    <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground" onClick={() => setShowPassword(!showPassword)} disabled={isPending}>
-                                        <span className="sr-only">Toggle password visibility</span>
-                                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                                    </Button>
-                                </div>
-                                {errors.password && <p className="text-destructive text-xs">{errors.password.message}</p>}
-                                {currentUser?.uid !== user.id && <p className="text-destructive text-xs mt-1">Hanya admin yang sedang login yang dapat mengubah kata sandinya sendiri.</p>}
-                            </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="gender">Jenis Kelamin</Label>
+                          <Controller
+                              name="gender"
+                              control={control}
+                              render={({ field }) => (
+                                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isPending}>
+                                      <SelectTrigger id="gender">
+                                          <SelectValue placeholder="Pilih jenis kelamin" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                          <SelectItem value="Laki-laki">Laki-laki</SelectItem>
+                                          <SelectItem value="Perempuan">Perempuan</SelectItem>
+                                      </SelectContent>
+                                  </Select>
+                              )}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="phone">No. Telepon</Label>
+                            <Input id="phone" {...register('phone')} placeholder="Nomor telepon aktif" disabled={isPending} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="address">Alamat</Label>
+                            <Input id="address" {...register('address')} placeholder="Alamat lengkap" disabled={isPending} />
                         </div>
                     </div>
-                </div>
 
-                <div className="mt-auto border-t bg-background p-4 fixed bottom-0 left-0 right-0">
-                    <div className="flex gap-2">
-                        <Button type="button" variant="outline" onClick={onBack} disabled={isPending} className="flex-1">Batal</Button>
-                        <Button type="submit" disabled={isPending || !isDirty} className="flex-1">{isPending ? 'Menyimpan...' : 'Simpan Perubahan'}</Button>
+                    {/* Academic Info */}
+                    {user.role === 'Guru' && (
+                        <div className="space-y-4">
+                            <h3 className="font-semibold text-foreground border-b pb-2">Informasi Akademik</h3>
+                            <div className="space-y-2">
+                                <Label htmlFor="subject">Mata Pelajaran</Label>
+                                <Input id="subject" {...register('subject')} placeholder="Contoh: Matematika" disabled={isPending} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="class">Mengajar Kelas</Label>
+                                <Input id="class" {...register('class')} placeholder="Contoh: 10A, 11B" disabled={isPending} />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Admin Info */}
+                    <div className="space-y-4">
+                        <h3 className="font-semibold text-foreground border-b pb-2">Informasi Administrasi</h3>
+                        <div className="space-y-2">
+                            <Label htmlFor="name">Nama Lengkap</Label>
+                            <Input id="name" {...register('name')} placeholder="Nama lengkap pengguna" disabled={isPending} />
+                            {errors.name && <p className="text-destructive text-xs">{errors.name.message}</p>}
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="password">Kata Sandi Baru</Label>
+                            <div className="relative">
+                                <Input 
+                                    id="password" 
+                                    type={showPassword ? 'text' : 'password'} 
+                                    {...register('password')} 
+                                    placeholder="Biarkan kosong jika tidak ingin mengubah" 
+                                    disabled={isPending || !isEditingSelf} 
+                                    className="pr-10"
+                                />
+                                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground" onClick={() => setShowPassword(!showPassword)} disabled={isPending}>
+                                    <span className="sr-only">Toggle password visibility</span>
+                                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                </Button>
+                            </div>
+                            {errors.password && <p className="text-destructive text-xs">{errors.password.message}</p>}
+                            {!isEditingSelf && <p className="text-muted-foreground text-xs mt-1">Hanya pengguna yang sedang login yang dapat mengubah kata sandinya sendiri.</p>}
+                        </div>
                     </div>
+                </form>
+            </div>
+
+            <div className="mt-auto border-t bg-background p-4 fixed bottom-0 left-0 right-0 z-20">
+                <div className="flex gap-2">
+                    <Button type="button" variant="outline" onClick={onBack} disabled={isPending} className="flex-1">Batal</Button>
+                    <Button type="button" onClick={handleSubmit(onSubmit)} disabled={isPending || !isDirty} className="flex-1">
+                        {isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
+                    </Button>
                 </div>
-            </form>
+            </div>
         </div>
     );
 }
