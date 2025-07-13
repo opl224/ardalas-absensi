@@ -395,27 +395,30 @@ export async function createUser(formData: FormData): Promise<CreateUserState> {
 
     try {
         const getAdminApp = () => {
-            if (getApps().length > 0 && getApps().some(app => app.name === 'firebase-admin')) {
+            if (getApps().some(app => app.name === 'firebase-admin')) {
                 return getApp('firebase-admin');
             }
-            
-            const projectId = process.env.FIREBASE_PROJECT_ID;
-            const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-            const privateKey = process.env.FIREBASE_PRIVATE_KEY;
-        
-            if (!projectId || !clientEmail || !privateKey) {
-                throw new Error("Variabel lingkungan Firebase Admin (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) tidak diatur.");
+            // This part will now be hardcoded and MUST be kept secret in a real app
+            const serviceAccount = {
+              projectId: "absensi-guru-18",
+              clientEmail: "firebase-adminsdk-v8n0p@absensi-guru-18.iam.gserviceaccount.com",
+              // NEVER expose private keys in client-side code. This is for demonstration only.
+              privateKey: process.env.FIREBASE_PRIVATE_KEY!,
+            };
+
+            if (!serviceAccount.privateKey) {
+                 throw new Error("Kunci pribadi Firebase Admin tidak diatur di variabel lingkungan. Fitur ini dinonaktifkan.");
             }
-        
+            
             return initializeApp({
                 credential: {
-                    projectId,
-                    clientEmail,
-                    privateKey: privateKey.replace(/\\n/g, '\n'),
+                    projectId: serviceAccount.projectId,
+                    clientEmail: serviceAccount.clientEmail,
+                    privateKey: serviceAccount.privateKey.replace(/\\n/g, '\n'),
                 },
-                databaseURL: `https://${projectId}.firebaseio.com`,
+                databaseURL: `https://${serviceAccount.projectId}.firebaseio.com`,
             }, 'firebase-admin');
-        }
+        };
 
         const adminApp = getAdminApp();
         const auth = getAuth(adminApp);
