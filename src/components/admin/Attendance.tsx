@@ -271,6 +271,7 @@ export default function Attendance() {
 
     useEffect(() => {
         fetchAttendanceData('first');
+    // The refreshKey dependency ensures this effect re-runs when we want to force a refresh.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [date, statusFilter, refreshKey]);
 
