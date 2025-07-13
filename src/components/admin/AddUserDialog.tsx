@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
@@ -29,7 +30,6 @@ interface AddUserDialogProps {
 
 export function AddUserDialog({ open, onOpenChange }: AddUserDialogProps) {
   const { toast } = useToast();
-  const [state, setState] = useState<CreateUserState>({});
   const [isPending, startTransition] = useTransition();
   const [showPassword, setShowPassword] = useState(false);
 
@@ -37,31 +37,26 @@ export function AddUserDialog({ open, onOpenChange }: AddUserDialogProps) {
     register,
     handleSubmit,
     reset,
-    formState: { errors },
+    formState: { errors, isSubmitSuccessful },
   } = useForm<CreateUserForm>({
     resolver: zodResolver(createUserSchema),
   });
-
-  useEffect(() => {
-    if (state.success) {
-      toast({ title: 'Berhasil', description: 'Pengguna baru berhasil dibuat.' });
-      handleClose();
-    }
-    if (state.error) {
-      toast({ variant: 'destructive', title: 'Gagal', description: state.error });
-    }
-  }, [state, toast]);
+  
+  const onSubmit = (data: CreateUserForm) => {
+    startTransition(async () => {
+        const result: CreateUserState = await createUser(data);
+        if (result.success) {
+            toast({ title: 'Berhasil', description: 'Pengguna baru berhasil dibuat.' });
+            handleClose();
+        } else {
+            toast({ variant: 'destructive', title: 'Gagal', description: result.error });
+        }
+    });
+  };
 
   const handleClose = () => {
     reset();
     onOpenChange(false);
-  };
-  
-  const onSubmit = (data: CreateUserForm) => {
-    startTransition(async () => {
-        const result = await createUser(data);
-        setState(result);
-    });
   };
 
   if (!open) return null;
@@ -113,7 +108,7 @@ export function AddUserDialog({ open, onOpenChange }: AddUserDialogProps) {
           </div>
           <div className="space-y-2">
             <Label>Peran</Label>
-            <RadioGroup {...register('role')} className="flex items-center gap-x-4 pt-1" disabled={isPending}>
+            <RadioGroup {...register('role')} onValueChange={(value) => (document.getElementsByName('role')[0] as HTMLInputElement).value = value} className="flex items-center gap-x-4 pt-1" disabled={isPending}>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="admin" id="role-admin" />
                 <Label htmlFor="role-admin">Admin</Label>

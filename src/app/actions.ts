@@ -7,6 +7,17 @@ import { db } from "@/lib/firebase";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { app } from "@/lib/firebase";
 
+// Using dynamic import for firebase-admin to ensure it's only loaded on the server.
+async function getAdminApp() {
+  const admin = await import('firebase-admin');
+  if (admin.apps.length > 0) {
+    return admin.app('admin-app');
+  }
+  return admin.initializeApp({
+    // SDK will automatically find credentials in a GCP environment.
+  }, 'admin-app');
+}
+
 const checkinSchema = z.object({
   photoDataUri: z.string(),
   latitude: z.number(),
@@ -360,26 +371,57 @@ export type CreateUserState = {
 };
 
 export async function createUser(data: z.infer<typeof createUserSchema>): Promise<CreateUserState> {
-  const validatedFields = createUserSchema.safeParse(data);
+    const validatedFields = createUserSchema.safeParse(data);
 
-  if (!validatedFields.success) {
-    const errors = validatedFields.error.flatten().fieldErrors;
-    const firstError = Object.values(errors)[0]?.[0] ?? "Data masukan tidak valid.";
-    return { error: firstError };
-  }
-  
-  try {
-    const functions = getFunctions(app);
-    const createUserCallable = httpsCallable(functions, 'createUser');
-    const result = await createUserCallable(validatedFields.data);
-    console.log(result);
-    return { success: true };
-  } catch (error: any) {
-    console.error("Error calling createUser function:", error);
-    const message = error.details?.message || error.message || "Terjadi kesalahan saat membuat pengguna.";
-    return { error: message };
-  }
+    if (!validatedFields.success) {
+        const errors = validatedFields.error.flatten().fieldErrors;
+        const firstError = Object.values(errors)[0]?.[0] ?? "Data masukan tidak valid.";
+        return { error: firstError };
+    }
+
+    const { email, password, name, role } = validatedFields.data;
+
+    try {
+        const adminApp = await getAdminApp();
+        const auth = adminApp.auth();
+        const firestore = adminApp.firestore();
+
+        // Create the user in Firebase Authentication.
+        const userRecord = await auth.createUser({
+            email,
+            password,
+            displayName: name,
+        });
+
+        // Set a custom claim for the user's role.
+        await auth.setCustomUserClaims(userRecord.uid, { role });
+
+        // Determine the collection and data for Firestore.
+        const collectionName = role === 'admin' ? 'admin' : 'teachers';
+        const userData = {
+            name,
+            email,
+            role,
+            uid: userRecord.uid,
+        };
+
+        // Create a document for the user in the appropriate Firestore collection.
+        await firestore.collection(collectionName).doc(userRecord.uid).set(userData);
+
+        return { success: true };
+
+    } catch (error: any) {
+        console.error("Error creating new user:", error);
+        if (error.code === 'auth/email-already-exists') {
+            return { error: 'Alamat email sudah digunakan oleh akun lain.' };
+        }
+        if (error.code === 'permission-denied' || error.code === 'insufficient-permission') {
+            return { error: 'Izin tidak cukup. Pastikan akun layanan Anda memiliki peran "Firebase Admin SDK".' };
+        }
+        return { error: 'Terjadi kesalahan saat membuat pengguna.' };
+    }
 }
+
 
 export type MarkAbsenteesState = {
     success?: boolean;
