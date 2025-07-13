@@ -398,26 +398,8 @@ export async function createUser(formData: FormData): Promise<CreateUserState> {
             if (getApps().some(app => app.name === 'firebase-admin')) {
                 return getApp('firebase-admin');
             }
-            // This part will now be hardcoded and MUST be kept secret in a real app
-            const serviceAccount = {
-              projectId: "absensi-guru-18",
-              clientEmail: "firebase-adminsdk-v8n0p@absensi-guru-18.iam.gserviceaccount.com",
-              // NEVER expose private keys in client-side code. This is for demonstration only.
-              privateKey: process.env.FIREBASE_PRIVATE_KEY!,
-            };
-
-            if (!serviceAccount.privateKey) {
-                 throw new Error("Kunci pribadi Firebase Admin tidak diatur di variabel lingkungan. Fitur ini dinonaktifkan.");
-            }
-            
-            return initializeApp({
-                credential: {
-                    projectId: serviceAccount.projectId,
-                    clientEmail: serviceAccount.clientEmail,
-                    privateKey: serviceAccount.privateKey.replace(/\\n/g, '\n'),
-                },
-                databaseURL: `https://${serviceAccount.projectId}.firebaseio.com`,
-            }, 'firebase-admin');
+            // This will use Application Default Credentials on the server.
+            return initializeApp(undefined, 'firebase-admin');
         };
 
         const adminApp = getAdminApp();
