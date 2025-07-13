@@ -508,8 +508,8 @@ export default function UserManagement() {
             <DialogHeader>
             <DialogTitle>Detail Pengguna</DialogTitle>
             </DialogHeader>
-            {selectedUser && (
             <ScrollArea className="max-h-[70vh] -mx-6 px-6">
+              {selectedUser && (
                 <div className="flex flex-col gap-4 py-4">
                     <div className="flex items-center gap-4">
                         <Avatar className="h-16 w-16">
@@ -542,8 +542,8 @@ export default function UserManagement() {
                         </>
                     )}
                 </div>
+              )}
             </ScrollArea>
-            )}
         </DialogContent>
       </Dialog>
       <Dialog open={isAbsentListOpen} onOpenChange={setIsAbsentListOpen}>

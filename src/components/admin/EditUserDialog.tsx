@@ -33,7 +33,7 @@ const updateUserSchema = z.object({
   name: z.string().min(3, "Nama harus memiliki setidaknya 3 karakter."),
   password: z.string().optional(),
   nip: z.string().optional(),
-  gender: z.enum(['Laki-laki', 'Perempuan']).optional(),
+  gender: z.enum(['Laki-laki', 'Perempuan', '']).optional(),
   phone: z.string().optional(),
   address: z.string().optional(),
   subject: z.string().optional(),
