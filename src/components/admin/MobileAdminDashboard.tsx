@@ -73,6 +73,7 @@ export function MobileAdminDashboard() {
     index: 0,
   });
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [isEditingUser, setIsEditingUser] = useState(false);
 
 
   const NavLink = ({
@@ -128,17 +129,14 @@ export function MobileAdminDashboard() {
     const swipeThreshold = 50;
     
     setPage(currentPage => {
-        // Base the swipe on the currently VISIBLE page (view), not the (potentially stale) active index.
         const currentIndex = mainViews.indexOf(currentPage.view as MainViewID);
         if (currentIndex === -1) return currentPage;
 
         let newIndex = currentIndex;
 
-        // A left swipe (negative offset) moves to the next page (index + 1).
         if (offset.x < -swipeThreshold) {
             newIndex = Math.min(currentIndex + 1, mainViews.length - 1);
         } 
-        // A right swipe (positive offset) moves to the previous page (index - 1).
         else if (offset.x > swipeThreshold) {
             newIndex = Math.max(currentIndex - 1, 0);
         }
@@ -146,7 +144,6 @@ export function MobileAdminDashboard() {
         if (newIndex !== currentIndex) {
             const newView = mainViews[newIndex];
             const direction = newIndex > currentIndex ? 1 : -1;
-            // On swipe, update everything: the view, the direction, AND the active index.
             return { view: newView, index: newIndex, direction };
         }
         
@@ -173,7 +170,7 @@ export function MobileAdminDashboard() {
 
   const { showExitDialog, setShowExitDialog, handleConfirmExit } = useAndroidBackHandler({
     currentView: page.view,
-    isSubView: isSubView,
+    isSubView: isEditingUser || isSubView,
     onBack: onBack,
     onDialogClose,
     homeViewId: 'home',
@@ -184,6 +181,7 @@ export function MobileAdminDashboard() {
       setActiveView: changeView,
       onBack: onBack,
       setShowSettingsDialog: setShowSettingsDialog,
+      setIsEditing: setIsEditingUser,
   };
 
 
@@ -193,14 +191,14 @@ export function MobileAdminDashboard() {
         <AnimatePresence initial={false} custom={page.direction}>
             <motion.div
                 key={page.view}
-                className="absolute w-full h-full overflow-y-auto"
+                className="absolute w-full h-full"
                 custom={page.direction}
                 variants={variants}
                 initial="enter"
                 animate="center"
                 exit="exit"
                 transition={transition}
-                drag={isSubView ? false : "x"}
+                drag={isSubView || isEditingUser ? false : "x"}
                 dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={0.1}
                 onDragEnd={handleDragEnd}
@@ -210,7 +208,7 @@ export function MobileAdminDashboard() {
         </AnimatePresence>
       </main>
 
-      {!isSubView && (
+      {!isSubView && !isEditingUser && (
         <nav className="fixed bottom-0 left-0 right-0 bg-card border-t p-2 flex justify-around z-10">
           <NavLink index={0} setView={changeView} label="Beranda">
             <Home className="h-6 w-6" />
