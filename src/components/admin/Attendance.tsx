@@ -207,6 +207,15 @@ export default function Attendance() {
         return () => { removeListener() };
     }, [handleBackButton, removeListener]);
 
+    const handleEditSuccess = () => {
+        setStatusFilter('Semua Kehadiran');
+        setCurrentPage(1);
+        setLastVisible(null);
+        setFirstVisible(null);
+        setPageHistory([null]);
+        setRefreshKey(k => k + 1);
+    }
+
     const fetchAttendanceData = useCallback(async (pageDirection: 'next' | 'prev' | 'first') => {
         if (!date) return;
         setLoading(true);
@@ -722,7 +731,7 @@ export default function Attendance() {
                     )}
                 </DialogContent>
             </Dialog>
-            <EditAttendanceDialog record={editingRecord} open={isEditOpen} onOpenChange={setIsEditOpen} onSuccess={() => setRefreshKey(k => k + 1)} />
+            <EditAttendanceDialog record={editingRecord} open={isEditOpen} onOpenChange={setIsEditOpen} onSuccess={handleEditSuccess} />
         </div>
     )
 }
