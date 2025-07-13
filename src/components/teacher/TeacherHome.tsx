@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useTransition, useRef } from 'react';
+import { useState, useEffect, useTransition, useMemo } from 'react';
 import { handleCheckout, type CheckoutState } from '@/app/actions';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { BarChart2, CalendarDays, Clock, MapPin, CheckCircle, LogOut } from 'luc
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { CenteredLoader } from '../ui/loader';
-import { collection, query, where, onSnapshot, Timestamp, orderBy, limit, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, Timestamp, orderBy, limit, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import SplitText from '../ui/SplitText';
 import {
@@ -29,7 +29,7 @@ interface TeacherHomeProps {
   setActiveView: (view: 'home' | 'history' | 'profile' | 'checkin') => void;
 }
 
-type CheckinStatus = 'not_checked_in' | 'checked_in' | 'checked_out' | 'tidak_hadir' | 'loading';
+type CheckinStatus = 'not_checked_in' | 'checked_in' | 'checked_out' | 'tidak_hadir' | 'loading' | 'off_day';
 
 function CheckoutButton({ disabled, pending }: { disabled: boolean, pending: boolean }) {
     return (
@@ -84,6 +84,13 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
     const [checkoutState, setCheckoutState] = useState<CheckoutState>({});
     const [isPending, startTransition] = useTransition();
 
+    const isOffDay = useMemo(() => {
+        if (!settings) return false;
+        const now = new Date();
+        const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
+        return settings.offDays?.includes(todayStr) ?? false;
+    }, [settings]);
+
     useEffect(() => {
         const setupBackButtonListener = async () => {
             if (Capacitor.isNativePlatform() && showAvatarDialog) {
@@ -123,7 +130,7 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
     useEffect(() => {
         const settingsRef = doc(db, "settings", "attendance");
         const unsubscribe = onSnapshot(settingsRef, (docSnap) => {
-            setSettings(docSnap.exists() ? docSnap.data() : { checkOutStart: '15:00', checkInEnd: '09:00', gracePeriod: 60 });
+            setSettings(docSnap.exists() ? docSnap.data() : { checkOutStart: '15:00', checkInEnd: '09:00', gracePeriod: 60, offDays: [] });
         });
         return () => unsubscribe();
     }, []);
@@ -171,6 +178,11 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
             return;
         }
 
+        if (isOffDay) {
+            setStatus('off_day');
+            return;
+        }
+
         const now = new Date();
         setIsCheckoutAllowed(now >= getTodayAtTime(settings.checkOutStart || '15:00'));
 
@@ -208,7 +220,7 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                 setCheckoutTime(null);
             }
         }
-    }, [settings, todaysAttendance]);
+    }, [settings, todaysAttendance, isOffDay]);
 
 
     useEffect(() => {
@@ -305,6 +317,12 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                                 <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
                             </div>
                         )}
+                        {status === 'off_day' && (
+                             <div className='space-y-4'>
+                                <Badge variant="secondary" className="py-1 px-4 text-base">Libur</Badge>
+                                <p className="text-muted-foreground">Hari ini adalah hari libur yang dijadwalkan.</p>
+                            </div>
+                        )}
                         {status === 'not_checked_in' && (
                             <div className='space-y-4'>
                                 <p className="text-muted-foreground">Anda belum absen masuk hari ini.</p>
@@ -314,7 +332,6 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                             <div className='space-y-4'>
                                  <Badge variant="destructive" className="py-1 px-4 text-base">Tidak Hadir</Badge>
                                 <p className="text-muted-foreground">Waktu absen masuk hari ini telah berakhir atau status diubah oleh admin.</p>
-                                <Button className="w-full" disabled>Absen Masuk</Button>
                             </div>
                         )}
                         {(status === 'checked_in' || status === 'checked_out') && checkinData && (
@@ -363,7 +380,7 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                                 <p className="mt-2 text-sm font-medium text-foreground">
                                     {
                                         status === 'not_checked_in' ? 'Absen Masuk' :
-                                        status === 'tidak_hadir' ? 'Absen Masuk Terlewat' :
+                                        status === 'tidak_hadir' || status === 'off_day' ? 'Absen Masuk Dinonaktifkan' :
                                         'Sudah Absen Masuk'
                                     }
                                 </p>
@@ -373,7 +390,7 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                             <form onSubmit={handleCheckoutSubmit}>
                                 <input type="hidden" name="userId" value={userProfile.uid} />
                                 <input type="hidden" name="attendanceId" value={checkinData.attendanceId} />
-                                <QuickCheckoutButton disabled={!isCheckoutAllowed} pending={isPending} />
+                                <QuickCheckoutButton disabled={!isCheckoutAllowed || isOffDay} pending={isPending} />
                             </form>
                         ) : (
                             <button
