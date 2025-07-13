@@ -73,6 +73,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setUser(firebaseUser);
                 let profileDocRef;
                 let userRole: 'admin' | 'guru' | null = null;
+                let profileUid: string | null = null;
 
                 // 1. Check for admin in 'admin' collection by email
                 const adminQuery = query(collection(db, 'admin'), where('email', '==', firebaseUser.email), limit(1));
@@ -82,6 +83,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     const adminDoc = adminSnapshot.docs[0];
                     userRole = 'admin';
                     profileDocRef = doc(db, 'admin', adminDoc.id);
+                    profileUid = adminDoc.id; // Use the actual document ID from firestore
                 } else {
                     // 2. If not admin, check for teacher in 'teachers' collection by UID
                     const teacherDocRef = doc(db, 'teachers', firebaseUser.uid);
@@ -89,19 +91,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     if (teacherSnap.exists()) {
                         userRole = 'guru';
                         profileDocRef = teacherDocRef;
+                        profileUid = firebaseUser.uid;
                     }
                 }
                 
                 // 3. If user exists in a collection, set up listener. Otherwise, log out.
-                if (userRole && profileDocRef) {
+                if (userRole && profileDocRef && profileUid) {
                     profileListenerUnsubscribe = onSnapshot(profileDocRef, (profileSnap) => {
                         if (profileSnap.exists()) {
                             const profileData = profileSnap.data();
                             const finalProfileData: UserProfile = {
-                                uid: firebaseUser.uid,
+                                uid: profileUid!, // Use the correct UID for the profile
                                 email: firebaseUser.email || profileData.email,
                                 name: profileData.name || firebaseUser.displayName || 'Pengguna',
-                                role: userRole,
+                                role: userRole!,
                                 ...profileData,
                             };
                             setUserProfile(finalProfileData);
