@@ -4,7 +4,7 @@
 import { z } from "zod";
 import { doc, setDoc, collection, updateDoc, getDoc, Timestamp, deleteField, where, query, getDocs, limit } from "firebase/firestore"; 
 import { db } from "@/lib/firebase";
-import { credential as adminCredential, getApp, getApps, initializeApp, type App } from 'firebase-admin/app';
+import { credential, getApp, getApps, initializeApp, type App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 
@@ -398,7 +398,7 @@ export async function createUser(formData: FormData): Promise<CreateUserState> {
         };
 
         return initializeApp({
-            credential: adminCredential.cert(cert)
+            credential: credential.cert(cert)
         }, 'firebase-admin');
     }
 
