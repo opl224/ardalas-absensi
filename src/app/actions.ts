@@ -369,3 +369,73 @@ export type CreateUserState = {
 export async function createUser(formData: FormData): Promise<CreateUserState> {
     return { error: "Fitur pembuatan pengguna dinonaktifkan sementara karena masalah izin pada lingkungan server. Silakan buat pengguna secara manual di Firebase Console." };
 }
+
+export type MarkAbsenteesState = {
+    success?: boolean;
+    error?: string;
+    message?: string;
+};
+
+export async function markAbsentees(): Promise<MarkAbsenteesState> {
+    try {
+        const today = new Date();
+        const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+        // 1. Get all teachers
+        const teachersQuery = query(collection(db, "teachers"));
+        const teachersSnapshot = await getDocs(teachersQuery);
+        const allTeachers = new Map(teachersSnapshot.docs.map(doc => [doc.id, doc.data()]));
+
+        if (allTeachers.size === 0) {
+            return { success: true, message: "Tidak ada data guru yang ditemukan untuk diproses." };
+        }
+
+        // 2. Get all attendance records for today
+        const attendanceQuery = query(
+            collection(db, "photo_attendances"),
+            where("checkInTime", ">=", startOfToday),
+            where("checkInTime", "<", endOfToday)
+        );
+        const attendanceSnapshot = await getDocs(attendanceQuery);
+        const presentUserIds = new Set(attendanceSnapshot.docs.map(doc => doc.data().userId));
+
+        // 3. Find teachers who are not in the attendance list
+        let absentTeachersMarked = 0;
+        for (const [teacherId, teacherData] of allTeachers.entries()) {
+            if (!presentUserIds.has(teacherId)) {
+                // This teacher is absent, create a record
+                const absentRecord = {
+                    userId: teacherId,
+                    name: teacherData.name,
+                    role: teacherData.role || 'guru',
+                    checkInTime: new Date(), // Mark as of now
+                    checkInLocation: null,
+                    checkInPhotoUrl: null,
+                    isFraudulent: false,
+                    fraudReason: '',
+                    status: "Tidak Hadir",
+                };
+
+                // Use a combination of a static prefix and the user ID to ensure a unique doc ID for today
+                const absentDocId = `absent-${today.toISOString().slice(0, 10)}-${teacherId}`;
+                const attendanceRef = doc(db, "photo_attendances", absentDocId);
+
+                // Use setDoc to avoid creating duplicate absent records if the function is run multiple times
+                await setDoc(attendanceRef, absentRecord);
+                absentTeachersMarked++;
+            }
+        }
+
+        if (absentTeachersMarked === 0) {
+            return { success: true, message: "Semua guru telah melakukan absensi atau sudah ditandai tidak hadir." };
+        }
+
+        return { success: true, message: `${absentTeachersMarked} guru telah ditandai sebagai Tidak Hadir.` };
+
+    } catch (e) {
+        console.error("Error marking absentees: ", e);
+        const errorMessage = e instanceof Error ? e.message : "Terjadi kesalahan yang tidak terduga.";
+        return { error: `Kesalahan server: ${errorMessage}` };
+    }
+}

@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useEffect, useState } from "react";
-import { Settings } from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
+import { Settings, UserX } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -25,6 +25,8 @@ import { Loader } from "@/components/ui/loader";
 import { Separator } from "../ui/separator";
 import { Button } from "../ui/button";
 import { AttendanceSettingsDialog } from "./AttendanceSettingsDialog";
+import { markAbsentees, type MarkAbsenteesState } from "@/app/actions";
+import { useToast } from "@/hooks/use-toast";
 
 interface AttendanceRecord {
     id: string;
@@ -64,6 +66,8 @@ export function DashboardHome() {
     const [showSettingsDialog, setShowSettingsDialog] = useState(false);
     const [settings, setSettings] = useState<any | null>(null);
     const [totalGurus, setTotalGurus] = useState(0);
+    const [isMarking, startTransition] = useTransition();
+    const { toast } = useToast();
 
     // Effect to get total gurus count
     useEffect(() => {
@@ -125,27 +129,21 @@ export function DashboardHome() {
             // Get all records for today, including "Tidak Hadir"
             const allTodaysRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             
-            // Filter only for active attendances for the table and counts
-            const activeAttendances = allTodaysRecords.filter(
+            const presentAndLateRecords = allTodaysRecords.filter(
                 a => a.status === 'Hadir' || a.status === 'Terlambat'
             ) as AttendanceRecord[];
-            setAttendanceData(activeAttendances);
+            setAttendanceData(presentAndLateRecords.sort((a,b) => b.checkInTime.toMillis() - a.checkInTime.toMillis()));
             
-            const presentCount = activeAttendances.filter(a => a.status === 'Hadir').length;
-            const lateCount = activeAttendances.filter(a => a.status === 'Terlambat').length;
-            const presentAndLateCount = presentCount + lateCount;
+            const presentCount = presentAndLateRecords.filter(a => a.status === 'Hadir').length;
+            const lateCount = presentAndLateRecords.filter(a => a.status === 'Terlambat').length;
+            const absentCount = allTodaysRecords.filter(a => a.status === 'Tidak Hadir').length;
 
-            let absentCount = 0;
-            // Only mark as absent if the check-in time is over
-            if (isCheckinTimeOver(settings)) {
-                absentCount = totalGurus - presentAndLateCount;
-            }
-
-            const attendanceRate = totalGurus > 0 ? Math.round((presentAndLateCount / totalGurus) * 100) : 0;
+            const totalActive = presentCount + lateCount;
+            const attendanceRate = totalGurus > 0 ? Math.round((totalActive / totalGurus) * 100) : 0;
             
             setStats({
                 present: presentCount,
-                absent: absentCount >= 0 ? absentCount : 0,
+                absent: absentCount,
                 late: lateCount,
                 total: totalGurus,
                 rate: attendanceRate
@@ -158,6 +156,24 @@ export function DashboardHome() {
 
         return () => unsubscribe();
     }, [settings, totalGurus]);
+
+    const handleMarkAbsentees = () => {
+        startTransition(async () => {
+            const result: MarkAbsenteesState = await markAbsentees();
+            if (result.success) {
+                toast({
+                    title: "Proses Selesai",
+                    description: result.message,
+                });
+            } else {
+                toast({
+                    variant: "destructive",
+                    title: "Proses Gagal",
+                    description: result.error,
+                });
+            }
+        });
+    }
 
     return (
         <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -198,6 +214,12 @@ export function DashboardHome() {
                             </div>
                         </>
                     )}
+                </CardContent>
+                 <CardContent className="p-4 pt-0">
+                    <Button onClick={handleMarkAbsentees} disabled={isMarking} className="w-full">
+                        <UserX className="mr-2 h-4 w-4" />
+                        {isMarking ? 'Memproses...' : 'Tandai Guru Tidak Hadir'}
+                    </Button>
                 </CardContent>
             </Card>
             <Card>
