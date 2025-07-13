@@ -73,8 +73,8 @@ export function MobileAdminDashboard() {
     index: 0,
   });
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
-  // State to track if we are in an edit mode that should hide the nav
-  const [isEditing, setIsEditing] = useState(false);
+  // This state will now be managed by the UserManagement component itself
+  const [isEditingUser, setIsEditingUser] = useState(false);
 
 
   const NavLink = ({
@@ -158,7 +158,11 @@ export function MobileAdminDashboard() {
   
   const isSubView = !mainViews.includes(page.view);
   const ComponentToRender = viewComponents[page.view];
-  const onBack = () => changeView('profile');
+  const onBack = () => {
+    if (page.view === 'privacy') {
+        changeView('profile');
+    }
+  };
 
   const onDialogClose = useCallback(() => {
     if (showSettingsDialog) {
@@ -170,8 +174,14 @@ export function MobileAdminDashboard() {
 
   const { showExitDialog, setShowExitDialog, handleConfirmExit } = useAndroidBackHandler({
     currentView: page.view,
-    isSubView,
-    onBack,
+    isSubView: isSubView || isEditingUser,
+    onBack: () => {
+        if (isEditingUser) {
+            setIsEditingUser(false); // This will be handled by the child, but as a fallback
+        } else if (page.view === 'privacy') {
+            changeView('profile');
+        }
+    },
     onDialogClose,
     homeViewId: 'home',
     changeView,
@@ -181,14 +191,13 @@ export function MobileAdminDashboard() {
       setActiveView: changeView,
       onBack: onBack,
       setShowSettingsDialog: setShowSettingsDialog,
-      setIsEditing: setIsEditing, // Pass setter to child components
   };
   
   if (page.view === 'profile') {
       props.onBack = onBack;
   }
   if (page.view === 'users') {
-      props.setIsEditing = setIsEditing;
+      props.setIsEditing = setIsEditingUser;
   }
 
   return (
@@ -204,7 +213,7 @@ export function MobileAdminDashboard() {
                 animate="center"
                 exit="exit"
                 transition={transition}
-                drag={!isSubView && !isEditing ? "x" : false} // Disable drag when editing
+                drag={!isSubView && !isEditingUser ? "x" : false} // Disable drag when editing
                 dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={0.1}
                 onDragEnd={handleDragEnd}
@@ -215,7 +224,7 @@ export function MobileAdminDashboard() {
       </main>
 
       {/* Bottom Nav - Hide if a subview is active OR if we are in edit mode */}
-      {!isSubView && !isEditing && (
+      {!isSubView && !isEditingUser && (
         <nav className="fixed bottom-0 left-0 right-0 bg-card border-t p-2 flex justify-around z-10">
           <NavLink index={0} setView={changeView} label="Beranda">
             <Home className="h-6 w-6" />
