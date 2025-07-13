@@ -3,12 +3,12 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: "AIzaSyAh0_X_WAkTDMBY30lSM32CyR99TQ15_DQ",
+  authDomain: "absensi-guru-18.firebaseapp.com",
+  projectId: "absensi-guru-18",
+  storageBucket: "absensi-guru-18.appspot.com",
+  messagingSenderId: "830665801797",
+  appId: "1:830665801797:web:6e368fbaf7ae067971232c"
 };
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
