@@ -4,7 +4,7 @@
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { CenteredLoader } from '@/components/ui/loader';
@@ -74,15 +74,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 let profileDocRef;
                 let userRole: 'admin' | 'guru' | null = null;
 
-                // 1. Check for admin in 'admin' collection
-                const adminDocRef = doc(db, 'admin', firebaseUser.uid);
-                const adminSnap = await getDoc(adminDocRef);
+                // 1. Check for admin in 'admin' collection by email
+                const adminQuery = query(collection(db, 'admin'), where('email', '==', firebaseUser.email), limit(1));
+                const adminSnapshot = await getDocs(adminQuery);
 
-                if (adminSnap.exists() && adminSnap.data()?.role === 'admin') {
+                if (!adminSnapshot.empty) {
+                    const adminDoc = adminSnapshot.docs[0];
                     userRole = 'admin';
-                    profileDocRef = adminDocRef;
+                    profileDocRef = doc(db, 'admin', adminDoc.id);
                 } else {
-                    // 2. If not admin, check for teacher in 'teachers' collection
+                    // 2. If not admin, check for teacher in 'teachers' collection by UID
                     const teacherDocRef = doc(db, 'teachers', firebaseUser.uid);
                     const teacherSnap = await getDoc(teacherDocRef);
                     if (teacherSnap.exists()) {
