@@ -8,30 +8,6 @@ import { getApp, getApps, initializeApp, type App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 
-function getAdminApp(): App {
-    const serviceAccount = {
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    };
-
-    if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
-        throw new Error("Variabel lingkungan Firebase Admin (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) tidak diatur. Harap konfigurasikan file .env Anda.");
-    }
-    
-    if (getApps().some(app => app.name === 'firebase-admin')) {
-        return getApp('firebase-admin');
-    }
-
-    return initializeApp({
-        credential: {
-            projectId: serviceAccount.projectId,
-            clientEmail: serviceAccount.clientEmail,
-            privateKey: serviceAccount.privateKey,
-        },
-    }, 'firebase-admin');
-}
-
 
 const checkinSchema = z.object({
   photoDataUri: z.string(),
@@ -401,6 +377,31 @@ export async function createUser(formData: FormData): Promise<CreateUserState> {
 
     const { name, email, password, role } = validatedFields.data;
     
+    // This function encapsulates the Firebase Admin SDK logic
+    const getAdminApp = (): App => {
+        const serviceAccount = {
+            projectId: process.env.FIREBASE_PROJECT_ID,
+            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+            privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+        };
+
+        if (!serviceAccount.privateKey) {
+             throw new Error("Kunci privat Firebase Admin (FIREBASE_PRIVATE_KEY) tidak diatur. Fitur ini dinonaktifkan hingga kredensial server dikonfigurasi dengan benar.");
+        }
+        
+        if (getApps().some(app => app.name === 'firebase-admin')) {
+            return getApp('firebase-admin');
+        }
+
+        return initializeApp({
+            credential: {
+                projectId: serviceAccount.projectId!,
+                clientEmail: serviceAccount.clientEmail!,
+                privateKey: serviceAccount.privateKey,
+            }
+        }, 'firebase-admin');
+    }
+
     try {
         const adminApp = getAdminApp();
         const auth = getAuth(adminApp);
