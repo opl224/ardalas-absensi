@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, Download, Eye, ChevronLeft, ChevronRight, Briefcase, BookCopy, Phone, Home, VenetianMask, BookMarked, Fingerprint, AlertTriangle, UserX, UserPlus, MoreVertical, Trash2, Edit as EditIcon, ArrowLeft, EyeOff } from 'lucide-react';
+import { Search, Download, Eye, ChevronLeft, ChevronRight, Briefcase, BookCopy, Phone, Home as HomeIcon, VenetianMask, BookMarked, Fingerprint, AlertTriangle, UserX, UserPlus, MoreVertical, Trash2, Edit as EditIcon, ArrowLeft, EyeOff } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -171,9 +171,8 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                 </div>
             </header>
             
-            {/* Scrollable form content */}
             <div className="flex-1 overflow-y-auto">
-                <form id="edit-user-form" onSubmit={handleSubmit(onSubmit)} className="p-4 space-y-6">
+                <form id="edit-user-form" onSubmit={handleSubmit(onSubmit)} className="p-4 space-y-6 pb-24">
                     {/* Personal Info */}
                     <div className="space-y-4">
                         <h3 className="font-semibold text-foreground border-b pb-2">Informasi Pribadi</h3>
@@ -257,9 +256,9 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                 </form>
             </div>
             
-            {/* Fixed bottom action buttons */}
-            <div className="mt-auto border-t bg-background p-4">
-                <div className="flex gap-2">
+            {/* Fixed bottom action buttons for mobile & desktop */}
+            <div className="mt-auto border-t bg-background p-4 fixed bottom-0 left-0 right-0 z-20 md:relative">
+                <div className="flex gap-2 max-w-lg mx-auto">
                     <Button type="button" variant="outline" onClick={onBack} disabled={isPending} className="flex-1">Batal</Button>
                     <Button type="submit" form="edit-user-form" disabled={isPending || !isDirty} className="flex-1">
                         {isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
@@ -734,7 +733,7 @@ export default function UserManagement({ setIsEditing }: { setIsEditing?: (isEdi
                         <DetailItem icon={VenetianMask} label="Jenis Kelamin" value={selectedUser.gender} />
                         <DetailItem icon={Phone} label="No. Telepon" value={selectedUser.phone} />
                         <DetailItem icon={BookMarked} label="Agama" value={selectedUser.religion} />
-                        <DetailItem icon={Home} label="Alamat" value={selectedUser.address} />
+                        <DetailItem icon={HomeIcon} label="Alamat" value={selectedUser.address} />
                     </div>
                     {selectedUser.role === 'Guru' && (
                         <>
