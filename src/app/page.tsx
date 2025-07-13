@@ -78,7 +78,6 @@ export default function LoginPage() {
       });
       
       // AuthContext will handle redirection based on the new auth state
-      // No need for explicit redirection here as the useEffect hook will catch it.
       // We show a temporary success toast.
        toast({
         title: 'Login Berhasil',
