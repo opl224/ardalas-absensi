@@ -22,7 +22,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { collection, query, where, onSnapshot, DocumentData, getDocs, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, DocumentData, getDocs, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader } from '../ui/loader';
 import { Separator } from '../ui/separator';
@@ -154,8 +154,10 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
     };
 
     const isEditingSelf = currentUser?.uid === user.id;
-    const canEditPasswordForGuru = currentUser?.role === 'admin' && user.role === 'Guru';
-    const canEditPassword = isEditingSelf || canEditPasswordForGuru;
+    const canEditGuruPassword = currentUser?.role === 'admin' && user.role === 'Guru';
+    const canEditPassword = isEditingSelf || canEditGuruPassword;
+    const cannotEditOtherAdminPassword = currentUser?.role === 'admin' && user.role === 'Admin' && !isEditingSelf;
+
 
     return (
         <div className="flex flex-col h-full bg-background">
@@ -171,7 +173,7 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
             </header>
             
             <div className="flex-1 overflow-y-auto">
-                <form id="edit-user-form" onSubmit={handleSubmit(onSubmit)} className="p-4 space-y-6 pb-24">
+                <form id="edit-user-form" onSubmit={handleSubmit(onSubmit)} className="p-4 space-y-6">
                     <div className="space-y-4">
                         <h3 className="font-semibold text-foreground border-b pb-2">Informasi Pribadi</h3>
                         {user.role === 'Guru' && (
@@ -246,7 +248,7 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                                 </Button>
                             </div>
                             {errors.password && <p className="text-destructive text-xs">{errors.password.message}</p>}
-                            {!canEditPassword && <p className="text-muted-foreground text-xs mt-1">Admin tidak dapat mengubah kata sandi admin lain.</p>}
+                            {cannotEditOtherAdminPassword && <p className="text-muted-foreground text-xs mt-1">Admin tidak dapat mengubah kata sandi admin lain.</p>}
                         </div>
                     </div>
                 </form>
@@ -264,7 +266,7 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
     );
 }
 
-export default function UserManagement() {
+export default function UserManagement({ setEditingUser: setParentEditingUser }: { setEditingUser: (user: User | null) => void }) {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [processedUsers, setProcessedUsers] = useState<ProcessedUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -285,6 +287,9 @@ export default function UserManagement() {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [backButtonListener, setBackButtonListener] = useState<PluginListenerHandle | null>(null);
 
+  useEffect(() => {
+    setParentEditingUser(editingUser);
+  }, [editingUser, setParentEditingUser]);
   
   const fetchAllUsers = useCallback(async () => {
     try {
@@ -323,7 +328,7 @@ export default function UserManagement() {
     else if (isDetailOpen) setIsDetailOpen(false);
     else if (isDeleteOpen) setIsDeleteOpen(false);
     else if (isAbsentListOpen) setIsAbsentListOpen(false);
-  }, [editingUser, isAddUserOpen, isDetailOpen, isDeleteOpen, isAbsentListOpen, setEditingUser]);
+  }, [editingUser, isAddUserOpen, isDetailOpen, isDeleteOpen, isAbsentListOpen]);
   
   useEffect(() => {
     const setupListener = async () => {
@@ -570,7 +575,7 @@ export default function UserManagement() {
   }
 
   return (
-    <div className="bg-gray-50 dark:bg-zinc-900 h-full flex flex-col">
+    <>
       <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <h1 className="text-xl font-bold text-foreground">Manajemen Pengguna</h1>
       </header>
@@ -614,7 +619,7 @@ export default function UserManagement() {
         </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto px-4 pb-20">
+      <div className="px-4">
         {loading ? (
             <div className="flex justify-center items-center h-64">
                 <Loader scale={1.6} />
@@ -750,6 +755,6 @@ export default function UserManagement() {
         </DialogContent>
       </Dialog>
       <AddUserDialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen} onSuccess={handleUserActionSuccess} />
-    </div>
+    </>
   );
 }
