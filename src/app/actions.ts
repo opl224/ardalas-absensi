@@ -2,7 +2,7 @@
 'use server';
 
 import { z } from "zod";
-import { doc, setDoc, collection, updateDoc, getDoc, Timestamp, deleteField, where, query, getDocs, limit } from "firebase/firestore"; 
+import { doc, setDoc, collection, updateDoc, getDoc, Timestamp, deleteField, where, query, getDocs, limit, deleteDoc } from "firebase/firestore"; 
 import { db } from "@/lib/firebase";
 import { getAuth, updatePassword as adminUpdatePassword, deleteUser as adminDeleteUser } from "firebase-admin/auth";
 import { getAdminApp } from "@/lib/firebase-admin";
@@ -346,6 +346,28 @@ export async function updateAttendanceRecord(formData: FormData): Promise<Attend
     return { error: `Kesalahan server: ${errorMessage}.` };
   }
 }
+
+export type DeleteState = {
+    success?: boolean;
+    error?: string;
+};
+
+export async function deleteAttendanceRecord(attendanceId: string): Promise<DeleteState> {
+    if (!attendanceId) {
+        return { error: "ID Kehadiran diperlukan." };
+    }
+
+    try {
+        const recordRef = doc(db, "photo_attendances", attendanceId);
+        await deleteDoc(recordRef);
+        return { success: true };
+    } catch (e) {
+        console.error('Error deleting attendance record:', e);
+        const errorMessage = e instanceof Error ? e.message : "Terjadi kesalahan yang tidak terduga.";
+        return { error: `Kesalahan server: ${errorMessage}.` };
+    }
+}
+
 
 const createUserSchema = z.object({
   uid: z.string().min(1, "UID diperlukan."),

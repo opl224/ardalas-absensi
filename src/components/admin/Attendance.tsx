@@ -7,7 +7,7 @@ import { id as localeId } from 'date-fns/locale';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { collection, query, orderBy, Timestamp, doc, deleteDoc, where, onSnapshot, getDocs, limit, startAfter, QueryDocumentSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, Timestamp, doc, where, onSnapshot, getDocs, limit, startAfter, QueryDocumentSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader } from '../ui/loader';
 import { Button, buttonVariants } from '../ui/button';
@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Calendar } from "@/components/ui/calendar";
-import { updateAttendanceRecord, type AttendanceUpdateState } from '@/app/actions';
+import { updateAttendanceRecord, deleteAttendanceRecord, type AttendanceUpdateState, type DeleteState } from '@/app/actions';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -52,23 +52,11 @@ interface AttendanceRecord {
 const RECORDS_PER_PAGE = 10;
 const filterOptions = ['Semua Kehadiran', 'Hadir', 'Terlambat', 'Tidak Hadir', 'Kecurangan'];
 
-function EditAttendanceDialog({ record, open, onOpenChange }: { record: AttendanceRecord | null, open: boolean, onOpenChange: (open: boolean) => void }) {
-    const [state, setState] = useState<AttendanceUpdateState>({});
+function EditAttendanceDialog({ record, open, onOpenChange, onSuccess }: { record: AttendanceRecord | null, open: boolean, onOpenChange: (open: boolean) => void, onSuccess: () => void }) {
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
     const formRef = useRef<HTMLFormElement>(null);
     const [removeFraud, setRemoveFraud] = useState(false);
-
-    useEffect(() => {
-        if (state.success) {
-            toast({ title: 'Berhasil', description: 'Catatan kehadiran telah diperbarui.' });
-            onOpenChange(false);
-            setRemoveFraud(false); 
-        }
-        if (state.error) {
-            toast({ variant: 'destructive', title: 'Gagal', description: state.error });
-        }
-    }, [state, toast, onOpenChange]);
 
     if (!record) return null;
 
@@ -84,13 +72,18 @@ function EditAttendanceDialog({ record, open, onOpenChange }: { record: Attendan
         event.preventDefault();
         if (!formRef.current) return;
         const formData = new FormData(formRef.current);
-        // The Switch component handles its own value, so we need to add it manually if checked.
         if (removeFraud) {
             formData.append('removeFraudWarning', 'on');
         }
         startTransition(async () => {
-            const result = await updateAttendanceRecord(formData);
-            setState(result);
+            const result: AttendanceUpdateState = await updateAttendanceRecord(formData);
+            if (result.success) {
+                toast({ title: 'Berhasil', description: 'Catatan kehadiran telah diperbarui.' });
+                onSuccess();
+                onOpenChange(false);
+            } else {
+                toast({ variant: 'destructive', title: 'Gagal', description: result.error });
+            }
         });
     }
     
@@ -156,7 +149,7 @@ function EditAttendanceDialog({ record, open, onOpenChange }: { record: Attendan
                     <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-y-2 sm:gap-x-2 pt-2">
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>Batal</Button>
                         <Button type="submit" disabled={isPending}>
-                            Simpan Perubahan
+                            {isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
                         </Button>
                     </DialogFooter>
                 </form>
@@ -168,6 +161,7 @@ function EditAttendanceDialog({ record, open, onOpenChange }: { record: Attendan
 export default function Attendance() {
     const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isDeleting, startDeleteTransition] = useTransition();
     const [currentPage, setCurrentPage] = useState(1);
     const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot | null>(null);
     const [firstVisible, setFirstVisible] = useState<QueryDocumentSnapshot | null>(null);
@@ -183,6 +177,7 @@ export default function Attendance() {
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
+    const [refreshKey, setRefreshKey] = useState(0);
 
     const [backButtonListener, setBackButtonListener] = useState<PluginListenerHandle | null>(null);
 
@@ -277,7 +272,7 @@ export default function Attendance() {
     useEffect(() => {
         fetchAttendanceData('first');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [date, statusFilter]);
+    }, [date, statusFilter, refreshKey]);
 
     const handleNextPage = () => {
         if (!lastVisible) return;
@@ -399,24 +394,24 @@ export default function Attendance() {
     };
 
     const handleDelete = async (id: string) => {
-        try {
-            await deleteDoc(doc(db, "photo_attendances", id));
-            setAttendanceData(prevData => prevData.filter(record => record.id !== id));
-            toast({
-                title: "Berhasil",
-                description: "Catatan kehadiran telah dihapus.",
-            });
-        } catch (error) {
-            console.error("Error deleting document: ", error);
-            toast({
-                title: "Gagal",
-                description: "Gagal menghapus catatan kehadiran.",
-                variant: "destructive",
-            });
-        } finally {
+        startDeleteTransition(async () => {
+            const result: DeleteState = await deleteAttendanceRecord(id);
+            if (result.success) {
+                toast({
+                    title: "Berhasil",
+                    description: "Catatan kehadiran telah dihapus.",
+                });
+                setAttendanceData(prevData => prevData.filter(record => record.id !== id));
+            } else {
+                 toast({
+                    title: "Gagal",
+                    description: result.error || "Gagal menghapus catatan kehadiran.",
+                    variant: "destructive",
+                });
+            }
             setIsDeleteOpen(false);
             setSelectedRecordId(null);
-        }
+        });
     };
     
     const openViewDialog = (record: AttendanceRecord) => {
@@ -630,11 +625,12 @@ export default function Attendance() {
                         <AlertDialogCancel onClick={() => setSelectedRecordId(null)}>Batal</AlertDialogCancel>
                         <AlertDialogAction
                             className={cn(buttonVariants({ variant: "destructive" }))}
+                            disabled={isDeleting}
                             onClick={() => {
                                 if (selectedRecordId) handleDelete(selectedRecordId);
                             }}
                         >
-                            Hapus
+                            {isDeleting ? "Menghapus..." : "Hapus"}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -725,7 +721,7 @@ export default function Attendance() {
                     )}
                 </DialogContent>
             </Dialog>
-            <EditAttendanceDialog record={editingRecord} open={isEditOpen} onOpenChange={setIsEditOpen} />
+            <EditAttendanceDialog record={editingRecord} open={isEditOpen} onOpenChange={setIsEditOpen} onSuccess={() => setRefreshKey(k => k + 1)} />
         </div>
     )
 }

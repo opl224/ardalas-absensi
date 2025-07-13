@@ -1,10 +1,10 @@
 
 'use client'
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { CalendarDays, Clock, Users, FileText, Settings } from "lucide-react";
+import { CalendarDays, Clock, Users, FileText, Settings, BedDouble } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader } from "@/components/ui/loader";
 import { db } from "@/lib/firebase";
@@ -27,6 +27,7 @@ interface Stats {
     present: number;
     absent: number;
     late: number;
+    offDay: number;
     total: number;
     rate: number;
 }
@@ -56,11 +57,18 @@ const splitTextTo = { opacity: 1, y: 0 };
 export function MobileHome({ setActiveView, setShowSettingsDialog }: MobileHomeProps) {
     const { userProfile } = useAuth();
     const [dateTime, setDateTime] = useState({ date: '', time: '' });
-    const [stats, setStats] = useState<Stats>({ present: 0, absent: 0, late: 0, total: 0, rate: 0 });
+    const [stats, setStats] = useState<Stats>({ present: 0, absent: 0, late: 0, offDay: 0, total: 0, rate: 0 });
     const [loading, setLoading] = useState(true);
     const [settings, setSettings] = useState<any | null>(null);
     const [showAvatarDialog, setShowAvatarDialog] = useState(false);
     const [totalGurus, setTotalGurus] = useState(0);
+
+    const isOffDay = useMemo(() => {
+        if (!settings) return false;
+        const now = new Date();
+        const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
+        return settings.offDays?.includes(todayStr) ?? false;
+    }, [settings]);
 
     useEffect(() => {
         const updateDateTime = () => {
@@ -99,21 +107,18 @@ export function MobileHome({ setActiveView, setShowSettingsDialog }: MobileHomeP
 
     // Main logic effect, re-runs when settings or totalGurus change
     useEffect(() => {
-        if (!settings) return; // Wait for settings to load
+        if (!settings) return;
 
         setLoading(true);
 
-        const now = new Date();
-        const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
-
-        if (settings.offDays?.includes(todayStr) && totalGurus > 0) {
-            setStats({ present: 0, absent: totalGurus, late: 0, total: totalGurus, rate: 0 });
+        if (isOffDay) {
+            setStats({ present: 0, absent: 0, late: 0, offDay: totalGurus, total: totalGurus, rate: 0 });
             setLoading(false);
             return;
         }
 
         if (totalGurus === 0) {
-            setStats({ present: 0, absent: 0, late: 0, total: 0, rate: 0 });
+            setStats({ present: 0, absent: 0, late: 0, offDay: 0, total: 0, rate: 0 });
             setLoading(false);
             return;
         }
@@ -153,6 +158,7 @@ export function MobileHome({ setActiveView, setShowSettingsDialog }: MobileHomeP
                 present: presentCount,
                 absent: absentCount >= 0 ? absentCount : 0,
                 late: lateCount,
+                offDay: 0,
                 total: totalGurus,
                 rate: attendanceRate
             });
@@ -163,13 +169,22 @@ export function MobileHome({ setActiveView, setShowSettingsDialog }: MobileHomeP
         });
 
         return () => unsubscribe();
-    }, [settings, totalGurus]);
+    }, [settings, totalGurus, isOffDay]);
 
     if (!userProfile) {
         return null;
     }
 
     const isCustomAvatar = userProfile.avatar && !userProfile.avatar.includes('placehold.co');
+    
+    const StatCircle = ({ value, label, colorClass, icon: Icon, iconColor = 'text-white' }: { value: string | number; label: string; colorClass: string; icon?: React.ElementType, iconColor?: string }) => (
+        <div>
+            <div className={`w-16 h-16 ${colorClass} rounded-full flex items-center justify-center text-2xl font-bold`}>
+                {Icon ? <Icon className={`h-8 w-8 ${iconColor}`} /> : <span className={iconColor}>{value}</span>}
+            </div>
+            <p className="mt-2 text-sm font-medium text-muted-foreground">{label}</p>
+        </div>
+    );
 
     return (
         <div className="p-4">
@@ -248,23 +263,20 @@ export function MobileHome({ setActiveView, setShowSettingsDialog }: MobileHomeP
                     ) : (
                         <>
                             <div className="flex justify-around text-center">
-                                <div>
-                                    <div className="w-16 h-16 bg-green-500 text-white rounded-full flex items-center justify-center text-2xl font-bold">{stats.present}</div>
-                                    <p className="mt-2 text-sm font-medium text-muted-foreground">Hadir</p>
-                                </div>
-                                <div>
-                                    <div className="w-16 h-16 bg-red-500 ml-2 text-white rounded-full flex items-center justify-center text-2xl font-bold">{stats.absent}</div>
-                                    <p className="mt-2 text-sm font-medium text-muted-foreground">Tidak Hadir</p>
-                                </div>
-                                <div>
-                                    <div className="w-16 h-16 bg-yellow-400 text-black rounded-full flex items-center justify-center text-2xl font-bold">{stats.late}</div>
-                                    <p className="mt-2 text-sm font-medium text-muted-foreground">Terlambat</p>
-                                </div>
+                               {isOffDay ? (
+                                    <StatCircle value={stats.offDay} label="Libur" colorClass="bg-secondary" icon={BedDouble} iconColor="text-secondary-foreground"/>
+                                ) : (
+                                    <>
+                                        <StatCircle value={stats.present} label="Hadir" colorClass="bg-green-500" />
+                                        <StatCircle value={stats.absent} label="Tidak Hadir" colorClass="bg-red-500" />
+                                        <StatCircle value={stats.late} label="Terlambat" colorClass="bg-yellow-400" iconColor="text-black" />
+                                    </>
+                                )}
                             </div>
                             <Separator className="my-4" />
                             <div className="flex justify-between items-center text-sm">
                                 <p className="font-medium text-foreground">Tingkat Kehadiran Guru</p>
-                                <p className="font-bold text-primary text-base">{stats.rate}%</p>
+                                <p className="font-bold text-primary text-base">{isOffDay ? '0%' : `${stats.rate}%`}</p>
                             </div>
                         </>
                     )}
