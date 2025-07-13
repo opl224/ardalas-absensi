@@ -215,12 +215,6 @@ export function DashboardHome() {
                         </>
                     )}
                 </CardContent>
-                 <CardContent className="p-4 pt-0">
-                    <Button onClick={handleMarkAbsentees} disabled={isMarking} className="w-full">
-                        <UserX className="mr-2 h-4 w-4" />
-                        {isMarking ? 'Memproses...' : 'Tandai Guru Tidak Hadir'}
-                    </Button>
-                </CardContent>
             </Card>
             <Card>
                 <CardHeader>
