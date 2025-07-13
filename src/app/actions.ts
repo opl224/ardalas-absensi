@@ -7,9 +7,6 @@ import { db } from "@/lib/firebase";
 import { getAuth, updatePassword as adminUpdatePassword, deleteUser as adminDeleteUser } from "firebase-admin/auth";
 import { getAdminApp } from "@/lib/firebase-admin";
 
-// This file no longer uses firebase-admin to avoid permission issues.
-// User creation is now handled on the client-side, and this file only saves user data to Firestore.
-
 const checkinSchema = z.object({
   photoDataUri: z.string(),
   latitude: z.number(),
@@ -504,7 +501,7 @@ export async function updateUser(formData: FormData): Promise<UpdateUserState> {
     // Update password if provided
     if (password && password.length >= 6) {
         getAdminApp(); // Ensure admin app is initialized
-        await adminUpdatePassword(getAuth(), userId, password);
+        await getAuth().updateUser(userId, { password });
     }
 
     // Update Firestore
@@ -520,6 +517,8 @@ export async function updateUser(formData: FormData): Promise<UpdateUserState> {
         errorMessage = 'Pengguna tidak ditemukan di Firebase Authentication.';
     } else if (error.code === 'auth/weak-password') {
         errorMessage = 'Kata sandi terlalu lemah. Gunakan setidaknya 6 karakter.';
+    } else if (error.message && error.message.includes("Must be a valid phone number")) {
+        errorMessage = "Nomor telepon tidak valid.";
     }
     return { error: errorMessage };
   }
