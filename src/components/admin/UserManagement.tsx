@@ -266,7 +266,7 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
     );
 }
 
-export default function UserManagement({ setEditingUser: setParentEditingUser }: { setEditingUser: (user: User | null) => void }) {
+export default function UserManagement() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [processedUsers, setProcessedUsers] = useState<ProcessedUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -287,9 +287,6 @@ export default function UserManagement({ setEditingUser: setParentEditingUser }:
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [backButtonListener, setBackButtonListener] = useState<PluginListenerHandle | null>(null);
 
-  useEffect(() => {
-    setParentEditingUser(editingUser);
-  }, [editingUser, setParentEditingUser]);
   
   const fetchAllUsers = useCallback(async () => {
     try {

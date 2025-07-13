@@ -73,7 +73,6 @@ export function MobileAdminDashboard() {
     index: 0,
   });
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
-  const [editingUser, setEditingUser] = useState(null);
 
 
   const NavLink = ({
@@ -156,7 +155,6 @@ export function MobileAdminDashboard() {
   };
   
   const isSubView = !mainViews.includes(page.view);
-  const isEditing = !!editingUser;
   const ComponentToRender = viewComponents[page.view];
 
   const onBack = () => {
@@ -175,8 +173,8 @@ export function MobileAdminDashboard() {
 
   const { showExitDialog, setShowExitDialog, handleConfirmExit } = useAndroidBackHandler({
     currentView: page.view,
-    isSubView: isSubView || isEditing,
-    onBack: isEditing ? () => setEditingUser(null) : onBack,
+    isSubView: isSubView,
+    onBack: onBack,
     onDialogClose,
     homeViewId: 'home',
     changeView,
@@ -186,7 +184,6 @@ export function MobileAdminDashboard() {
       setActiveView: changeView,
       onBack: onBack,
       setShowSettingsDialog: setShowSettingsDialog,
-      setEditingUser: setEditingUser,
   };
 
 
@@ -203,7 +200,7 @@ export function MobileAdminDashboard() {
                 animate="center"
                 exit="exit"
                 transition={transition}
-                drag={isSubView || isEditing ? false : "x"}
+                drag={isSubView ? false : "x"}
                 dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={0.1}
                 onDragEnd={handleDragEnd}
@@ -213,7 +210,7 @@ export function MobileAdminDashboard() {
         </AnimatePresence>
       </main>
 
-      {!isSubView && !isEditing && (
+      {!isSubView && (
         <nav className="fixed bottom-0 left-0 right-0 bg-card border-t p-2 flex justify-around z-10">
           <NavLink index={0} setView={changeView} label="Beranda">
             <Home className="h-6 w-6" />
