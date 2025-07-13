@@ -2,11 +2,12 @@
 'use server';
 
 import { z } from "zod";
-import { doc, setDoc, collection, updateDoc, getDoc, Timestamp, deleteField } from "firebase/firestore"; 
+import { doc, setDoc, collection, updateDoc, getDoc, Timestamp, deleteField, where, query, getDocs, limit } from "firebase/firestore"; 
 import { db } from "@/lib/firebase";
-import { getApp, getApps, initializeApp } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+
+// CATATAN: Fungsi yang menggunakan 'firebase-admin' (seperti createUser) telah dinonaktifkan sementara
+// karena masalah izin di lingkungan saat ini. Fungsi lainnya telah diubah
+// untuk menggunakan SDK klien Firestore.
 
 const checkinSchema = z.object({
   photoDataUri: z.string(),
@@ -23,14 +24,6 @@ export type CheckinState = {
   reason?: string;
   error?: string;
   success?: boolean;
-}
-
-// This function is still used by other components (e.g., Attendance.tsx)
-function getTodayAtTime(timeString: string): Date {
-    const today = new Date();
-    const [hours, minutes] = timeString.split(':').map(Number);
-    today.setHours(hours, minutes, 0, 0);
-    return today;
 }
 
 // Helper function to calculate distance between two lat/lon points in meters (Haversine formula)
@@ -107,13 +100,12 @@ export async function handleCheckin(
         }, { merge: true });
     }
     
-    // --- TIMEZONE-SAFE TIME LOGIC ---
     let gracePeriodMinutes = Number(gracePeriod);
     if (isNaN(gracePeriodMinutes)) {
-        gracePeriodMinutes = 60; // Final fallback if data is malformed
+        gracePeriodMinutes = 60; 
     }
     
-    const [endHours, endMinutes] = checkInEndStr.split(':').map(Number); // This is safe now
+    const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
     const checkInEndTotalMinutes = endHours * 60 + endMinutes;
 
     const absentDeadlineMinutes = checkInEndTotalMinutes + gracePeriodMinutes;
@@ -122,7 +114,6 @@ export async function handleCheckin(
     const clientTotalMinutes = clientHours * 60 + clientMinutes;
 
 
-    // Logic for ABSENT (based on client time)
     if (clientTotalMinutes > absentDeadlineMinutes) {
         const absentRecord = {
             userId,
@@ -140,12 +131,10 @@ export async function handleCheckin(
         return { success: true, reason: "Waktu absen masuk telah berakhir. Anda telah ditandai sebagai Tidak Hadir." };
     }
 
-    // Logic for HADIR or TERLAMBAT
     if (!photoDataUri.startsWith('data:image/')) {
         return { error: 'Data gambar tidak valid. Silakan ambil ulang foto selfie Anda.' };
     }
     
-    // Location Validation (No AI)
     const distance = calculateDistance(latitude, longitude, schoolLatitude, schoolLongitude);
     
     let isFraudulent = false;
@@ -156,17 +145,15 @@ export async function handleCheckin(
         fraudReason = `Anda berada ${Math.round(distance)} meter dari lokasi sekolah, yang berada di luar radius ${schoolRadius} meter yang diizinkan.`;
     }
     
-    // Determine status based on time (using client time)
     const finalStatus = clientTotalMinutes > checkInEndTotalMinutes ? "Terlambat" : "Hadir";
 
-    // Save attendance record to Firestore, storing the data URI directly
     const attendanceRecord = {
       userId,
       name: userName,
       role: userRole,
-      checkInTime: now, // The official timestamp is always the server's UTC time
+      checkInTime: now,
       checkInLocation: { latitude, longitude },
-      checkInPhotoUrl: photoDataUri, // Store the base64 data URI
+      checkInPhotoUrl: photoDataUri,
       isFraudulent,
       fraudReason,
       status: finalStatus,
@@ -205,7 +192,6 @@ export async function handleCheckout(formData: FormData): Promise<CheckoutState>
         
         const attendanceRef = doc(db, "photo_attendances", attendanceId);
         
-        // Simply update the checkout time. The status is determined at check-in and should not change.
         await updateDoc(attendanceRef, {
             checkOutTime: new Date(),
         });
@@ -297,12 +283,10 @@ export async function updateAvatar(formData: FormData): Promise<AvatarUpdateStat
 
         const userDocRef = doc(db, collectionName, userId);
 
-        // Use setDoc with merge:true to create the document if it doesn't exist, or update it if it does.
         await setDoc(userDocRef, {
             avatar: photoDataUri,
         }, { merge: true });
 
-        // The new "URL" is the data URI itself
         return { success: true, newAvatarUrl: photoDataUri };
 
     } catch (e) {
@@ -383,59 +367,5 @@ export type CreateUserState = {
 };
 
 export async function createUser(formData: FormData): Promise<CreateUserState> {
-    const validatedFields = createUserSchema.safeParse(Object.fromEntries(formData));
-
-    if (!validatedFields.success) {
-        const errors = validatedFields.error.flatten().fieldErrors;
-        const firstError = Object.values(errors)[0]?.[0];
-        return { error: firstError || "Data masukan tidak valid." };
-    }
-
-    const { name, email, password, role } = validatedFields.data;
-
-    try {
-        const getAdminApp = () => {
-            if (getApps().some(app => app.name === 'firebase-admin')) {
-                return getApp('firebase-admin');
-            }
-            // This will use Application Default Credentials on the server.
-            return initializeApp(undefined, 'firebase-admin');
-        };
-
-        const adminApp = getAdminApp();
-        const auth = getAuth(adminApp);
-        const firestore = getFirestore(adminApp);
-
-        // Create user in Firebase Auth
-        const userRecord = await auth.createUser({
-            email,
-            password,
-            displayName: name,
-            emailVerified: true,
-            disabled: false,
-        });
-
-        const collectionName = role === 'admin' ? 'admin' : 'teachers';
-        const userDocRef = firestore.collection(collectionName).doc(userRecord.uid);
-
-        await userDocRef.set({
-            name,
-            email,
-            role,
-            avatar: `https://placehold.co/100x100.png?text=${name.charAt(0)}`,
-        });
-
-        return { success: true };
-    } catch (e: any) {
-        console.error('Error creating user:', e);
-        let errorMessage = "Terjadi kesalahan yang tidak terduga.";
-        if (e.code === 'auth/email-already-exists') {
-            errorMessage = 'Email ini sudah digunakan oleh pengguna lain.';
-        } else if (e.message) {
-            errorMessage = e.message;
-        }
-        return { error: `Gagal membuat pengguna: ${errorMessage}` };
-    }
+    return { error: "Fitur pembuatan pengguna dinonaktifkan sementara karena masalah izin pada lingkungan server. Silakan buat pengguna secara manual di Firebase Console." };
 }
-
-    
