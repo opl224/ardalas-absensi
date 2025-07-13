@@ -121,27 +121,34 @@ export default function LoginPage() {
                 body: JSON.stringify({ idToken }),
             });
             router.push('/teacher/dashboard');
-          } else {
-              throw new Error("Peran guru tidak valid.");
+            return;
           }
-      } else {
-        await signOut(auth);
-        toast({
-            variant: 'destructive',
-            title: 'Gagal Masuk',
-            description: 'Data pengguna tidak ditemukan di koleksi admin atau guru.',
-        });
-        setLoading(false);
       }
 
+      // If user exists in Auth but not in Firestore collections
+      await signOut(auth);
+      toast({
+          variant: 'destructive',
+          title: 'Gagal Masuk',
+          description: 'Profil pengguna tidak ditemukan di basis data. Silakan hubungi administrator.',
+      });
+      
+
     } catch (error: any) {
-      console.error(error);
+      console.error("Login Error: ", error);
+      let description = 'Email atau kata sandi salah.';
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        description = 'Kombinasi email dan kata sandi tidak cocok.';
+      } else if (error.code === 'auth/invalid-credential') {
+        description = 'Kredensial yang diberikan tidak valid.';
+      }
       toast({
         variant: 'destructive',
         title: 'Gagal Masuk',
-        description: 'Email atau kata sandi salah, atau data pengguna tidak ditemukan.',
+        description: description,
       });
-      setLoading(false);
+    } finally {
+        setLoading(false);
     }
   };
 

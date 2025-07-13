@@ -113,8 +113,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     });
                 } else {
                     // User is authenticated but has no valid profile in Firestore.
-                    console.error(`User document for user ${firebaseUser.uid} not found in 'admin' or 'teachers'.`);
-                    logout("Profil pengguna tidak ditemukan di basis data.");
+                    // This could be a new user who just signed up but has no profile yet,
+                    // or a user whose profile was deleted. We will not log them out here,
+                    // but the app should handle this state gracefully.
+                    console.warn(`User document for user ${firebaseUser.uid} not found in 'admin' or 'teachers'.`);
+                    setUserProfile(null);
                     setLoading(false);
                 }
 
