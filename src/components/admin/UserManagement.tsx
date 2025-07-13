@@ -154,7 +154,7 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
     };
 
     const isEditingSelf = currentUser?.uid === user.id;
-    const canEditPasswordForGuru = currentUser?.role === 'Admin' && user.role === 'Guru';
+    const canEditPasswordForGuru = currentUser?.role === 'admin' && user.role === 'Guru';
     const canEditPassword = isEditingSelf || canEditPasswordForGuru;
 
     return (
@@ -171,7 +171,7 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
             </header>
             
             <div className="flex-1 overflow-y-auto">
-                <form id="edit-user-form" onSubmit={handleSubmit(onSubmit)} className="p-4 space-y-6">
+                <form id="edit-user-form" onSubmit={handleSubmit(onSubmit)} className="p-4 space-y-6 pb-24">
                     <div className="space-y-4">
                         <h3 className="font-semibold text-foreground border-b pb-2">Informasi Pribadi</h3>
                         {user.role === 'Guru' && (
@@ -264,7 +264,7 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
     );
 }
 
-export default function UserManagement({ setIsEditing }: { setIsEditing?: (isEditing: boolean) => void }) {
+export default function UserManagement() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [processedUsers, setProcessedUsers] = useState<ProcessedUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -614,7 +614,7 @@ export default function UserManagement({ setIsEditing }: { setIsEditing?: (isEdi
         </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto px-4">
+      <div className="flex-1 overflow-y-auto px-4 pb-20">
         {loading ? (
             <div className="flex justify-center items-center h-64">
                 <Loader scale={1.6} />
