@@ -5,21 +5,25 @@ import { getApp, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
-// This is a temporary action to create the first admin user.
-// You should remove this file after you've created the admin user.
-
-const firebaseConfig = {
-  credential: {
-    projectId: process.env.FIREBASE_PROJECT_ID!,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL!,
-    // The private key must be stored in an environment variable and have escaped newlines
-    privateKey: process.env.FIREBASE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
-  },
-  databaseURL: `https://${process.env.FIREBASE_PROJECT_ID}.firebaseio.com`,
-};
-
-
 function getAdminApp() {
+    // Check for required environment variables
+    const projectId = process.env.FIREBASE_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+    if (!projectId || !clientEmail || !privateKey) {
+        throw new Error("Variabel lingkungan Firebase Admin (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) tidak diatur. Harap konfigurasikan file .env Anda.");
+    }
+    
+    const firebaseConfig = {
+        credential: {
+            projectId,
+            clientEmail,
+            privateKey: privateKey.replace(/\\n/g, '\n'),
+        },
+        databaseURL: `https://${projectId}.firebaseio.com`,
+    };
+
     if (getApps().some(app => app.name === 'firebase-admin')) {
         return getApp('firebase-admin');
     } else {
