@@ -86,61 +86,50 @@ export default function LoginPage() {
       const adminDocRef = doc(db, 'admin', user.uid);
       const adminDoc = await getDoc(adminDocRef);
 
-      if (adminDoc.exists()) {
-        const userData = adminDoc.data();
-        const role = userData.role;
-
-        if (role === 'admin') {
-            const idToken = await user.getIdToken();
-            await fetch('/api/auth/session', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ idToken }),
-            });
-            router.push('/admin/dashboard');
-            return;
-        }
+      if (adminDoc.exists() && adminDoc.data()?.role === 'admin') {
+          const idToken = await user.getIdToken();
+          await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken }),
+          });
+          router.push('/admin/dashboard');
+          return; // <-- Explicitly return after handling admin
       }
 
       // If not admin, check teachers collection
       const teacherDocRef = doc(db, 'teachers', user.uid);
       const teacherDoc = await getDoc(teacherDocRef);
-      if (teacherDoc.exists()) {
-          const teacherData = teacherDoc.data();
-          if (teacherData.role === 'guru') {
-            if (isDesktop) {
-                await signOut(auth);
-                setShowDesktopAccessDeniedDialog(true);
-                setLoading(false);
-                return;
-            }
-            const idToken = await user.getIdToken();
-            await fetch('/api/auth/session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ idToken }),
-            });
-            router.push('/teacher/dashboard');
-            return;
+      if (teacherDoc.exists() && teacherDoc.data()?.role === 'guru') {
+          if (isDesktop) {
+              await signOut(auth);
+              setShowDesktopAccessDeniedDialog(true);
+          } else {
+              const idToken = await user.getIdToken();
+              await fetch('/api/auth/session', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ idToken }),
+              });
+              router.push('/teacher/dashboard');
           }
+          return; // <-- Explicitly return after handling teacher
       }
 
-      // If user exists in Auth but not in Firestore collections
+      // If user exists in Auth but not in Firestore collections, or role is wrong
       await signOut(auth);
       toast({
           variant: 'destructive',
           title: 'Gagal Masuk',
-          description: 'Profil pengguna tidak ditemukan di basis data. Silakan hubungi administrator.',
+          description: 'Profil pengguna tidak ditemukan atau peran tidak valid. Silakan hubungi administrator.',
       });
       
 
     } catch (error: any) {
       console.error("Login Error: ", error);
       let description = 'Email atau kata sandi salah.';
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         description = 'Kombinasi email dan kata sandi tidak cocok.';
-      } else if (error.code === 'auth/invalid-credential') {
-        description = 'Kredensial yang diberikan tidak valid.';
       }
       toast({
         variant: 'destructive',
