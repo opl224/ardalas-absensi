@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { saveUserToFirestore, type CreateUserState } from '@/app/actions';
@@ -40,20 +40,22 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors },
   } = useForm<CreateUserForm>({
     resolver: zodResolver(createUserSchema),
+    defaultValues: {
+      role: 'guru', // Set a default value
+    }
   });
   
   const onSubmit = (data: CreateUserForm) => {
     startTransition(async () => {
         try {
-            // Step 1: Create user in Firebase Auth on the client
             const auth = getAuth(app);
             const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
             const user = userCredential.user;
 
-            // Step 2: Call server action to save user data to Firestore
             const result: CreateUserState = await saveUserToFirestore({
                 uid: user.uid,
                 name: data.name,
@@ -136,16 +138,27 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
           </div>
           <div className="space-y-2">
             <Label>Peran</Label>
-            <RadioGroup {...register('role')} onValueChange={(value) => (document.getElementsByName('role')[0] as HTMLInputElement).value = value} className="flex items-center gap-x-4 pt-1" disabled={isPending}>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="admin" id="role-admin" />
-                <Label htmlFor="role-admin">Admin</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="guru" id="role-guru" />
-                <Label htmlFor="role-guru">Guru</Label>
-              </div>
-            </RadioGroup>
+            <Controller
+              name="role"
+              control={control}
+              render={({ field }) => (
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  className="flex items-center gap-x-4 pt-1"
+                  disabled={isPending}
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="admin" id="role-admin" />
+                    <Label htmlFor="role-admin">Admin</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="guru" id="role-guru" />
+                    <Label htmlFor="role-guru">Guru</Label>
+                  </div>
+                </RadioGroup>
+              )}
+            />
             {errors.role && <p className="text-destructive text-xs">{errors.role.message}</p>}
           </div>
           <DialogFooter className="pt-4">

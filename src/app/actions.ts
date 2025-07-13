@@ -348,8 +348,6 @@ export async function updateAttendanceRecord(formData: FormData): Promise<Attend
   }
 }
 
-// This action now only saves user data to Firestore, as user creation
-// is handled on the client.
 const createUserSchema = z.object({
   uid: z.string().min(1, "UID diperlukan."),
   name: z.string().min(3, "Nama harus memiliki setidaknya 3 karakter."),
@@ -382,7 +380,7 @@ export async function saveUserToFirestore(data: z.infer<typeof createUserSchema>
             uid,
         };
 
-        await setDoc(doc(db, collectionName, uid), userData);
+        await setDoc(doc(db, collectionName, uid), userData, { merge: true });
 
         return { success: true };
 
