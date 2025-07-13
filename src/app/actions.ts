@@ -4,10 +4,6 @@
 import { z } from "zod";
 import { doc, setDoc, collection, updateDoc, getDoc, Timestamp, deleteField, where, query, getDocs, limit } from "firebase/firestore"; 
 import { db } from "@/lib/firebase";
-import { credential, getApp, getApps, initializeApp, type App } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
-
 
 const checkinSchema = z.object({
   photoDataUri: z.string(),
@@ -367,76 +363,11 @@ export type CreateUserState = {
 };
 
 export async function createUser(formData: FormData): Promise<CreateUserState> {
-    const validatedFields = createUserSchema.safeParse(Object.fromEntries(formData));
-
-    if (!validatedFields.success) {
-        const errors = validatedFields.error.flatten().fieldErrors;
-        const firstError = Object.values(errors)[0]?.[0];
-        return { error: firstError || "Data masukan tidak valid." };
-    }
-
-    const { name, email, password, role } = validatedFields.data;
-    
-    // This function encapsulates the Firebase Admin SDK logic
-    const getAdminApp = (): App => {
-        const projectId = process.env.FIREBASE_PROJECT_ID;
-        const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-        const privateKey = process.env.FIREBASE_PRIVATE_KEY;
-
-        if (!projectId || !clientEmail || !privateKey) {
-             throw new Error("Variabel lingkungan Firebase Admin (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) tidak diatur atau tidak lengkap. Fitur ini dinonaktifkan hingga kredensial server dikonfigurasi dengan benar.");
-        }
-        
-        if (getApps().some(app => app.name === 'firebase-admin')) {
-            return getApp('firebase-admin');
-        }
-
-        const cert = {
-            projectId,
-            clientEmail,
-            privateKey: privateKey.replace(/\\n/g, '\n'),
-        };
-
-        return initializeApp({
-            credential: credential.cert(cert)
-        }, 'firebase-admin');
-    }
-
-    try {
-        const adminApp = getAdminApp();
-        const auth = getAuth(adminApp);
-        const firestore = getAdminFirestore(adminApp);
-
-        // Create user in Firebase Auth
-        const userRecord = await auth.createUser({
-            email,
-            password,
-            displayName: name,
-            emailVerified: true,
-            disabled: false,
-        });
-
-        const collectionName = role === 'admin' ? 'admin' : 'teachers';
-        const userDocRef = firestore.collection(collectionName).doc(userRecord.uid);
-
-        await userDocRef.set({
-            name,
-            email,
-            role,
-            avatar: `https://placehold.co/100x100.png?text=${name.charAt(0)}`,
-        });
-
-        return { success: true };
-    } catch (e: any) {
-        console.error('Error creating user:', e);
-        let errorMessage = "Terjadi kesalahan yang tidak terduga.";
-        if (e.code === 'auth/email-already-exists') {
-            errorMessage = 'Email ini sudah digunakan oleh pengguna lain.';
-        } else if (e.message) {
-            errorMessage = e.message;
-        }
-        return { error: `Gagal membuat pengguna: ${errorMessage}` };
-    }
+    // This feature is temporarily disabled due to server permission issues.
+    // To add a new user, please do so directly from the Firebase Console.
+    return {
+      error: "Fitur penambahan pengguna dinonaktifkan sementara. Silakan tambahkan pengguna melalui Firebase Console."
+    };
 }
 
 export type MarkAbsenteesState = {
@@ -508,5 +439,3 @@ export async function markAbsentees(): Promise<MarkAbsenteesState> {
         return { error: `Kesalahan server: ${errorMessage}.` };
     }
 }
-
-    

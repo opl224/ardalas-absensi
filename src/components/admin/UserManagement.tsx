@@ -31,7 +31,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { App as CapacitorApp } from '@capacitor/app';
-import { AddUserDialog } from './AddUserDialog';
+import { createUser, type CreateUserState } from '@/app/actions';
 
 interface User {
   id: string;
@@ -99,14 +99,12 @@ export default function UserManagement() {
 
   const handleBackButton = useCallback((e: any) => {
     e.canGoBack = false;
-    if (isAddUserOpen) {
-        setIsAddUserOpen(false);
-    } else if (isDetailOpen) {
+    if (isDetailOpen) {
         setIsDetailOpen(false);
     } else if (isAbsentListOpen) {
         setIsAbsentListOpen(false);
     }
-  }, [isDetailOpen, isAbsentListOpen, isAddUserOpen]);
+  }, [isDetailOpen, isAbsentListOpen]);
   
   useEffect(() => {
     const setupListener = async () => {
@@ -390,7 +388,7 @@ export default function UserManagement() {
 
         <div className="p-4">
           <div className="flex flex-col sm:flex-row items-center gap-2 mb-4">
-              <div className="relative flex-grow w-full flex items-center gap-2">
+              <div className="relative flex-grow w-full">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input 
                     placeholder="Cari pengguna..." 
@@ -398,10 +396,6 @@ export default function UserManagement() {
                     value={searchTerm}
                     onChange={handleSearchChange}
                   />
-                  <Button variant="outline" size="icon" className="shrink-0" onClick={() => setIsAddUserOpen(true)}>
-                      <UserPlus className="h-4 w-4" />
-                      <span className="sr-only">Tambah Pengguna</span>
-                  </Button>
               </div>
               <div className='flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0'>
                   <Button variant="outline" className="w-full" onClick={() => setIsAbsentListOpen(true)}>
@@ -480,12 +474,10 @@ export default function UserManagement() {
                     </Button>
                 </div>
               )}
-
               </>
           )}
         </div>
       </div>
-      <AddUserDialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen} />
       <Dialog open={isDetailOpen} onOpenChange={handleCloseDetailDialog}>
         <DialogContent className="sm:max-w-md">
             <DialogHeader>
@@ -562,5 +554,3 @@ export default function UserManagement() {
     </>
   );
 }
-
-    
