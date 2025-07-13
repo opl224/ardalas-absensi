@@ -71,8 +71,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 let profileDocRef;
                 let userRole: 'admin' | 'guru' | null = null;
 
-                // 1. Check for admin in 'users' collection
-                const adminDocRef = doc(db, 'users', firebaseUser.uid);
+                // 1. Check for admin in 'admin' collection
+                const adminDocRef = doc(db, 'admin', firebaseUser.uid);
                 const adminSnap = await getDoc(adminDocRef);
 
                 if (adminSnap.exists() && adminSnap.data()?.role === 'admin') {
@@ -113,7 +113,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     });
                 } else {
                     // User is authenticated but has no valid profile in Firestore.
-                    console.error(`User document for user ${firebaseUser.uid} not found in 'users' or 'teachers'.`);
+                    console.error(`User document for user ${firebaseUser.uid} not found in 'admin' or 'teachers'.`);
                     logout("Profil pengguna tidak ditemukan di basis data.");
                     setLoading(false);
                 }

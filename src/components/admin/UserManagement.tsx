@@ -121,7 +121,7 @@ export default function UserManagement() {
 
     const fetchAllUsers = async () => {
         try {
-            const adminQuery = query(collection(db, "users"), where('role', '==', 'admin'));
+            const adminQuery = query(collection(db, "admin"), where('role', '==', 'admin'));
             const teacherQuery = query(collection(db, "teachers"));
 
             const [adminSnapshot, teacherSnapshot] = await Promise.all([
@@ -179,8 +179,6 @@ export default function UserManagement() {
         return;
     }
     
-    setLoading(true);
-
     const now = new Date();
     const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
     const isOffDay = settings.offDays?.includes(todayStr) ?? false;

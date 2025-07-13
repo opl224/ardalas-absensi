@@ -82,49 +82,32 @@ export default function LoginPage() {
         localStorage.removeItem('rememberedPassword');
       }
 
-      const userDocRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
+      // Check admin collection first
+      const adminDocRef = doc(db, 'admin', user.uid);
+      const adminDoc = await getDoc(adminDocRef);
 
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
+      if (adminDoc.exists()) {
+        const userData = adminDoc.data();
         const role = userData.role;
 
-        if (role === 'guru' && isDesktop) {
-          await signOut(auth);
-          setShowDesktopAccessDeniedDialog(true);
-          setLoading(false);
-          return;
-        }
-
-        if (role !== 'admin' && role !== 'guru') {
-            await signOut(auth);
-            toast({
-                variant: 'destructive',
-                title: 'Akses Ditolak',
-                description: 'Peran Anda tidak diizinkan untuk mengakses aplikasi ini.',
+        if (role === 'admin') {
+            const idToken = await user.getIdToken();
+            await fetch('/api/auth/session', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ idToken }),
             });
-            setLoading(false);
+            router.push('/admin/dashboard');
             return;
         }
+      }
 
-        const idToken = await user.getIdToken();
-        
-        await fetch('/api/auth/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ idToken }),
-        });
-
-        if (role === 'admin') {
-          router.push('/admin/dashboard');
-        } else if (role === 'guru') {
-          router.push('/teacher/dashboard');
-        }
-      } else {
-        // Also check teachers collection if not found in users
-        const teacherDocRef = doc(db, 'teachers', user.uid);
-        const teacherDoc = await getDoc(teacherDocRef);
-        if (teacherDoc.exists()) {
+      // If not admin, check teachers collection
+      const teacherDocRef = doc(db, 'teachers', user.uid);
+      const teacherDoc = await getDoc(teacherDocRef);
+      if (teacherDoc.exists()) {
+          const teacherData = teacherDoc.data();
+          if (teacherData.role === 'guru') {
             if (isDesktop) {
                 await signOut(auth);
                 setShowDesktopAccessDeniedDialog(true);
@@ -138,15 +121,17 @@ export default function LoginPage() {
                 body: JSON.stringify({ idToken }),
             });
             router.push('/teacher/dashboard');
-        } else {
-            await signOut(auth);
-            toast({
-                variant: 'destructive',
-                title: 'Gagal Masuk',
-                description: 'Data pengguna tidak ditemukan.',
-            });
-            setLoading(false);
-        }
+          } else {
+              throw new Error("Peran guru tidak valid.");
+          }
+      } else {
+        await signOut(auth);
+        toast({
+            variant: 'destructive',
+            title: 'Gagal Masuk',
+            description: 'Data pengguna tidak ditemukan di koleksi admin atau guru.',
+        });
+        setLoading(false);
       }
 
     } catch (error: any) {
@@ -154,7 +139,7 @@ export default function LoginPage() {
       toast({
         variant: 'destructive',
         title: 'Gagal Masuk',
-        description: 'Email atau kata sandi salah.',
+        description: 'Email atau kata sandi salah, atau data pengguna tidak ditemukan.',
       });
       setLoading(false);
     }
