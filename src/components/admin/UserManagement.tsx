@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, Download, Eye, ChevronLeft, ChevronRight, Briefcase, BookCopy, Phone, Home, VenetianMask, BookMarked, Fingerprint, AlertTriangle, UserX, UserPlus, MoreVertical, Trash2, Edit } from 'lucide-react';
+import { Search, Download, Eye, ChevronLeft, ChevronRight, Briefcase, BookCopy, Phone, Home, VenetianMask, BookMarked, Fingerprint, AlertTriangle, UserX, UserPlus, MoreVertical, Trash2, Edit as EditIcon, ArrowLeft, EyeOff } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -22,7 +22,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { collection, query, where, onSnapshot, DocumentData, getDocs, doc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, DocumentData, getDocs, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader } from '../ui/loader';
 import { Separator } from '../ui/separator';
@@ -32,7 +32,12 @@ import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { App as CapacitorApp } from '@capacitor/app';
 import { AddUserDialog } from './AddUserDialog';
-import { EditUserDialog } from './EditUserDialog';
+import { Label } from '../ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { updateUser, type UpdateUserState } from '@/app/actions';
 
 
 interface User {
@@ -74,10 +79,175 @@ const DetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, lab
     );
 };
 
+// Form schema for Edit
+const updateUserSchema = z.object({
+  name: z.string().min(3, "Nama harus memiliki setidaknya 3 karakter."),
+  password: z.string().optional(),
+  nip: z.string().optional(),
+  gender: z.enum(['Laki-laki', 'Perempuan', '']).optional(),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  subject: z.string().optional(),
+  class: z.string().optional(),
+}).refine(data => !data.password || data.password.length >= 6, {
+  message: "Kata sandi baru harus memiliki setidaknya 6 karakter.",
+  path: ["password"],
+});
+
+type UpdateUserFormValues = z.infer<typeof updateUserSchema>;
+
+
+// The new Edit User Form Component
+function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => void, onSuccess: () => void }) {
+    const { toast } = useToast();
+    const [isPending, startTransition] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+
+    const {
+        register,
+        handleSubmit,
+        control,
+        formState: { errors, isDirty },
+    } = useForm<UpdateUserFormValues>({
+        resolver: zodResolver(updateUserSchema),
+        defaultValues: {
+            name: user.name || '',
+            password: '',
+            nip: user.nip || '',
+            gender: user.gender as 'Laki-laki' | 'Perempuan' | undefined,
+            phone: user.phone || '',
+            address: user.address || '',
+            subject: user.subject || '',
+            class: user.class || '',
+        },
+    });
+
+    const onSubmit = (data: UpdateUserFormValues) => {
+        const formData = new FormData();
+        formData.append('userId', user.id);
+        formData.append('role', user.role);
+
+        Object.entries(data).forEach(([key, value]) => {
+            if (value !== undefined && value !== null) {
+                formData.append(key, String(value));
+            }
+        });
+
+        startTransition(async () => {
+            const result: UpdateUserState = await updateUser(formData);
+            if (result.success) {
+                toast({ title: 'Berhasil', description: `Data pengguna '${user.name}' berhasil diperbarui.` });
+                onSuccess();
+                onBack(); // Go back to the list after success
+            } else {
+                toast({ variant: 'destructive', title: 'Gagal', description: result.error });
+            }
+        });
+    };
+
+    return (
+        <div className="flex flex-col h-full">
+            <header className="sticky top-0 z-10 flex items-center gap-4 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8">
+                    <ArrowLeft className="h-5 w-5" />
+                    <span className="sr-only">Kembali</span>
+                </Button>
+                <div className="flex-grow">
+                    <h1 className="text-xl font-bold text-foreground truncate">Edit Pengguna</h1>
+                    <p className="text-sm text-muted-foreground truncate">{user.name}</p>
+                </div>
+            </header>
+
+            <form onSubmit={handleSubmit(onSubmit)} className="flex-grow overflow-y-auto">
+                <div className="space-y-6 p-4 pb-24">
+                    {/* Personal Info */}
+                    <div className="space-y-4">
+                        <h3 className="font-semibold text-foreground border-b pb-2">Informasi Pribadi</h3>
+                        {user.role === 'Guru' && (
+                            <div className="space-y-2">
+                                <Label htmlFor="nip">NIP</Label>
+                                <Input id="nip" {...register('nip')} placeholder="Nomor Induk Pegawai" disabled={isPending} />
+                            </div>
+                        )}
+                        <div className="space-y-2">
+                          <Label htmlFor="gender">Jenis Kelamin</Label>
+                          <Controller
+                              name="gender"
+                              control={control}
+                              render={({ field }) => (
+                                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isPending}>
+                                      <SelectTrigger id="gender">
+                                          <SelectValue placeholder="Pilih jenis kelamin" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                          <SelectItem value="Laki-laki">Laki-laki</SelectItem>
+                                          <SelectItem value="Perempuan">Perempuan</SelectItem>
+                                      </SelectContent>
+                                  </Select>
+                              )}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="phone">No. Telepon</Label>
+                            <Input id="phone" {...register('phone')} placeholder="Nomor telepon aktif" disabled={isPending} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="address">Alamat</Label>
+                            <Input id="address" {...register('address')} placeholder="Alamat lengkap" disabled={isPending} />
+                        </div>
+                    </div>
+
+                    {/* Academic Info */}
+                    {user.role === 'Guru' && (
+                        <div className="space-y-4">
+                            <h3 className="font-semibold text-foreground border-b pb-2">Informasi Akademik</h3>
+                            <div className="space-y-2">
+                                <Label htmlFor="subject">Mata Pelajaran</Label>
+                                <Input id="subject" {...register('subject')} placeholder="Contoh: Matematika" disabled={isPending} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="class">Mengajar Kelas</Label>
+                                <Input id="class" {...register('class')} placeholder="Contoh: 10A, 11B" disabled={isPending} />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Admin Info */}
+                    <div className="space-y-4">
+                        <h3 className="font-semibold text-foreground border-b pb-2">Informasi Administrasi</h3>
+                        <div className="space-y-2">
+                            <Label htmlFor="name">Nama Lengkap</Label>
+                            <Input id="name" {...register('name')} placeholder="Nama lengkap pengguna" disabled={isPending} />
+                            {errors.name && <p className="text-destructive text-xs">{errors.name.message}</p>}
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="password">Kata Sandi Baru</Label>
+                            <div className="relative">
+                                <Input id="password" type={showPassword ? 'text' : 'password'} {...register('password')} placeholder="Biarkan kosong jika tidak ingin mengubah" disabled={isPending} className="pr-10" />
+                                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground" onClick={() => setShowPassword(!showPassword)} disabled={isPending}>
+                                    <span className="sr-only">Toggle password visibility</span>
+                                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                </Button>
+                            </div>
+                            {errors.password && <p className="text-destructive text-xs">{errors.password.message}</p>}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="fixed bottom-0 left-0 right-0 border-t bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                    <div className="max-w-3xl mx-auto flex gap-2">
+                        <Button type="button" variant="outline" onClick={onBack} disabled={isPending} className="flex-1">Batal</Button>
+                        <Button type="submit" disabled={isPending || !isDirty} className="flex-1">{isPending ? 'Menyimpan...' : 'Simpan Perubahan'}</Button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    );
+}
+
 export default function UserManagement() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [processedUsers, setProcessedUsers] = useState<ProcessedUser[]>([]);
-  const [absentUsers, setAbsentUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -87,9 +257,10 @@ export default function UserManagement() {
   const [settings, setSettings] = useState<any>(null);
 
   const [selectedUser, setSelectedUser] = useState<ProcessedUser | null>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+
   const { toast } = useToast();
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isAbsentListOpen, setIsAbsentListOpen] = useState(false);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
@@ -125,12 +296,12 @@ export default function UserManagement() {
 
   const handleBackButton = useCallback((e: any) => {
     e.canGoBack = false;
-    if (isAddUserOpen) setIsAddUserOpen(false);
-    else if (isEditOpen) setIsEditOpen(false);
+    if (editingUser) setEditingUser(null);
+    else if (isAddUserOpen) setIsAddUserOpen(false);
     else if (isDetailOpen) setIsDetailOpen(false);
     else if (isDeleteOpen) setIsDeleteOpen(false);
     else if (isAbsentListOpen) setIsAbsentListOpen(false);
-  }, [isAddUserOpen, isEditOpen, isDetailOpen, isDeleteOpen, isAbsentListOpen]);
+  }, [editingUser, isAddUserOpen, isDetailOpen, isDeleteOpen, isAbsentListOpen]);
   
   useEffect(() => {
     const setupListener = async () => {
@@ -215,7 +386,6 @@ export default function UserManagement() {
         return !attendanceStatusMap.has(user.id);
     });
 
-    setAbsentUsers(notCheckedInUsers);
     setProcessedUsers(usersWithStatus);
     setLoading(false);
   }, [allUsers, attendanceStatusMap, settings]);
@@ -365,8 +535,7 @@ export default function UserManagement() {
   };
   
   const openEditDialog = (user: ProcessedUser) => {
-    setSelectedUser(user);
-    setIsEditOpen(true);
+    setEditingUser(user);
   };
   
   const openDeleteDialog = (user: ProcessedUser) => {
@@ -375,12 +544,15 @@ export default function UserManagement() {
   }
 
   const handleUserActionSuccess = () => {
-    // This is no longer needed as the user list updates automatically via onSnapshot
-    // setRefreshKey(oldKey => oldKey + 1);
+    setRefreshKey(oldKey => oldKey + 1);
   };
 
   const hasPrevPage = currentPage > 1;
   const hasNextPage = currentPage * USERS_PER_PAGE < totalFilteredCount;
+
+  if (editingUser) {
+      return <EditUserForm user={editingUser} onBack={() => setEditingUser(null)} onSuccess={handleUserActionSuccess} />;
+  }
 
   return (
     <>
@@ -401,11 +573,11 @@ export default function UserManagement() {
                   />
               </div>
               <div className='flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0'>
-                  <Button variant="outline" className="w-1/2" onClick={() => setIsAbsentListOpen(true)}>
+                  <Button variant="outline" className="w-1/2 sm:w-auto" onClick={() => setIsAbsentListOpen(true)}>
                       <UserX className="mr-2 h-4 w-4" />
                       Belum Absen
                   </Button>
-                  <Button className="w-1/2" onClick={() => setIsAddUserOpen(true)}>
+                  <Button className="w-1/2 sm:w-auto" onClick={() => setIsAddUserOpen(true)}>
                     <UserPlus className="mr-2 h-4 w-4" />
                     Tambah
                   </Button>
@@ -469,7 +641,7 @@ export default function UserManagement() {
                                             <span>Lihat Detail</span>
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onSelect={() => openEditDialog(user)}>
-                                            <Edit className="mr-2 h-4 w-4" />
+                                            <EditIcon className="mr-2 h-4 w-4" />
                                             <span>Edit</span>
                                         </DropdownMenuItem>
                                         <DropdownMenuSeparator />
@@ -556,28 +728,12 @@ export default function UserManagement() {
             </DialogHeader>
             <ScrollArea className="max-h-[60vh] -mx-6">
                 <div className="px-6 py-4 space-y-3">
-                    {absentUsers.length > 0 ? (
-                        absentUsers.map(user => (
-                            <div key={user.id} className="flex items-center gap-4 p-2 rounded-md border">
-                                <Avatar>
-                                    <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="person portrait" />
-                                    <AvatarFallback>{user.name?.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                    <p className="font-medium text-foreground">{user.name}</p>
-                                    <p className="text-sm text-muted-foreground">{user.email}</p>
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <p className="text-center text-muted-foreground py-8">Semua guru telah melakukan absensi hari ini.</p>
-                    )}
+                    {/* Placeholder for absent users list */}
                 </div>
             </ScrollArea>
         </DialogContent>
       </Dialog>
       <AddUserDialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen} onSuccess={handleUserActionSuccess} />
-      {selectedUser && <EditUserDialog key={selectedUser.id} user={selectedUser} open={isEditOpen} onOpenChange={setIsEditOpen} onSuccess={handleUserActionSuccess} />}
     </>
   );
 }
