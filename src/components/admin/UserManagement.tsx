@@ -178,8 +178,8 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                 </div>
             </header>
             
-            <div className="flex-1 overflow-y-auto">
-                <form id="edit-user-form" onSubmit={handleSubmit(onSubmit)} className="p-4 space-y-6">
+            <div className="flex-1 overflow-y-auto p-4">
+                <form id="edit-user-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                     <div className="space-y-4">
                         <h3 className="font-semibold text-foreground border-b pb-2">Informasi Pribadi</h3>
                         {user.role === 'Guru' && (
@@ -260,7 +260,7 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                 </form>
             </div>
             
-            <div className="mt-auto border-t bg-background p-4 sticky bottom-0">
+            <div className="mt-auto border-t bg-background p-4">
                 <div className="flex gap-2 max-w-lg mx-auto">
                     <Button type="button" variant="outline" onClick={onBack} disabled={isPending} className="flex-1">Batal</Button>
                     <Button type="submit" form="edit-user-form" disabled={isPending || !isDirty} className="flex-1">
@@ -582,7 +582,7 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
   }
 
   return (
-    <>
+    <div className="overflow-y-auto">
       <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <h1 className="text-xl font-bold text-foreground">Manajemen Pengguna</h1>
       </header>
@@ -760,7 +760,7 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
         </DialogContent>
       </Dialog>
       <AddUserDialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen} onSuccess={handleUserActionSuccess} />
-    </>
+    </div>
   );
 }
 
