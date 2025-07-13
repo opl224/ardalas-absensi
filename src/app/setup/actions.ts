@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { getApp, getApps, initializeApp } from "firebase-admin/app";
@@ -6,7 +7,6 @@ import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
 function getAdminApp() {
-    // Check for required environment variables
     const projectId = process.env.FIREBASE_PROJECT_ID;
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
     const privateKey = process.env.FIREBASE_PRIVATE_KEY;
@@ -80,3 +80,4 @@ export async function createAdminUser() {
     return { error: error.message };
   }
 }
+

@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -30,6 +31,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { App as CapacitorApp } from '@capacitor/app';
+import { AddUserDialog } from './AddUserDialog';
 
 interface User {
   id: string;
@@ -85,6 +87,7 @@ export default function UserManagement() {
   const { toast } = useToast();
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isAbsentListOpen, setIsAbsentListOpen] = useState(false);
+  const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [backButtonListener, setBackButtonListener] = useState<PluginListenerHandle | null>(null);
 
   const removeListener = useCallback(() => {
@@ -96,12 +99,14 @@ export default function UserManagement() {
 
   const handleBackButton = useCallback((e: any) => {
     e.canGoBack = false;
-    if (isDetailOpen) {
+    if (isAddUserOpen) {
+        setIsAddUserOpen(false);
+    } else if (isDetailOpen) {
         setIsDetailOpen(false);
     } else if (isAbsentListOpen) {
         setIsAbsentListOpen(false);
     }
-  }, [isDetailOpen, isAbsentListOpen]);
+  }, [isDetailOpen, isAbsentListOpen, isAddUserOpen]);
   
   useEffect(() => {
     const setupListener = async () => {
@@ -393,7 +398,7 @@ export default function UserManagement() {
                     value={searchTerm}
                     onChange={handleSearchChange}
                   />
-                  <Button variant="outline" size="icon" className="shrink-0">
+                  <Button variant="outline" size="icon" className="shrink-0" onClick={() => setIsAddUserOpen(true)}>
                       <UserPlus className="h-4 w-4" />
                       <span className="sr-only">Tambah Pengguna</span>
                   </Button>
@@ -480,6 +485,7 @@ export default function UserManagement() {
           )}
         </div>
       </div>
+      <AddUserDialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen} />
       <Dialog open={isDetailOpen} onOpenChange={handleCloseDetailDialog}>
         <DialogContent className="sm:max-w-md">
             <DialogHeader>

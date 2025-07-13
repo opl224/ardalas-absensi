@@ -1,7 +1,11 @@
 
+
 import { z } from "zod";
 import { doc, setDoc, collection, updateDoc, getDoc, Timestamp, deleteField } from "firebase/firestore"; 
 import { db } from "@/lib/firebase";
+import { getApp, getApps, initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
 
 const checkinSchema = z.object({
   photoDataUri: z.string(),
@@ -363,4 +367,87 @@ export async function updateAttendanceRecord(formData: FormData): Promise<Attend
     const errorMessage = e instanceof Error ? e.message : "Terjadi kesalahan yang tidak terduga.";
     return { error: `Kesalahan server: ${errorMessage}.` };
   }
+}
+
+const createUserSchema = z.object({
+  name: z.string().min(3, "Nama harus memiliki setidaknya 3 karakter."),
+  email: z.string().email("Format email tidak valid."),
+  password: z.string().min(6, "Kata sandi harus memiliki setidaknya 6 karakter."),
+  role: z.enum(['admin', 'guru']),
+});
+
+export type CreateUserState = {
+    success?: boolean;
+    error?: string;
+};
+
+function getAdminApp() {
+    if (getApps().length > 0 && getApps().some(app => app.name === 'firebase-admin')) {
+        return getApp('firebase-admin');
+    }
+    
+    const projectId = process.env.FIREBASE_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+    if (!projectId || !clientEmail || !privateKey) {
+        throw new Error("Variabel lingkungan Firebase Admin (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) tidak diatur.");
+    }
+
+    return initializeApp({
+        credential: {
+            projectId,
+            clientEmail,
+            privateKey: privateKey.replace(/\\n/g, '\n'),
+        },
+        databaseURL: `https://${projectId}.firebaseio.com`,
+    }, 'firebase-admin');
+}
+
+export async function createUser(formData: FormData): Promise<CreateUserState> {
+    const validatedFields = createUserSchema.safeParse(Object.fromEntries(formData));
+
+    if (!validatedFields.success) {
+        const errors = validatedFields.error.flatten().fieldErrors;
+        const firstError = Object.values(errors)[0]?.[0];
+        return { error: firstError || "Data masukan tidak valid." };
+    }
+
+    const { name, email, password, role } = validatedFields.data;
+
+    try {
+        const adminApp = getAdminApp();
+        const auth = getAuth(adminApp);
+        const firestore = getFirestore(adminApp);
+
+        // Create user in Firebase Auth
+        const userRecord = await auth.createUser({
+            email,
+            password,
+            displayName: name,
+            emailVerified: true,
+            disabled: false,
+        });
+
+        const collectionName = role === 'admin' ? 'admin' : 'teachers';
+        const userDocRef = firestore.collection(collectionName).doc(userRecord.uid);
+
+        await userDocRef.set({
+            name,
+            email,
+            role,
+            avatar: `https://placehold.co/100x100.png?text=${name.charAt(0)}`,
+        });
+
+        return { success: true };
+    } catch (e: any) {
+        console.error('Error creating user:', e);
+        let errorMessage = "Terjadi kesalahan yang tidak terduga.";
+        if (e.code === 'auth/email-already-exists') {
+            errorMessage = 'Email ini sudah digunakan oleh pengguna lain.';
+        } else if (e.message) {
+            errorMessage = e.message;
+        }
+        return { error: `Gagal membuat pengguna: ${errorMessage}` };
+    }
 }
