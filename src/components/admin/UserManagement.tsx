@@ -67,7 +67,7 @@ interface AttendanceStatus {
 }
 
 interface UserManagementProps {
-  setIsEditing: (isEditing: boolean) => void;
+  setIsEditingUser: (isEditing: boolean) => void;
 }
 
 
@@ -271,7 +271,7 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
     );
 }
 
-export default function UserManagement({ setIsEditing }: UserManagementProps) {
+export default function UserManagement({ setIsEditingUser }: UserManagementProps) {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [processedUsers, setProcessedUsers] = useState<ProcessedUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -413,8 +413,8 @@ export default function UserManagement({ setIsEditing }: UserManagementProps) {
   }, [allUsers, attendanceStatusMap, settings]);
 
   useEffect(() => {
-    setIsEditing(!!editingUser);
-  }, [editingUser, setIsEditing]);
+    setIsEditingUser(!!editingUser);
+  }, [editingUser, setIsEditingUser]);
 
   const displayedUsers = useMemo(() => {
     const filtered = searchTerm
@@ -581,7 +581,7 @@ export default function UserManagement({ setIsEditing }: UserManagementProps) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <>
       <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <h1 className="text-xl font-bold text-foreground">Manajemen Pengguna</h1>
       </header>
@@ -625,13 +625,12 @@ export default function UserManagement({ setIsEditing }: UserManagementProps) {
         </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto px-4">
-        {loading ? (
-            <div className="flex justify-center items-center h-64">
-                <Loader scale={1.6} />
-            </div>
-        ) : (
-            <>
+      {loading ? (
+          <div className="flex justify-center items-center h-64">
+              <Loader scale={1.6} />
+          </div>
+      ) : (
+          <div className="px-4 pb-4">
             <div className="space-y-3">
                 {displayedUsers.length > 0 ? (
                     displayedUsers.map((user) => (
@@ -698,9 +697,8 @@ export default function UserManagement({ setIsEditing }: UserManagementProps) {
                   </Button>
               </div>
             )}
-            </>
-        )}
-      </div>
+          </div>
+      )}
 
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <DialogContent className="sm:max-w-md">
@@ -761,6 +759,6 @@ export default function UserManagement({ setIsEditing }: UserManagementProps) {
         </DialogContent>
       </Dialog>
       <AddUserDialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen} onSuccess={handleUserActionSuccess} />
-    </div>
+    </>
   );
 }

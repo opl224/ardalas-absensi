@@ -181,7 +181,7 @@ export function MobileAdminDashboard() {
       setActiveView: changeView,
       onBack: onBack,
       setShowSettingsDialog: setShowSettingsDialog,
-      setIsEditing: setIsEditingUser,
+      setIsEditingUser: setIsEditingUser,
   };
 
 
@@ -191,14 +191,14 @@ export function MobileAdminDashboard() {
         <AnimatePresence initial={false} custom={page.direction}>
             <motion.div
                 key={page.view}
-                className="absolute w-full h-full"
+                className="absolute w-full h-full overflow-y-auto pb-24"
                 custom={page.direction}
                 variants={variants}
                 initial="enter"
                 animate="center"
                 exit="exit"
                 transition={transition}
-                drag={isSubView || isEditingUser ? false : "x"}
+                drag={isEditingUser || isSubView ? false : "x"}
                 dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={0.1}
                 onDragEnd={handleDragEnd}
