@@ -591,7 +591,7 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
   }
 
   return (
-    <div className="overflow-y-auto">
+    <div>
       <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <h1 className="text-xl font-bold text-foreground">Manajemen Pengguna</h1>
       </header>
@@ -772,5 +772,3 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
     </div>
   );
 }
-
-
