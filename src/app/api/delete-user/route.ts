@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     const adminDocRef = db.collection('admin').doc(decodedToken.uid);
     const adminDoc = await adminDocRef.get();
     
-    if (!adminDoc.exists) {
+    if (!adminDoc.exists || adminDoc.data()?.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized: Not an admin' }, { status: 403 });
     }
 
