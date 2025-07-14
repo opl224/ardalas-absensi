@@ -85,7 +85,7 @@ export function MobileTeacherDashboard() {
     direction: 0,
     index: 0,
   });
-  const { userProfile, loading } = useAuth();
+  const { userProfile } = useAuth();
   
   const NavLink = ({
     index,
@@ -118,13 +118,6 @@ export function MobileTeacherDashboard() {
       </button>
     );
   };
-
-  if (loading) {
-      return <CenteredLoader />;
-  }
-  if (!userProfile) {
-      return <div>Data pengguna tidak ditemukan.</div>
-  }
   
   const changeView = useCallback((newView: ViewID, newIndex?: number) => {
     setPage(prevPage => {
@@ -144,7 +137,40 @@ export function MobileTeacherDashboard() {
       return { view: newView, direction, index: finalIndex };
     });
   }, []);
+
+  const onBack = useCallback(() => {
+    if (page.view === 'checkin') {
+      changeView('home', 0);
+    } else if (page.view === 'privacy') {
+      changeView('profile', mainViews.indexOf('profile'));
+    }
+  }, [page.view, changeView]);
+
+  const onDialogClose = useCallback(() => {
+    // This function will be called by the back button handler.
+    // If we find an open dialog, we close it and return true.
+    // This stops the back button handler from doing anything else.
+    const openDialogs = document.querySelectorAll('[data-state="open"]');
+    if (openDialogs.length > 0) {
+      // Radix dialogs/popovers often have a close button. We can "click" it.
+      const closeButton = document.querySelector('[data-state="open"] [aria-label="Close"], [data-state="open"] [type="button"][aria-label="Close"], [data-state="open"] [data-radix-collection-item] > [role="menuitem"]') as HTMLElement | null;
+      if (closeButton) {
+        closeButton.click();
+        return true;
+      }
+    }
+    return false;
+  }, []);
   
+  const { showExitDialog, setShowExitDialog, handleConfirmExit } = useAndroidBackHandler({
+    currentView: page.view,
+    isSubView: !mainViews.includes(page.view as MainViewID),
+    onBack,
+    onDialogClose,
+    homeViewId: 'home',
+    changeView: (viewId: ViewID) => changeView(viewId, mainViews.indexOf(viewId as MainViewID)),
+  });
+
   const handleDragEnd = (e: any, { offset }: { offset: { x: number } }) => {
     const swipeThreshold = 50;
     
@@ -173,34 +199,9 @@ export function MobileTeacherDashboard() {
   };
 
 
-  const isSubView = !mainViews.includes(page.view);
+  const isSubView = !mainViews.includes(page.view as MainViewID);
   let ComponentToRender: React.FC<any>;
   let props: any;
-  
-  const onBack = useCallback(() => {
-    if (page.view === 'checkin') {
-      changeView('home', 0);
-    } else if (page.view === 'privacy') {
-      changeView('profile', mainViews.indexOf('profile'));
-    }
-  }, [page.view, changeView]);
-  
-  const onDialogClose = useCallback(() => {
-    // This function will be called by the back button handler.
-    // If we find an open dialog, we close it and return true.
-    // This stops the back button handler from doing anything else.
-    const openDialogs = document.querySelectorAll('[data-state="open"]');
-    if (openDialogs.length > 0) {
-      // Radix dialogs/popovers often have a close button. We can "click" it.
-      const closeButton = document.querySelector('[data-state="open"] [aria-label="Close"], [data-state="open"] [type="button"][aria-label="Close"], [data-state="open"] [data-radix-collection-item] > [role="menuitem"]') as HTMLElement | null;
-      if (closeButton) {
-        closeButton.click();
-        return true;
-      }
-    }
-    return false;
-  }, []);
-
 
   if (page.view === 'checkin') {
       ComponentToRender = CheckinWrapper;
@@ -210,15 +211,9 @@ export function MobileTeacherDashboard() {
       props = { setActiveView: changeView };
   }
   
-  const { showExitDialog, setShowExitDialog, handleConfirmExit } = useAndroidBackHandler({
-    currentView: page.view,
-    isSubView,
-    onBack,
-    onDialogClose,
-    homeViewId: 'home',
-    changeView: (viewId: ViewID) => changeView(viewId, mainViews.indexOf(viewId as MainViewID)),
-  });
-
+  if (!userProfile) {
+    return <CenteredLoader />
+  }
 
   return (
     <div className="bg-gray-50 dark:bg-zinc-900 min-h-screen flex flex-col">
