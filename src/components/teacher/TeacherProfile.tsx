@@ -10,10 +10,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { CenteredLoader } from "../ui/loader";
 import { ThemeToggle } from "../ThemeToggle";
 import { Button } from "../ui/button";
-import { updateAvatar, type AvatarUpdateState } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Capacitor } from '@capacitor/core';
+import { getStorage, ref as storageRef, uploadString, getDownloadURL } from "firebase/storage";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
     <div className="flex items-center gap-4 py-3">
@@ -44,12 +46,12 @@ interface TeacherProfileProps {
 }
 
 export function TeacherProfile({ setActiveView }: TeacherProfileProps) {
-    const { userProfile, logout } = useAuth();
+    const { userProfile, logout, setUserProfile } = useAuth();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
     const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-    const [state, setState] = useState<AvatarUpdateState>({});
+    const [previewAvatar, setPreviewAvatar] = useState<string | null>(null);
     const [isNative, setIsNative] = useState(false);
 
     useEffect(() => {
@@ -69,34 +71,40 @@ export function TeacherProfile({ setActiveView }: TeacherProfileProps) {
         reader.readAsDataURL(file);
         reader.onload = () => {
             const dataUri = reader.result as string;
-            const formData = new FormData();
-            formData.append('photoDataUri', dataUri);
-            formData.append('userId', userProfile.uid);
-            formData.append('userRole', userProfile.role);
+            setPreviewAvatar(dataUri);
             
             startTransition(async () => {
-                const result = await updateAvatar(formData);
-                setState(result);
+                 try {
+                    const storage = getStorage();
+                    const filePath = `avatars/${userProfile.uid}/${new Date().getTime()}_${file.name}`;
+                    const fileRef = storageRef(storage, filePath);
+
+                    const snapshot = await uploadString(fileRef, dataUri, 'data_url');
+                    const downloadURL = await getDownloadURL(snapshot.ref);
+
+                    const collectionName = userProfile.role === 'admin' ? 'admin' : 'teachers';
+                    const userDocRef = doc(db, collectionName, userProfile.uid);
+                    await updateDoc(userDocRef, { avatar: downloadURL });
+                    
+                    setUserProfile(prev => prev ? { ...prev, avatar: downloadURL } : null);
+
+                    toast({ title: 'Berhasil', description: 'Avatar berhasil diperbarui.' });
+                } catch (error) {
+                    console.error("Error updating avatar:", error);
+                    toast({ variant: 'destructive', title: 'Gagal', description: "Gagal mengunggah avatar." });
+                } finally {
+                    setPreviewAvatar(null);
+                }
             });
         };
         event.target.value = '';
     };
 
-    useEffect(() => {
-        if (!state) return;
-        
-        if (state.success) {
-            toast({ title: 'Berhasil', description: 'Avatar berhasil diperbarui.' });
-        }
-        if (state.error) {
-            toast({ variant: 'destructive', title: 'Gagal', description: state.error });
-        }
-    }, [state, toast]);
-
-
     if (!userProfile) {
         return <CenteredLoader />;
     }
+
+    const displayAvatar = previewAvatar || userProfile.avatar;
 
     return (
         <>
@@ -110,7 +118,7 @@ export function TeacherProfile({ setActiveView }: TeacherProfileProps) {
                         <div className="relative">
                             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
                             <Avatar className="h-16 w-16 cursor-pointer" onClick={handleAvatarClick}>
-                                <AvatarImage src={state.newAvatarUrl || userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait" />
+                                <AvatarImage src={displayAvatar} alt={userProfile.name} data-ai-hint="person portrait" />
                                 <AvatarFallback>{userProfile.name.slice(0,2).toUpperCase()}</AvatarFallback>
                             </Avatar>
                              <Button
@@ -120,7 +128,7 @@ export function TeacherProfile({ setActiveView }: TeacherProfileProps) {
                                 onClick={handleAvatarClick}
                                 disabled={isPending}
                             >
-                                <Camera className="h-4 w-4" />
+                                {isPending ? <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" /> : <Camera className="h-4 w-4" />}
                                 <span className="sr-only">Ubah Avatar</span>
                             </Button>
                         </div>

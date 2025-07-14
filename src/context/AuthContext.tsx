@@ -30,6 +30,7 @@ export interface AuthContextType {
     userProfile: UserProfile | null;
     loading: boolean;
     logout: (message?: string) => void;
+    setUserProfile: React.Dispatch<React.SetStateAction<UserProfile | null>>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -172,7 +173,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     return (
-        <AuthContext.Provider value={{ user, userProfile, loading, logout }}>
+        <AuthContext.Provider value={{ user, userProfile, loading, logout, setUserProfile }}>
             {children}
         </AuthContext.Provider>
     );

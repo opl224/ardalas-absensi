@@ -7,9 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { updateAttendanceSettings, type SettingsState } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader } from '../ui/loader';
 import { Separator } from '../ui/separator';
@@ -41,7 +40,6 @@ interface AttendanceSettingsDialogProps {
 
 export function AttendanceSettingsDialog({ open, onOpenChange }: AttendanceSettingsDialogProps) {
     const { toast } = useToast();
-    const [state, setState] = useState<SettingsState>({});
     const [settings, setSettings] = useState<Settings | null>(null);
     const [loading, setLoading] = useState(true);
     const [isPending, startTransition] = useTransition();
@@ -77,22 +75,30 @@ export function AttendanceSettingsDialog({ open, onOpenChange }: AttendanceSetti
         }
     }, [open, toast]);
 
-    useEffect(() => {
-        if (state.success) {
-            toast({ title: 'Berhasil', description: 'Pengaturan berhasil diperbarui.' });
-            onOpenChange(false);
-        }
-        if (state.error) {
-            toast({ variant: 'destructive', title: 'Error', description: state.error });
-        }
-    }, [state, toast, onOpenChange]);
-    
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
+        
         startTransition(async () => {
-            const result = await updateAttendanceSettings(formData);
-            setState(result);
+            try {
+                const updatedSettings = {
+                    checkInStart: formData.get('checkInStart') as string,
+                    checkInEnd: formData.get('checkInEnd') as string,
+                    checkOutStart: formData.get('checkOutStart') as string,
+                    checkOutEnd: formData.get('checkOutEnd') as string,
+                    gracePeriod: Number(formData.get('gracePeriod')),
+                    offDays: formData.getAll('offDays') as string[],
+                };
+
+                const settingsRef = doc(db, "settings", "attendance");
+                await setDoc(settingsRef, updatedSettings);
+
+                toast({ title: 'Berhasil', description: 'Pengaturan berhasil diperbarui.' });
+                onOpenChange(false);
+            } catch (error) {
+                console.error("Error updating settings: ", error);
+                toast({ variant: 'destructive', title: 'Error', description: 'Gagal memperbarui pengaturan.' });
+            }
         });
     }
 
@@ -118,27 +124,27 @@ export function AttendanceSettingsDialog({ open, onOpenChange }: AttendanceSetti
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="checkInStart">Mulai</Label>
-                                    <Input id="checkInStart" name="checkInStart" type="time" defaultValue={settings.checkInStart} />
+                                    <Input id="checkInStart" name="checkInStart" type="time" defaultValue={settings.checkInStart} disabled={isPending} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="checkInEnd">Selesai</Label>
-                                    <Input id="checkInEnd" name="checkInEnd" type="time" defaultValue={settings.checkInEnd} />
+                                    <Input id="checkInEnd" name="checkInEnd" type="time" defaultValue={settings.checkInEnd} disabled={isPending} />
                                 </div>
                             </div>
                              <div className="space-y-2 pt-2">
                                 <Label htmlFor="gracePeriod">Toleransi Terlambat (menit)</Label>
-                                <Input id="gracePeriod" name="gracePeriod" type="number" defaultValue={settings.gracePeriod} placeholder="Contoh: 60" />
+                                <Input id="gracePeriod" name="gracePeriod" type="number" defaultValue={settings.gracePeriod} placeholder="Contoh: 60" disabled={isPending} />
                             </div>
                             <Separator />
                             <h3 className="font-semibold text-foreground">Jam Absen Keluar</h3>
                              <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="checkOutStart">Mulai</Label>
-                                    <Input id="checkOutStart" name="checkOutStart" type="time" defaultValue={settings.checkOutStart} />
+                                    <Input id="checkOutStart" name="checkOutStart" type="time" defaultValue={settings.checkOutStart} disabled={isPending} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="checkOutEnd">Selesai</Label>
-                                    <Input id="checkOutEnd" name="checkOutEnd" type="time" defaultValue={settings.checkOutEnd} />
+                                    <Input id="checkOutEnd" name="checkOutEnd" type="time" defaultValue={settings.checkOutEnd} disabled={isPending} />
                                 </div>
                             </div>
                             <Separator />
@@ -151,6 +157,7 @@ export function AttendanceSettingsDialog({ open, onOpenChange }: AttendanceSetti
                                             name="offDays" 
                                             value={day} 
                                             defaultChecked={settings.offDays.includes(day)}
+                                            disabled={isPending}
                                         />
                                         <Label htmlFor={`day-${day}`}>{daysOfWeekIndonesian[day]}</Label>
                                     </div>
@@ -160,7 +167,7 @@ export function AttendanceSettingsDialog({ open, onOpenChange }: AttendanceSetti
                         <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-y-2 sm:gap-x-2 pt-2">
                             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>Batal</Button>
                             <Button type="submit" disabled={isPending}>
-                                Simpan Perubahan
+                                {isPending ? "Menyimpan..." : "Simpan Perubahan"}
                             </Button>
                         </DialogFooter>
                     </form>
