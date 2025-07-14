@@ -108,10 +108,10 @@ export function MobileAdminDashboard() {
       const finalIndex = isSub ? currentIndex : (newIndex !== undefined ? newIndex : mainViews.indexOf(newView as MainViewID));
       
       let direction = 0;
-      if (newView === 'privacy' || isSub) {
-        direction = 1; 
-      } else {
+      if (!isSub) {
         direction = finalIndex > currentIndex ? 1 : -1;
+      } else {
+        direction = 1; // Subviews always slide in from the right
       }
       
       return { view: newView, direction, index: finalIndex };
@@ -152,26 +152,20 @@ export function MobileAdminDashboard() {
   const handleDragEnd = (e: any, { offset }: { offset: { x: number } }) => {
     const swipeThreshold = 50;
     
-    setPage(currentPage => {
-        if (isSubView) return currentPage;
+    if (isSubView) return;
 
-        const currentIndex = currentPage.index;
-        let newIndex = currentIndex;
+    const currentIndex = page.index;
+    let newIndex = currentIndex;
 
-        if (offset.x < -swipeThreshold) {
-            newIndex = Math.min(currentIndex + 1, mainViews.length - 1);
-        } else if (offset.x > swipeThreshold) {
-            newIndex = Math.max(currentIndex - 1, 0);
-        }
+    if (offset.x < -swipeThreshold) {
+        newIndex = Math.min(currentIndex + 1, mainViews.length - 1);
+    } else if (offset.x > swipeThreshold) {
+        newIndex = Math.max(currentIndex - 1, 0);
+    }
 
-        if (newIndex !== currentIndex) {
-            const newView = mainViews[newIndex];
-            const direction = newIndex > currentIndex ? 1 : -1;
-            return { view: newView, index: newIndex, direction };
-        }
-        
-        return currentPage;
-    });
+    if (newIndex !== currentIndex) {
+        changeView(mainViews[newIndex], newIndex);
+    }
   };
 
   let ComponentToRender: React.FC<any>;
