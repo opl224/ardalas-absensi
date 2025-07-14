@@ -94,7 +94,7 @@ export function MobileTeacherDashboard() {
     label,
   }: {
     index: number;
-    setView: (viewId: ViewID) => void;
+    setView: (viewId: ViewID, index: number) => void;
     children: React.ReactNode;
     label: string;
   }) => {
@@ -103,7 +103,7 @@ export function MobileTeacherDashboard() {
   
     return (
       <button
-        onClick={() => setView(mainViews[index])}
+        onClick={() => setView(mainViews[index], index)}
         className={`flex flex-col items-center justify-center w-1/3 pt-2 pb-1 transition-colors duration-200 ${
           isActive ? 'text-primary' : 'text-muted-foreground hover:text-primary'
         }`}
@@ -126,22 +126,21 @@ export function MobileTeacherDashboard() {
       return <div>Data pengguna tidak ditemukan.</div>
   }
   
-  const changeView = (newView: ViewID) => {
+  const changeView = (newView: ViewID, newIndex?: number) => {
     setPage(prevPage => {
       if (prevPage.view === newView) return prevPage;
-
-      const currentIndex = mainViews.indexOf(prevPage.view as MainViewID);
-      const newPageIndex = mainViews.indexOf(newView as MainViewID);
-
+  
+      const isSub = !mainViews.includes(newView as MainViewID);
+      const currentIndex = prevPage.index;
+      const finalIndex = isSub ? currentIndex : (newIndex !== undefined ? newIndex : mainViews.indexOf(newView as MainViewID));
+      
       let direction = 0;
-      if (newPageIndex !== -1 && currentIndex !== -1) {
-        direction = newPageIndex > currentIndex ? 1 : -1;
+      if (!isSub) {
+        direction = finalIndex > currentIndex ? 1 : -1;
       } else {
-        direction = 1; // for subviews
+        direction = 1; // Subviews always slide in from the right
       }
-
-      // If the new view is a main view, update the index. Otherwise, keep the last main view index.
-      const finalIndex = newPageIndex !== -1 ? newPageIndex : prevPage.index;
+      
       return { view: newView, direction, index: finalIndex };
     });
   };
@@ -150,17 +149,15 @@ export function MobileTeacherDashboard() {
     const swipeThreshold = 50;
     
     setPage(currentPage => {
-        // Base the swipe on the currently VISIBLE page (view), not the (potentially stale) active index.
-        const currentIndex = mainViews.indexOf(currentPage.view as MainViewID);
-        if (currentIndex === -1) return currentPage;
+        const isSubView = !mainViews.includes(currentPage.view as MainViewID);
+        if (isSubView) return currentPage;
 
+        const currentIndex = currentPage.index;
         let newIndex = currentIndex;
 
-        // A left swipe (negative offset) moves to the next page (index + 1).
         if (offset.x < -swipeThreshold) {
             newIndex = Math.min(currentIndex + 1, mainViews.length - 1);
         } 
-        // A right swipe (positive offset) moves to the previous page (index - 1).
         else if (offset.x > swipeThreshold) {
             newIndex = Math.max(currentIndex - 1, 0);
         }
@@ -168,7 +165,6 @@ export function MobileTeacherDashboard() {
         if (newIndex !== currentIndex) {
             const newView = mainViews[newIndex];
             const direction = newIndex > currentIndex ? 1 : -1;
-            // On swipe, update everything: the view, the direction, AND the active index.
             return { view: newView, index: newIndex, direction };
         }
         
@@ -185,11 +181,11 @@ export function MobileTeacherDashboard() {
 
   if (page.view === 'checkin') {
       ComponentToRender = CheckinWrapper;
-      onBack = () => changeView('home');
-      props = { onBack, onSuccess: () => changeView('history') };
+      onBack = () => changeView('home', 0);
+      props = { onBack, onSuccess: () => changeView('history', mainViews.indexOf('history')) };
   } else if (page.view === 'privacy') {
       ComponentToRender = viewComponents[page.view];
-      onBack = () => changeView('profile');
+      onBack = () => changeView('profile', mainViews.indexOf('profile'));
       props = { onBack };
   }
   else {

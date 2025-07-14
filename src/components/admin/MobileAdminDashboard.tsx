@@ -83,7 +83,7 @@ export function MobileAdminDashboard() {
       label
   }: {
       index: number,
-      setView: (viewId: ViewID) => void,
+      setView: (viewId: ViewID, index: number) => void,
       children: React.ReactNode,
       label: string
   }) => {
@@ -92,7 +92,7 @@ export function MobileAdminDashboard() {
       
       return (
           <button
-              onClick={() => setView(mainViews[index])}
+              onClick={() => setView(mainViews[index], index)}
               className={`flex flex-col items-center justify-center w-1/5 pt-2 pb-1 transition-colors duration-200 ${isActive ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
           >
               <motion.div
@@ -106,21 +106,21 @@ export function MobileAdminDashboard() {
       );
   };
   
-  const changeView = (newView: ViewID) => {
+  const changeView = (newView: ViewID, newIndex?: number) => {
     setPage(prevPage => {
       if (prevPage.view === newView) return prevPage;
-
-      const currentIndex = mainViews.indexOf(prevPage.view as MainViewID);
-      const newPageIndex = mainViews.indexOf(newView as MainViewID);
-
+  
+      const isSub = !mainViews.includes(newView as MainViewID);
+      const currentIndex = prevPage.index;
+      const finalIndex = isSub ? currentIndex : (newIndex !== undefined ? newIndex : mainViews.indexOf(newView as MainViewID));
+      
       let direction = 0;
-      if (newPageIndex !== -1 && currentIndex !== -1) {
-        direction = newPageIndex > currentIndex ? 1 : -1;
+      if (!isSub) {
+        direction = finalIndex > currentIndex ? 1 : -1;
       } else {
-        direction = 1; // for subviews
+        direction = 1; // Subviews always slide in from the right
       }
       
-      const finalIndex = newPageIndex !== -1 ? newPageIndex : prevPage.index;
       return { view: newView, direction, index: finalIndex };
     });
   };
@@ -129,8 +129,8 @@ export function MobileAdminDashboard() {
     const swipeThreshold = 50;
     
     setPage(currentPage => {
-        const currentIndex = mainViews.indexOf(currentPage.view as MainViewID);
-        if (currentIndex === -1) return currentPage;
+        const currentIndex = currentPage.index;
+        if (isEditingUser || !mainViews.includes(currentPage.view as MainViewID)) return currentPage;
 
         let newIndex = currentIndex;
 
@@ -156,7 +156,7 @@ export function MobileAdminDashboard() {
 
   const onBack = () => {
     if (page.view === 'privacy') {
-        changeView('profile');
+        changeView('profile', mainViews.indexOf('profile'));
     }
   };
 
