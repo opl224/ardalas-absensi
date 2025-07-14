@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { collection, doc, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Separator } from "../ui/separator";
+import SplitText from "../ui/SplitText";
 
 interface MobileHomeProps {
   setActiveView?: (view: 'users' | 'reports' | 'attendance' | 'privacy', index: number) => void;
@@ -54,6 +55,9 @@ const StatCircle = ({ value, label, colorClass }: { value: number; label: string
         <p className={`mt-2 text-sm font-medium text-muted-foreground`}>{label}</p>
     </div>
 );
+
+const splitTextFrom = { opacity: 0, y: 20 };
+const splitTextTo = { opacity: 1, y: 0 };
 
 export function MobileHome({ setActiveView }: MobileHomeProps) {
     const { userProfile } = useAuth();
@@ -166,7 +170,17 @@ export function MobileHome({ setActiveView }: MobileHomeProps) {
                  <div className="flex items-center justify-between">
                     <div>
                         <p className="text-sm text-muted-foreground">Halo,</p>
-                        <p className="text-2xl font-bold text-foreground">{userProfile.name}</p>
+                        <SplitText
+                            text={userProfile.name}
+                            className="text-2xl font-bold text-foreground"
+                            delay={120}
+                            duration={0.8}
+                            ease="power3.out"
+                            splitType="chars"
+                            from={splitTextFrom}
+                            to={splitTextTo}
+                            textAlign="left"
+                        />
                         <p className="text-sm text-muted-foreground capitalize">{userProfile.role}</p>
                     </div>
                     <Avatar className="h-14 w-14">
