@@ -175,10 +175,6 @@ export function MobileHome({ setActiveView }: MobileHomeProps) {
         <div className="bg-gray-50 dark:bg-zinc-900">
              <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <h1 className="text-xl font-bold text-foreground">Beranda Admin</h1>
-                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setShowSettingsDialog(true)}>
-                    <Settings className="h-5 w-5 text-muted-foreground" />
-                    <span className="sr-only">Pengaturan</span>
-                </Button>
             </header>
 
             <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8">
@@ -254,12 +250,7 @@ export function MobileHome({ setActiveView }: MobileHomeProps) {
                 </Card>
 
                 <div className="space-y-4">
-                     <QuickActionButton 
-                        icon={UserPlus}
-                        title="Manajemen Pengguna"
-                        onClick={() => setActiveView?.('users', 1)}
-                     />
-                     <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                          <QuickActionButton 
                             icon={LineChart}
                             title="Laporan"
@@ -270,7 +261,12 @@ export function MobileHome({ setActiveView }: MobileHomeProps) {
                             title="Kehadiran"
                             onClick={() => setActiveView?.('attendance', 2)}
                          />
-                     </div>
+                    </div>
+                    <QuickActionButton 
+                        icon={UserPlus}
+                        title="Manajemen Pengguna"
+                        onClick={() => setActiveView?.('users', 1)}
+                    />
                 </div>
             </main>
 
