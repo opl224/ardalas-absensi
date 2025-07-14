@@ -5,15 +5,15 @@ import * as admin from 'firebase-admin';
 
 export async function POST(request: Request) {
   try {
-    const { userId, role } = await request.json();
+    const { userId, role } = await request.json(); // Role is kept for potential future use but not for critical logic
     const authorization = request.headers.get('Authorization');
     
     if (!authorization?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Unauthorized: Missing token' }, { status: 401 });
     }
     
-    if (!userId || !role) {
-      return NextResponse.json({ error: 'User ID and role are required' }, { status: 400 });
+    if (!userId) {
+      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
     const idToken = authorization.split('Bearer ')[1];
@@ -40,20 +40,18 @@ export async function POST(request: Request) {
     // If this fails, the function will throw and the rest won't execute.
     await auth.deleteUser(userId);
 
-    // 2. Delete user from the corresponding Firestore collection.
-    // This is now more robust and won't throw if the doc doesn't exist.
-    const collectionName = role.toLowerCase() === 'admin' ? 'admin' : 'teachers';
-    const userDocToDeleteRef = db.collection(collectionName).doc(userId);
-    
-    try {
-        await userDocToDeleteRef.delete();
-        // If the document doesn't exist, this will not throw an error.
-    } catch (firestoreError) {
-        // Log the error but don't fail the whole request,
-        // as the auth user has already been deleted.
-        console.error(`Firestore document for user ${userId} in collection ${collectionName} could not be deleted, but auth user was. Error:`, firestoreError);
-    }
+    // 2. Attempt to delete user from both 'teachers' and 'admin' collections in Firestore.
+    // This is more robust as it doesn't rely on the 'role' from the client and cleans up both possible locations.
+    const teacherDocRef = db.collection('teachers').doc(userId);
+    const adminUserDocRef = db.collection('admin').doc(userId);
 
+    // We don't need to await these individually if we don't care about their specific outcomes,
+    // as long as they are attempted. Promise.allSettled is great for this.
+    await Promise.allSettled([
+      teacherDocRef.delete(),
+      adminUserDocRef.delete()
+    ]);
+    
     return NextResponse.json({ message: 'User deleted successfully' }, { status: 200 });
 
   } catch (error: any) {
