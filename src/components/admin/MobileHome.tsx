@@ -217,19 +217,14 @@ export function MobileHome({ setActiveView }: MobileHomeProps) {
                     </CardContent>
                 </Card>
                 
-                <Card>
-                    <CardContent className="p-4">
-                        <button className="button-schedule-settings w-full" onClick={() => setShowSettingsDialog(true)}>
-                            Atur Jadwal
-                        </button>
-                    </CardContent>
-                </Card>
+                <button className="button-schedule-settings w-full" onClick={() => setShowSettingsDialog(true)}>
+                    Atur Jadwal
+                </button>
                  
                  <Card>
                     <CardHeader className="flex flex-row items-start justify-between p-4">
                         <div>
                             <CardTitle className="text-lg">Kehadiran Guru Hari Ini</CardTitle>
-                            <CardDescription>Ringkasan kehadiran guru untuk hari ini.</CardDescription>
                         </div>
                     </CardHeader>
                     <CardContent className="p-4 pt-0">
@@ -262,20 +257,17 @@ export function MobileHome({ setActiveView }: MobileHomeProps) {
                      <QuickActionButton 
                         icon={UserPlus}
                         title="Manajemen Pengguna"
-                        description="Kelola data admin dan guru"
                         onClick={() => setActiveView?.('users', 1)}
                      />
                      <div className="grid grid-cols-2 gap-4">
                          <QuickActionButton 
                             icon={LineChart}
                             title="Laporan"
-                            description="Lihat laporan"
                             onClick={() => setActiveView?.('reports', 3)}
                          />
                          <QuickActionButton 
                             icon={CheckSquare}
                             title="Kehadiran"
-                            description="Pantau kehadiran"
                             onClick={() => setActiveView?.('attendance', 2)}
                          />
                      </div>

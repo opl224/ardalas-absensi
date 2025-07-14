@@ -175,17 +175,12 @@ export function DashboardHome({ setActiveView }: DashboardHomeProps) {
                     </div>
                 </CardContent>
             </Card>
-            <Card>
-                <CardContent className="p-4">
-                    <button className="button-schedule-settings w-full" onClick={() => setShowSettingsDialog(true)}>
-                        Atur Jadwal
-                    </button>
-                </CardContent>
-            </Card>
+            <button className="button-schedule-settings w-full" onClick={() => setShowSettingsDialog(true)}>
+                Atur Jadwal
+            </button>
             <Card>
                 <CardHeader className="p-4">
                     <CardTitle className="text-lg">Kehadiran Guru Hari Ini</CardTitle>
-                    <CardDescription>Ringkasan kehadiran guru untuk hari ini.</CardDescription>
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
                     {loading ? (
@@ -217,20 +212,17 @@ export function DashboardHome({ setActiveView }: DashboardHomeProps) {
                  <QuickActionButton 
                     icon={Users}
                     title="Manajemen Pengguna"
-                    description="Kelola data admin dan guru"
                     onClick={() => setActiveView?.('users')}
                  />
                  <div className="grid grid-cols-2 gap-4">
                      <QuickActionButton 
                         icon={LineChart}
                         title="Laporan"
-                        description="Lihat laporan"
                         onClick={() => setActiveView?.('reports')}
                      />
                      <QuickActionButton 
                         icon={CheckSquare}
                         title="Kehadiran"
-                        description="Pantau kehadiran"
                         onClick={() => setActiveView?.('attendance')}
                      />
                  </div>
