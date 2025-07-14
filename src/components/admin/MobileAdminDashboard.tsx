@@ -95,6 +95,25 @@ export function MobileAdminDashboard() {
       return { view: newView, direction, index: finalIndex };
     });
   }, []);
+  
+  const handleDragEnd = (e: any, { offset }: { offset: { x: number } }) => {
+    const swipeThreshold = 50;
+    
+    if (isSubView) return;
+
+    const currentIndex = page.index;
+    let newIndex = currentIndex;
+
+    if (offset.x < -swipeThreshold) {
+        newIndex = Math.min(currentIndex + 1, mainViews.length - 1);
+    } else if (offset.x > swipeThreshold) {
+        newIndex = Math.max(currentIndex - 1, 0);
+    }
+
+    if (newIndex !== currentIndex) {
+        changeView(mainViews[newIndex], newIndex);
+    }
+  };
 
   const onBack = useCallback(() => {
     if (page.view === 'privacy') {
@@ -126,25 +145,6 @@ export function MobileAdminDashboard() {
     homeViewId: 'home',
     changeView: (viewId: ViewID) => changeView(viewId, mainViews.indexOf(viewId as MainViewID)),
   });
-  
-  const handleDragEnd = (e: any, { offset }: { offset: { x: number } }) => {
-    const swipeThreshold = 50;
-    
-    if (isSubView) return;
-
-    const currentIndex = page.index;
-    let newIndex = currentIndex;
-
-    if (offset.x < -swipeThreshold) {
-        newIndex = Math.min(currentIndex + 1, mainViews.length - 1);
-    } else if (offset.x > swipeThreshold) {
-        newIndex = Math.max(currentIndex - 1, 0);
-    }
-
-    if (newIndex !== currentIndex) {
-        changeView(mainViews[newIndex], newIndex);
-    }
-  };
 
   const NavLink = ({
     icon: Icon,
