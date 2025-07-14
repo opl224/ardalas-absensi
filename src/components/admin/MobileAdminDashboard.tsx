@@ -108,9 +108,7 @@ export function MobileAdminDashboard() {
       const finalIndex = isSub ? currentIndex : (newIndex !== undefined ? newIndex : mainViews.indexOf(newView as MainViewID));
       
       let direction = 0;
-      if (newView === 'privacy') {
-        direction = 1;
-      } else if (isSub) {
+      if (newView === 'privacy' || isSub) {
         direction = 1; 
       } else {
         direction = finalIndex > currentIndex ? 1 : -1;
@@ -217,11 +215,11 @@ export function MobileAdminDashboard() {
 
       {!isSubView && (
         <nav className="fixed bottom-0 left-0 right-0 bg-card border-t p-1 flex justify-around z-10">
-          <NavLink icon={Home} label="Beranda" isActive={page.view === 'home'} onClick={() => changeView('home', 0)} />
-          <NavLink icon={Users2} label="Pengguna" isActive={page.view === 'users'} onClick={() => changeView('users', 1)} />
-          <NavLink icon={LineChart} label="Laporan" isActive={page.view === 'reports'} onClick={() => changeView('reports', 2)} />
-          <NavLink icon={CheckSquare} label="Kehadiran" isActive={page.view === 'attendance'} onClick={() => changeView('attendance', 3)} />
-          <NavLink icon={UserIcon} label="Profil" isActive={page.view === 'profile'} onClick={() => changeView('profile', 4)} />
+          <NavLink icon={Home} label="Beranda" isActive={page.index === 0} onClick={() => changeView('home', 0)} />
+          <NavLink icon={Users2} label="Pengguna" isActive={page.index === 1} onClick={() => changeView('users', 1)} />
+          <NavLink icon={LineChart} label="Laporan" isActive={page.index === 2} onClick={() => changeView('reports', 2)} />
+          <NavLink icon={CheckSquare} label="Kehadiran" isActive={page.index === 3} onClick={() => changeView('attendance', 3)} />
+          <NavLink icon={UserIcon} label="Profil" isActive={page.index === 4} onClick={() => changeView('profile', 4)} />
         </nav>
       )}
 
