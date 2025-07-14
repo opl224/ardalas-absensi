@@ -12,7 +12,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Eye, EyeOff } from 'lucide-react';
-import { getAuth } from 'firebase/auth';
+import { createUserWithEmailAndPassword, sendEmailVerification, signOut, updateProfile } from 'firebase/auth';
+import { auth, db }from '@/lib/firebase';
+import { doc, setDoc, writeBatch } from 'firebase/firestore';
+import { useAuth } from '@/hooks/useAuth';
 
 const createUserSchema = z.object({
   name: z.string().min(3, "Nama harus memiliki setidaknya 3 karakter."),
@@ -33,6 +36,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [showPassword, setShowPassword] = useState(false);
+  const { user: adminUser, userProfile: adminProfile } = useAuth();
 
   const {
     register,
@@ -46,43 +50,71 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
       role: 'guru',
     }
   });
-  
+
   const onSubmit = (data: CreateUserForm) => {
     startTransition(async () => {
-        const auth = getAuth();
-        const adminUser = auth.currentUser;
+      // 1. Temporarily create a new auth instance for user creation
+      // This is a common pattern to create users without signing out the admin.
+      const { app } = await import('firebase/app');
+      const { getAuth: getAuthInstance } = await import('firebase/auth');
+      const tempApp = app("temp-user-creation-app", auth.app.options);
+      const tempAuth = getAuthInstance(tempApp);
+      
+      try {
+        // 2. Create user in the temporary instance
+        const userCredential = await createUserWithEmailAndPassword(tempAuth, data.email, data.password);
+        const newUser = userCredential.user;
+        
+        await updateProfile(newUser, { displayName: data.name });
 
-        if (!adminUser) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Admin tidak terautentikasi. Silakan login kembali.' });
-            return;
+        // 3. Create Firestore documents in a batch for atomicity
+        const batch = writeBatch(db);
+
+        // a. Main document in role-specific collection
+        const collectionName = data.role === 'admin' ? 'admin' : 'teachers';
+        const userDocRef = doc(db, collectionName, newUser.uid);
+        batch.set(userDocRef, {
+            name: data.name,
+            email: data.email,
+            role: data.role,
+            uid: newUser.uid,
+            avatar: `https://placehold.co/100x100.png`
+        });
+
+        // b. Central 'users' document for simple role lookup
+        const centralUserDocRef = doc(db, 'users', newUser.uid);
+        batch.set(centralUserDocRef, {
+            role: data.role,
+            email: data.email,
+            name: data.name,
+        });
+
+        await batch.commit();
+        
+        // 4. Send verification email
+        await sendEmailVerification(newUser);
+        
+        toast({ title: 'Berhasil', description: `Pengguna '${data.name}' berhasil dibuat. Email verifikasi telah dikirim.` });
+        onSuccess();
+        handleClose();
+
+      } catch (error: any) {
+        let errorMessage = 'Terjadi kesalahan yang tidak terduga.';
+        if (error.code === 'auth/email-already-in-use') {
+            errorMessage = 'Alamat email ini sudah digunakan oleh akun lain.';
+        } else if (error.code === 'auth/invalid-email') {
+            errorMessage = 'Format email tidak valid.';
+        } else if (error.code === 'auth/weak-password') {
+            errorMessage = 'Kata sandi terlalu lemah. Gunakan minimal 6 karakter.';
         }
-
-        try {
-            const idToken = await adminUser.getIdToken();
-
-            const response = await fetch('/api/create-user', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${idToken}`,
-                },
-                body: JSON.stringify(data),
-            });
-            
-            const result = await response.json();
-
-            if (!response.ok) {
-                throw new Error(result.error || 'Terjadi kesalahan pada server.');
-            }
-
-            toast({ title: 'Berhasil', description: `Pengguna '${data.name}' berhasil dibuat.` });
-            onSuccess();
-            handleClose();
-
-        } catch (error: any) {
-            console.error("Error creating user:", error);
-            toast({ variant: 'destructive', title: 'Gagal Membuat Akun', description: error.message });
-        }
+        console.error("Error creating user:", error);
+        toast({ variant: 'destructive', title: 'Gagal Membuat Akun', description: errorMessage });
+      } finally {
+        // 5. Clean up the temporary auth instance
+        await signOut(tempAuth);
+        const { deleteApp } = await import('firebase/app');
+        await deleteApp(tempApp);
+      }
     });
   };
 
@@ -99,7 +131,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
         <DialogHeader>
           <DialogTitle>Tambah Pengguna Baru</DialogTitle>
           <DialogDescription>
-            Buat akun baru untuk admin atau guru. Sesi login Anda akan tetap aman.
+             Buat akun baru untuk admin atau guru. Tindakan ini memerlukan aturan keamanan Firestore yang sesuai untuk mengizinkan admin membuat pengguna.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
@@ -174,3 +206,5 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
     </Dialog>
   );
 }
+
+    
