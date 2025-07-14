@@ -7,33 +7,25 @@ import { MobileTeacherDashboard } from "@/components/teacher/MobileTeacherDashbo
 import { useAuth } from "@/hooks/useAuth";
 import { LogOut, MonitorOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-const DESKTOP_BREAKPOINT = 768; // Standard tablet portrait width
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function TeacherDashboard() {
-  const { userProfile, loading, logout } = useAuth();
-  const [isDesktop, setIsDesktop] = useState(false);
-  const [isCheckingDevice, setIsCheckingDevice] = useState(true);
+  const { userProfile, loading: authLoading, logout } = useAuth();
+  const isMobile = useIsMobile();
+  const [isClient, setIsClient] = useState(false);
 
+  // This ensures we don't show the desktop warning on mobile, even for a split second.
+  // It also prevents hydration errors.
   useEffect(() => {
-    // This check runs only on the client side after hydration
-    const checkDeviceType = () => {
-      setIsDesktop(window.innerWidth >= DESKTOP_BREAKPOINT);
-      setIsCheckingDevice(false);
-    };
-
-    checkDeviceType(); // Run once on mount
-
-    window.addEventListener('resize', checkDeviceType);
-    return () => window.removeEventListener('resize', checkDeviceType);
+    setIsClient(true);
   }, []);
 
-  if (loading || isCheckingDevice) {
+  if (authLoading || !isClient) {
     return <CenteredLoader />;
   }
 
   // If the user is a teacher and on a desktop device, show a restricted access message.
-  if (userProfile?.role === 'guru' && isDesktop) {
+  if (userProfile?.role === 'guru' && !isMobile) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background text-center p-4">
         <MonitorOff className="h-16 w-16 text-destructive mb-4" />
