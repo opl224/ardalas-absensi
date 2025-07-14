@@ -1,12 +1,13 @@
 
 'use client';
 
-import { useEffect, useState, useTransition } from "react";
-import { Settings, UserPlus, Users, LineChart, CheckSquare } from "lucide-react";
+import { useEffect, useState } from "react";
+import { UserPlus, Users, LineChart, CheckSquare } from "lucide-react";
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -14,7 +15,6 @@ import { collection, query, onSnapshot, doc, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Loader } from "@/components/ui/loader";
 import { Separator } from "../ui/separator";
-import { Button } from "../ui/button";
 import { AttendanceSettingsDialog } from "./AttendanceSettingsDialog";
 
 interface Stats {
@@ -150,15 +150,9 @@ export function DashboardHome({ setActiveView }: DashboardHomeProps) {
     return (
         <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
             <Card>
-                <CardHeader className="flex flex-row items-start justify-between p-4">
-                    <div>
-                        <CardTitle className="text-lg">Kehadiran Guru Hari Ini</CardTitle>
-                        <CardDescription>Ringkasan kehadiran guru untuk hari ini.</CardDescription>
-                    </div>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setShowSettingsDialog(true)}>
-                        <Settings className="h-5 w-5 text-muted-foreground" />
-                        <span className="sr-only">Pengaturan</span>
-                    </Button>
+                <CardHeader className="p-4">
+                    <CardTitle className="text-lg">Kehadiran Guru Hari Ini</CardTitle>
+                    <CardDescription>Ringkasan kehadiran guru untuk hari ini.</CardDescription>
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
                     {loading ? (
@@ -184,6 +178,11 @@ export function DashboardHome({ setActiveView }: DashboardHomeProps) {
                         </>
                     )}
                 </CardContent>
+                <CardFooter className="p-4 border-t">
+                     <button className="button-schedule-settings w-full" onClick={() => setShowSettingsDialog(true)}>
+                        Atur Jadwal
+                    </button>
+                </CardFooter>
             </Card>
             
             <div className="space-y-4">

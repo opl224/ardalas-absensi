@@ -6,6 +6,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -247,6 +248,11 @@ export function MobileHome({ setActiveView }: MobileHomeProps) {
                             </>
                         )}
                     </CardContent>
+                    <CardFooter className="p-4 border-t">
+                        <button className="button-schedule-settings w-full" onClick={() => setShowSettingsDialog(true)}>
+                            Atur Jadwal
+                        </button>
+                    </CardFooter>
                 </Card>
 
                 <div className="space-y-4">

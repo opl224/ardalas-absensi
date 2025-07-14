@@ -91,7 +91,7 @@ export function AttendanceSettingsDialog({ open, onOpenChange }: AttendanceSetti
                 };
 
                 const settingsRef = doc(db, "settings", "attendance");
-                await setDoc(settingsRef, updatedSettings);
+                await setDoc(settingsRef, updatedSettings, { merge: true });
 
                 toast({ title: 'Berhasil', description: 'Pengaturan berhasil diperbarui.' });
                 onOpenChange(false);
