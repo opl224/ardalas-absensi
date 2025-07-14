@@ -75,10 +75,6 @@ interface AttendanceStatus {
     isFraudulent: boolean;
 }
 
-interface UserManagementProps {
-  setIsEditingUser: (isEditing: boolean) => void;
-}
-
 const USERS_PER_PAGE = 10;
 
 const DetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value?: string }) => {
@@ -251,7 +247,7 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
     );
 }
 
-export default function UserManagement({ setIsEditingUser }: UserManagementProps) {
+export default function UserManagement() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [processedUsers, setProcessedUsers] = useState<ProcessedUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -390,10 +386,6 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
     setProcessedUsers(usersWithStatus);
     setLoading(false);
   }, [allUsers, attendanceStatusMap, settings]);
-
-  useEffect(() => {
-    setIsEditingUser(!!editingUser);
-  }, [editingUser, setIsEditingUser]);
 
   const displayedUsers = useMemo(() => {
     const filtered = searchTerm
