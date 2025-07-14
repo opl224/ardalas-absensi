@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { collection, query, onSnapshot, doc } from "firebase/firestore";
+import { collection, query, onSnapshot, doc, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Loader } from "@/components/ui/loader";
 import { Separator } from "../ui/separator";
