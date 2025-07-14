@@ -165,8 +165,7 @@ export default function Attendance() {
     const [isDeleting, startDeleteTransition] = useTransition();
     const [currentPage, setCurrentPage] = useState(1);
     const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot | null>(null);
-    const [firstVisible, setFirstVisible] = useState<QueryDocumentSnapshot | null>(null);
-    const [pageHistory, setPageHistory] = useState<(QueryDocumentSnapshot | null)[]>([null]);
+    const [pageFirstDocs, setPageFirstDocs] = useState<(QueryDocumentSnapshot | null)[]>([null]);
     
     const [date, setDate] = useState<Date | undefined>(new Date());
     const [statusFilter, setStatusFilter] = useState('Semua Kehadiran');
@@ -181,7 +180,7 @@ export default function Attendance() {
     
     const [backButtonListener, setBackButtonListener] = useState<PluginListenerHandle | null>(null);
 
-    const fetchAttendanceData = useCallback(async (pageDirection: 'next' | 'prev' | 'first') => {
+    const fetchAttendanceData = useCallback(async (direction: 'next' | 'prev' | 'first' = 'first') => {
         if (!date) return;
         setLoading(true);
 
@@ -208,14 +207,14 @@ export default function Attendance() {
             
             q = query(q, orderBy("checkInTime", "desc"));
 
-            if (pageDirection === 'next' && lastVisible) {
-                q = query(q, startAfter(lastVisible), limit(RECORDS_PER_PAGE));
-            } else if (pageDirection === 'prev' && firstVisible) {
-                 const prevPageStartAfter = pageHistory[currentPage - 2];
-                 q = query(q, startAfter(prevPageStartAfter!), limit(RECORDS_PER_PAGE));
-            } else {
-                q = query(q, limit(RECORDS_PER_PAGE));
+            if (direction === 'next' && lastVisible) {
+                q = query(q, startAfter(lastVisible));
+            } else if (direction === 'prev') {
+                const prevPageCursor = pageFirstDocs[currentPage - 1];
+                q = query(q, startAfter(prevPageCursor));
             }
+            
+            q = query(q, limit(RECORDS_PER_PAGE));
             
             const documentSnapshots = await getDocs(q);
             const records: AttendanceRecord[] = documentSnapshots.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AttendanceRecord[];
@@ -226,13 +225,15 @@ export default function Attendance() {
             const newFirstVisible = documentSnapshots.docs[0] || null;
             
             setLastVisible(newLastVisible);
-            setFirstVisible(newFirstVisible);
 
-            if (pageDirection === 'first') {
-                setPageHistory([null, newFirstVisible]);
+            if (direction === 'first') {
                 setCurrentPage(1);
-            } else if (pageDirection === 'next') {
-                setPageHistory(prev => [...prev, newFirstVisible]);
+                setPageFirstDocs([null, newFirstVisible]);
+            } else if (direction === 'next') {
+                setCurrentPage(prev => prev + 1);
+                setPageFirstDocs(prev => [...prev, newFirstVisible]);
+            } else if (direction === 'prev') {
+                setCurrentPage(prev => prev - 1);
             }
 
         } catch (error) {
@@ -241,17 +242,19 @@ export default function Attendance() {
         } finally {
             setLoading(false);
         }
-    }, [date, statusFilter, lastVisible, firstVisible, currentPage, pageHistory, toast]);
+    }, [date, statusFilter, lastVisible, currentPage, pageFirstDocs, toast]);
 
-    const handleEditSuccess = useCallback(() => {
-        setStatusFilter('Semua Kehadiran');
-        setCurrentPage(1);
+    const handleFilterOrDateChange = useCallback(() => {
         setLastVisible(null);
-        setFirstVisible(null);
-        setPageHistory([null]);
-        // Directly call fetch after resetting state
+        setCurrentPage(1);
+        setPageFirstDocs([null]);
+        // The fetchAttendanceData in useEffect will handle fetching.
+    }, []);
+
+    useEffect(() => {
         fetchAttendanceData('first');
-    }, [fetchAttendanceData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [date, statusFilter]);
 
     const removeListener = useCallback(() => {
         if (backButtonListener) {
@@ -279,24 +282,13 @@ export default function Attendance() {
         return () => { removeListener() };
     }, [handleBackButton, removeListener]);
 
-    useEffect(() => {
-        fetchAttendanceData('first');
-    // We only want this to run when the date or filter changes, not on every re-render of fetchAttendanceData
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [date, statusFilter]);
-
     const handleNextPage = () => {
         if (!lastVisible) return;
-        setCurrentPage(prev => prev + 1);
         fetchAttendanceData('next');
     };
 
     const handlePrevPage = () => {
         if (currentPage <= 1) return;
-        setCurrentPage(prev => prev - 1);
-        setPageHistory(prev => prev.slice(0, -1));
-        const prevLastVisible = pageHistory[currentPage - 2] || null;
-        setLastVisible(prevLastVisible);
         fetchAttendanceData('prev');
     };
 
@@ -485,10 +477,7 @@ export default function Attendance() {
                                     selected={date}
                                     onSelect={(newDate) => {
                                         setDate(newDate);
-                                        setCurrentPage(1);
-                                        setLastVisible(null);
-                                        setFirstVisible(null);
-                                        setPageHistory([null]);
+                                        handleFilterOrDateChange();
                                     }}
                                     initialFocus
                                     disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
@@ -507,10 +496,7 @@ export default function Attendance() {
                             {filterOptions.map(option => (
                                 <DropdownMenuItem key={option} onSelect={() => {
                                     setStatusFilter(option);
-                                    setCurrentPage(1);
-                                    setLastVisible(null);
-                                    setFirstVisible(null);
-                                    setPageHistory([null]);
+                                    handleFilterOrDateChange();
                                 }}>
                                     {option}
                                 </DropdownMenuItem>
@@ -733,7 +719,8 @@ export default function Attendance() {
                     )}
                 </DialogContent>
             </Dialog>
-            <EditAttendanceDialog record={editingRecord} open={isEditOpen} onOpenChange={setIsEditOpen} onSuccess={handleEditSuccess} />
+            <EditAttendanceDialog record={editingRecord} open={isEditOpen} onOpenChange={setIsEditOpen} onSuccess={() => fetchAttendanceData('first')} />
         </div>
     )
 }
+
