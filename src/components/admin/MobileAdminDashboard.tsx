@@ -5,7 +5,6 @@ import React, { useState, useCallback } from "react";
 import { Home, User as UserIcon, Users2, LineChart, CheckSquare } from "lucide-react";
 import { useAndroidBackHandler } from "@/hooks/useAndroidBackHandler";
 import { ExitAppDialog } from "../ExitAppDialog";
-import { AttendanceSettingsDialog } from "./AttendanceSettingsDialog";
 import dynamic from 'next/dynamic';
 import { CenteredLoader } from "../ui/loader";
 import { useAuth } from "@/hooks/useAuth";
@@ -47,7 +46,6 @@ const viewComponents: { [key in ViewID]: React.FC<any> } = {
 export function MobileAdminDashboard() {
   const [activeView, setActiveView] = useState<ViewID>('home');
   const [isEditingUser, setIsEditingUser] = useState(false);
-  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const { logout } = useAuth();
 
   const isSubView = !mainViews.includes(activeView as MainViewID) || isEditingUser;
@@ -57,26 +55,24 @@ export function MobileAdminDashboard() {
   }, []);
 
   const onBack = useCallback(() => {
-    if (activeView === 'privacy') {
-      changeView('profile');
+    if (isEditingUser) {
+        setIsEditingUser(false);
+    } else if (activeView === 'privacy') {
+        changeView('profile');
     }
-  }, [activeView, changeView]);
+  }, [activeView, changeView, isEditingUser]);
 
   const onDialogClose = useCallback(() => {
     const openDialogs = document.querySelectorAll('[data-state="open"]');
     if (openDialogs.length > 0) {
-      const closeButton = document.querySelector('[data-state="open"] [aria-label="Close"], [data-state="open"] [type="button"][aria-label="Close"], [data-state="open"] [data-radix-collection-item] > [role="menuitem"]') as HTMLElement | null;
+      const closeButton = document.querySelector('[data-state="open"] [aria-label="Close"], [data-state="open"] button[aria-label="Close"], [data-state="open"] [data-radix-collection-item] > [role="menuitem"]') as HTMLElement | null;
       if (closeButton) {
         closeButton.click();
         return true;
       }
     }
-    if (showSettingsDialog) {
-      setShowSettingsDialog(false);
-      return true;
-    }
     return false;
-  }, [showSettingsDialog]);
+  }, []);
 
   const { showExitDialog, setShowExitDialog, handleConfirmExit } = useAndroidBackHandler({
     currentView: activeView,
@@ -85,7 +81,7 @@ export function MobileAdminDashboard() {
     onDialogClose,
     homeViewId: 'home',
     changeView: (viewId: ViewID) => changeView(viewId),
-    logout
+    logout,
   });
 
   const NavLink = ({
@@ -114,9 +110,8 @@ export function MobileAdminDashboard() {
   const ComponentToRender = viewComponents[activeView];
   const props = {
     setActiveView: changeView,
-    onBack,
-    setShowSettingsDialog,
     setIsEditingUser,
+    onBack,
   };
 
   return (
@@ -140,8 +135,6 @@ export function MobileAdminDashboard() {
         onOpenChange={setShowExitDialog}
         onConfirm={handleConfirmExit}
       />
-
-      <AttendanceSettingsDialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog} />
     </div>
   );
 }
