@@ -119,30 +119,33 @@ export default function Reports() {
         const teachersQuery = query(collection(db, 'teachers'));
         const unsubscribe = onSnapshot(teachersQuery, (snapshot) => {
             setTotalGurus(snapshot.size);
+        }, (error) => {
+            console.error("Error fetching total gurus:", error);
+            setTotalGurus(0);
         });
         return () => unsubscribe();
     }, []);
 
     useEffect(() => {
-        if (totalGurus === 0 && activeTab) {
-            setLoading(false);
-            setStats({
-                totalGurus: 0,
-                present: 0,
-                absent: 0,
-                late: 0,
-                attendanceRate: 0,
-                rateChange: 0,
-            });
-            setReportData([]);
-            return;
-        }
-
+        if (activeTab === null) return;
         setLoading(true);
-        let unsubscribe: Unsubscribe = () => {};
 
         const fetchReportData = async () => {
             try {
+                if (totalGurus === 0) {
+                     setStats({
+                        totalGurus: 0,
+                        present: 0,
+                        absent: 0,
+                        late: 0,
+                        attendanceRate: 0,
+                        rateChange: 0,
+                    });
+                    setReportData([]);
+                    setLoading(false);
+                    return;
+                }
+
                 const now = new Date();
                 let startDate: Date;
                 const endDate: Date = new Date(); 
@@ -173,46 +176,38 @@ export default function Reports() {
                     where("checkInTime", "<=", endDate)
                 );
                 
-                unsubscribe = onSnapshot(attendanceQuery, async (snapshot) => {
-                    const allTodaysRecords = snapshot.docs.map(doc => doc.data());
-                    const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
-                    const settings = settingsDoc.exists() ? settingsDoc.data() : { checkInEnd: '09:00', gracePeriod: 60 };
+                const attendanceSnapshot = await getDocs(attendanceQuery);
+                const allTodaysRecords = attendanceSnapshot.docs.map(doc => doc.data());
 
-                    const presentCount = allTodaysRecords.filter(d => d.status === 'Hadir').length;
-                    const lateCount = allTodaysRecords.filter(d => d.status === 'Terlambat').length;
-                    const absentCount = allTodaysRecords.filter(d => d.status === 'Tidak Hadir').length;
-                    
-                    const totalActiveAttendance = presentCount + lateCount;
-                    
-                    const attendanceRate = totalGurus > 0 ? (totalActiveAttendance / totalGurus) * 100 : 0;
-                    
-                    const rateChange = 2.3; // Placeholder
+                const presentCount = allTodaysRecords.filter(d => d.status === 'Hadir').length;
+                const lateCount = allTodaysRecords.filter(d => d.status === 'Terlambat').length;
+                const absentCount = allTodaysRecords.filter(d => d.status === 'Tidak Hadir').length;
+                
+                const totalActiveAttendance = presentCount + lateCount;
+                const attendanceRate = totalGurus > 0 ? (totalActiveAttendance / totalGurus) * 100 : 0;
+                
+                const rateChange = 2.3; // Placeholder
 
-                    setStats({
-                        totalGurus,
-                        present: presentCount,
-                        absent: absentCount < 0 ? 0 : absentCount,
-                        late: lateCount,
-                        attendanceRate,
-                        rateChange,
-                    });
-                    
-                    const detailedData: AttendanceReportRecord[] = allTodaysRecords.map(data => {
-                        return {
-                            name: data.name || 'N/A',
-                            checkInTime: data.checkInTime ? (data.checkInTime as Timestamp).toDate().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '-',
-                            checkOutTime: data.checkOutTime ? (data.checkOutTime as Timestamp).toDate().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '-',
-                            status: data.status || 'N/A',
-                            fraudReason: data.fraudReason || '-',
-                        };
-                    });
-                    setReportData(detailedData);
-                    setLoading(false);
-
-                }, (error) => {
-                    console.error("Error fetching report data with onSnapshot: ", error);
-                    setLoading(false);
+                setStats({
+                    totalGurus,
+                    present: presentCount,
+                    absent: absentCount,
+                    late: lateCount,
+                    attendanceRate,
+                    rateChange,
                 });
+                
+                const detailedData: AttendanceReportRecord[] = allTodaysRecords.map(data => {
+                    return {
+                        name: data.name || 'N/A',
+                        checkInTime: data.checkInTime ? (data.checkInTime as Timestamp).toDate().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '-',
+                        checkOutTime: data.checkOutTime ? (data.checkOutTime as Timestamp).toDate().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '-',
+                        status: data.status || 'N/A',
+                        fraudReason: data.fraudReason || '-',
+                    };
+                });
+                setReportData(detailedData);
+                setLoading(false);
 
             } catch (error) {
                 console.error("Error setting up report data fetch: ", error);
@@ -222,9 +217,6 @@ export default function Reports() {
 
         fetchReportData();
         
-        return () => {
-            unsubscribe();
-        }
     }, [activeTab, totalGurus]);
 
     const handleDownload = async (formatType: 'pdf' | 'csv') => {
@@ -397,3 +389,5 @@ export default function Reports() {
         </div>
     );
 }
+
+    

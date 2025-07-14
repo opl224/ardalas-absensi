@@ -88,6 +88,9 @@ export function MobileHome({ setActiveView, setShowSettingsDialog }: MobileHomeP
         const teachersQuery = query(collection(db, 'teachers'));
         const unsubscribe = onSnapshot(teachersQuery, (snapshot) => {
             setTotalGurus(snapshot.size);
+        }, (error) => {
+            console.error("Error fetching total gurus:", error);
+            setTotalGurus(0);
         });
         return () => unsubscribe();
     }, []);
@@ -117,12 +120,6 @@ export function MobileHome({ setActiveView, setShowSettingsDialog }: MobileHomeP
             return;
         }
 
-        if (totalGurus === 0) {
-            setStats({ present: 0, absent: 0, late: 0, offDay: 0, total: 0, rate: 0 });
-            setLoading(false);
-            return;
-        }
-        
         const today = new Date();
         const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
@@ -287,3 +284,5 @@ export function MobileHome({ setActiveView, setShowSettingsDialog }: MobileHomeP
         </div>
     );
 }
+
+    

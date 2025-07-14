@@ -75,6 +75,9 @@ export function DashboardHome() {
         const teachersQuery = query(collection(db, 'teachers'));
         const unsubscribe = onSnapshot(teachersQuery, (snapshot) => {
             setTotalGurus(snapshot.size);
+        }, (error) => {
+            console.error("Error fetching total gurus:", error);
+            setTotalGurus(0); // Set to 0 on error
         });
         return () => unsubscribe();
     }, []);
@@ -103,13 +106,6 @@ export function DashboardHome() {
 
         if (settings.offDays?.includes(todayStr)) {
             setStats({ present: 0, absent: 0, late: 0, offDay: totalGurus, total: totalGurus, rate: 0 });
-            setAttendanceData([]);
-            setLoading(false);
-            return;
-        }
-        
-        if (totalGurus === 0) {
-            setStats({ present: 0, absent: 0, late: 0, offDay: 0, total: 0, rate: 0 });
             setAttendanceData([]);
             setLoading(false);
             return;
@@ -272,3 +268,5 @@ export function DashboardHome() {
         </main>
     );
 }
+
+    
