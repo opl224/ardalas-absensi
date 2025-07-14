@@ -13,7 +13,18 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,7 +33,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { collection, query, where, onSnapshot, DocumentData, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { Loader } from '../ui/loader';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
@@ -37,6 +48,8 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '@/hooks/useAuth';
+import { cn } from '@/lib/utils';
+import { buttonVariants } from '../ui/button';
 
 
 interface User {
@@ -244,6 +257,7 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [processedUsers, setProcessedUsers] = useState<ProcessedUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isDeleting, startDeleteTransition] = useTransition();
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -429,6 +443,46 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
         default: return 'outline';
     }
   }
+
+  const handleDeleteUser = async (userToDelete: ProcessedUser) => {
+    startDeleteTransition(async () => {
+      const adminUser = auth.currentUser;
+      if (!adminUser) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Admin tidak terautentikasi. Silakan login kembali.' });
+        return;
+      }
+      if (adminUser.uid === userToDelete.id) {
+        toast({ variant: 'destructive', title: 'Tidak Diizinkan', description: 'Anda tidak dapat menghapus akun Anda sendiri.' });
+        return;
+      }
+
+      try {
+        const idToken = await adminUser.getIdToken();
+        const response = await fetch('/api/delete-user', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({ userId: userToDelete.id, role: userToDelete.role }),
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || 'Terjadi kesalahan pada server.');
+        }
+
+        toast({ title: 'Berhasil', description: `Pengguna '${userToDelete.name}' berhasil dihapus.` });
+        handleUserActionSuccess();
+      } catch (error: any) {
+        console.error("Error deleting user:", error);
+        toast({ variant: 'destructive', title: 'Gagal Menghapus', description: error.message });
+      } finally {
+        setIsDeleteOpen(false);
+        setSelectedUser(null);
+      }
+    });
+  };
 
   const handleDownload = async (formatType: 'pdf' | 'csv') => {
     toast({ title: 'Mempersiapkan Unduhan...', description: 'Ini bisa memakan waktu beberapa saat.' });
@@ -708,6 +762,28 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
         </DialogContent>
       </Dialog>
       <AddUserDialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen} onSuccess={handleUserActionSuccess} />
+      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tindakan ini tidak dapat dibatalkan. Ini akan menghapus pengguna secara permanen dari autentikasi dan basis data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setSelectedUser(null)}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              className={cn(buttonVariants({ variant: "destructive" }))}
+              disabled={isDeleting}
+              onClick={() => {
+                if (selectedUser) handleDeleteUser(selectedUser);
+              }}
+            >
+              {isDeleting ? "Menghapus..." : "Hapus"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
