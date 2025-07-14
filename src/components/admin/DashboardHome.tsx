@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { UserPlus, Users, LineChart, CheckSquare } from "lucide-react";
+import { UserPlus, Users, LineChart, CheckSquare, CalendarDays, Clock } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -37,6 +37,20 @@ export function DashboardHome({ setActiveView }: DashboardHomeProps) {
     const [showSettingsDialog, setShowSettingsDialog] = useState(false);
     const [settings, setSettings] = useState<any | null>(null);
     const [totalGurus, setTotalGurus] = useState(0);
+    const [dateTime, setDateTime] = useState({ date: '', time: '' });
+
+    useEffect(() => {
+        const updateDateTime = () => {
+            const now = new Date();
+            setDateTime({
+                date: now.toLocaleDateString('id-ID', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }),
+                time: now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+            });
+        };
+        updateDateTime();
+        const interval = setInterval(updateDateTime, 60000);
+        return () => clearInterval(interval);
+    }, []);
 
     // Effect to get total gurus count
     useEffect(() => {
@@ -149,6 +163,18 @@ export function DashboardHome({ setActiveView }: DashboardHomeProps) {
 
     return (
         <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+            <Card className="p-4">
+                <CardContent className="p-0 space-y-3">
+                    <div className="flex items-center gap-4">
+                        <CalendarDays className="h-5 w-5 text-muted-foreground" />
+                        <span className="font-medium text-sm text-foreground">{dateTime.date || 'Memuat tanggal...'}</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <Clock className="h-5 w-5 text-muted-foreground" />
+                        <span className="font-medium text-sm text-foreground">{dateTime.time || 'Memuat waktu...'}</span>
+                    </div>
+                </CardContent>
+            </Card>
             <Card>
                 <CardHeader className="p-4">
                     <CardTitle className="text-lg">Kehadiran Guru Hari Ini</CardTitle>
