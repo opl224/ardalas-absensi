@@ -7,17 +7,16 @@ import { MobileTeacherDashboard } from "@/components/teacher/MobileTeacherDashbo
 import { useAuth } from "@/hooks/useAuth";
 import { LogOut, MonitorOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useIsMobile } from "@/hooks/use-mobile";
+import dynamic from 'next/dynamic'
 
-export default function TeacherDashboard() {
+function TeacherDashboardContent() {
   const { userProfile, loading: authLoading, logout } = useAuth();
-  const isMobile = useIsMobile();
+  const [isMobile, setIsMobile] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
-  // This ensures we don't show the desktop warning on mobile, even for a split second.
-  // It also prevents hydration errors.
   useEffect(() => {
     setIsClient(true);
+    setIsMobile(window.innerWidth < 768);
   }, []);
 
   if (authLoading || !isClient) {
@@ -48,3 +47,10 @@ export default function TeacherDashboard() {
     </>
   );
 }
+
+
+// Use dynamic import to prevent SSR for this component
+export default dynamic(() => Promise.resolve(TeacherDashboardContent), {
+  ssr: false,
+  loading: () => <CenteredLoader />,
+});
