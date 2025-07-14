@@ -18,8 +18,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { CenteredLoader } from "@/components/ui/loader";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import dynamic from 'next/dynamic';
-import { Capacitor } from "@capacitor/core";
-import { Monitor, Smartphone } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MobileAdminDashboard } from "@/components/admin/MobileAdminDashboard";
 
 const DashboardHome = dynamic(() => import('@/components/admin/DashboardHome').then(mod => mod.DashboardHome), {
   loading: () => <CenteredLoader />,
@@ -46,32 +46,14 @@ const breadcrumbTitles: Record<ViewID, string> = {
 function AdminDashboardContent() {
   const { userProfile, loading } = useAuth();
   const [activeView, setActiveView] = useState<ViewID>('home');
-  const [isNativePlatform, setIsNativePlatform] = useState(false);
-  const [platformCheckCompleted, setPlatformCheckCompleted] = useState(false);
+  const isMobile = useIsMobile();
 
-  useEffect(() => {
-    const checkPlatform = () => {
-      setIsNativePlatform(Capacitor.isNativePlatform());
-      setPlatformCheckCompleted(true);
-    };
-    checkPlatform();
-  }, []);
-
-
-  if (loading || !userProfile || !platformCheckCompleted) {
+  if (loading || !userProfile) {
     return <CenteredLoader />;
   }
 
-  if (isNativePlatform) {
-    return (
-        <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-8 text-center">
-            <Monitor className="h-16 w-16 text-primary mb-4" />
-            <h1 className="text-2xl font-bold">Akses Ditolak di Aplikasi</h1>
-            <p className="text-muted-foreground mt-2 max-w-sm">
-                Untuk keamanan dan fungsionalitas penuh, halaman admin hanya dapat diakses melalui browser web di desktop atau ponsel Anda.
-            </p>
-        </div>
-    );
+  if (isMobile) {
+    return <MobileAdminDashboard />;
   }
   
   const renderView = () => {
