@@ -14,7 +14,6 @@ import { Input } from "@/components/ui/input"
 import { UserNav } from "@/components/UserNav"
 import { Sidebar, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarProvider, SidebarContent, SidebarHeader, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { Logo } from "@/components/Logo"
-import { MobileAdminDashboard } from "@/components/admin/MobileAdminDashboard"
 import { useAuth } from "@/hooks/useAuth";
 import { CenteredLoader } from "@/components/ui/loader";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -33,6 +32,11 @@ const Attendance = dynamic(() => import('@/components/admin/Attendance'), {
   loading: () => <CenteredLoader />,
 });
 
+const MobileAdminDashboard = dynamic(() => import('@/components/admin/MobileAdminDashboard').then(mod => mod.MobileAdminDashboard), {
+  ssr: false,
+  loading: () => <CenteredLoader />,
+});
+
 
 type ViewID = 'home' | 'users' | 'reports' | 'attendance';
 
@@ -43,13 +47,15 @@ const breadcrumbTitles: Record<ViewID, string> = {
   attendance: 'Kehadiran'
 };
 
-export default function AdminDashboard() {
-  const { userProfile } = useAuth();
+function AdminDashboardContent() {
+  const { userProfile, loading } = useAuth();
   const [activeView, setActiveView] = useState<ViewID>('home');
   // State to satisfy the prop requirement for UserManagement on desktop, though it won't be used visually here.
   const [isEditingUser, setIsEditingUser] = useState(false);
 
-  if (!userProfile) return <CenteredLoader />;
+  if (loading || !userProfile) {
+    return <CenteredLoader />;
+  }
   
   const renderView = () => {
     switch (activeView) {
@@ -143,3 +149,9 @@ export default function AdminDashboard() {
     </>
   )
 }
+
+// Use dynamic import to prevent SSR for this component entirely.
+export default dynamic(() => Promise.resolve(AdminDashboardContent), {
+  ssr: false,
+  loading: () => <CenteredLoader />,
+});
