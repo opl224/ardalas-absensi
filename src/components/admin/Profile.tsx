@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Capacitor } from '@capacitor/core';
 import { getStorage, ref as storageRef, uploadString, getDownloadURL } from "firebase/storage";
-import { doc, updateDoc, writeBatch, getDoc } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 interface ProfileProps {
@@ -82,20 +82,8 @@ export function Profile({ setActiveView }: ProfileProps) {
                     const snapshot = await uploadString(fileRef, dataUri, 'data_url');
                     const downloadURL = await getDownloadURL(snapshot.ref);
                     
-                    const batch = writeBatch(db);
-                    
-                    const collectionName = userProfile.role === 'admin' ? 'admin' : 'teachers';
-                    const mainDocRef = doc(db, collectionName, userProfile.uid);
-                    batch.update(mainDocRef, { avatar: downloadURL });
-                    
-                    // Conditionally update the central 'users' document only if it exists
-                    const centralUserDocRef = doc(db, 'users', userProfile.uid);
-                    const centralUserDocSnap = await getDoc(centralUserDocRef);
-                    if (centralUserDocSnap.exists()) {
-                        batch.update(centralUserDocRef, { avatar: downloadURL });
-                    }
-
-                    await batch.commit();
+                    const adminDocRef = doc(db, 'admin', userProfile.uid);
+                    await updateDoc(adminDocRef, { avatar: downloadURL });
 
                     setUserProfile(prev => prev ? { ...prev, avatar: downloadURL } : null);
 

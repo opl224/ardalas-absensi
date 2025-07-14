@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Capacitor } from '@capacitor/core';
 import { getStorage, ref as storageRef, uploadString, getDownloadURL } from "firebase/storage";
-import { doc, updateDoc, writeBatch } from "firebase/firestore";
+import { doc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
@@ -84,10 +84,11 @@ export function TeacherProfile({ setActiveView }: TeacherProfileProps) {
 
                     const batch = writeBatch(db);
 
-                    const collectionName = userProfile.role === 'admin' ? 'admin' : 'teachers';
-                    const mainDocRef = doc(db, collectionName, userProfile.uid);
-                    batch.update(mainDocRef, { avatar: downloadURL });
+                    // Update teacher document
+                    const teacherDocRef = doc(db, 'teachers', userProfile.uid);
+                    batch.update(teacherDocRef, { avatar: downloadURL });
 
+                    // Update central user document
                     const centralUserDocRef = doc(db, 'users', userProfile.uid);
                     batch.update(centralUserDocRef, { avatar: downloadURL });
 
