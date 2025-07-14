@@ -1,3 +1,4 @@
+
 {
   "firestore": {
     "rules": "firestore.rules"
@@ -6,3 +7,4 @@
     "source": "functions"
   }
 }
+

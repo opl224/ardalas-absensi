@@ -427,7 +427,7 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
   };
   const handlePrevPage = () => {
     if (currentPage > 1) {
-        setCurrentPage(prev => prev - 1);
+        setCurrentPage(prev => prev + 1);
     }
   };
 
@@ -776,3 +776,4 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
     </div>
   );
 }
+

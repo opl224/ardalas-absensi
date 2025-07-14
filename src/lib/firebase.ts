@@ -27,3 +27,4 @@ const storage = getStorage(app);
 const functions = getFunctions(app);
 
 export { app, auth, db, storage, functions };
+
