@@ -4,7 +4,7 @@
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { usePathname, useRouter } from 'next/navigation';
 import { CenteredLoader } from '@/components/ui/loader';
@@ -68,7 +68,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     useIdleTimer(handleIdle, 1000 * 60 * 60);
 
     useEffect(() => {
+        let profileUnsubscribe: (() => void) | undefined;
+
         const authStateUnsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+            
+            if (profileUnsubscribe) {
+                profileUnsubscribe();
+            }
+
             if (firebaseUser) {
                 if (userProfile && userProfile.uid === firebaseUser.uid) {
                     setLoading(false);
@@ -80,35 +87,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
                 // Check the central 'users' collection first for the role.
                 const userRoleRef = doc(db, 'users', firebaseUser.uid);
-                const userRoleSnap = await getDoc(userRoleRef);
+                
+                profileUnsubscribe = onSnapshot(userRoleRef, async (userRoleSnap) => {
+                    if (userRoleSnap.exists()) {
+                        const { role } = userRoleSnap.data();
+                        const collectionName = role === 'admin' ? 'admin' : 'teachers';
 
-                if (userRoleSnap.exists()) {
-                    const { role } = userRoleSnap.data();
-                    const collectionName = role === 'admin' ? 'admin' : 'teachers';
+                        const profileDocRef = doc(db, collectionName, firebaseUser.uid);
+                        const profileSnap = await getDoc(profileDocRef);
 
-                    const profileDocRef = doc(db, collectionName, firebaseUser.uid);
-                    const profileSnap = await getDoc(profileDocRef);
-
-                    if (profileSnap.exists()) {
-                        setUserProfile({ uid: firebaseUser.uid, ...profileSnap.data() } as UserProfile);
+                        if (profileSnap.exists()) {
+                            setUserProfile({ uid: firebaseUser.uid, ...profileSnap.data() } as UserProfile);
+                        } else {
+                            console.error(`User document for ${firebaseUser.uid} not found in '${collectionName}' collection.`);
+                            logout("Detail profil pengguna tidak ditemukan.");
+                        }
                     } else {
-                         console.error(`User document for ${firebaseUser.uid} not found in '${collectionName}' collection.`);
-                         logout("Detail profil pengguna tidak ditemukan.");
+                        // This might happen briefly during user creation.
+                        // We will wait for a moment before deciding the user doesn't exist.
+                        setTimeout(() => {
+                            if (!userProfile) {
+                                console.error(`User role for ${firebaseUser.uid} not found in 'users' collection.`);
+                                logout("Profil pengguna Anda tidak dapat diverifikasi.");
+                            }
+                        }, 2000); // Wait 2s
                     }
-                } else {
-                    console.error(`User role for ${firebaseUser.uid} not found in 'users' collection.`);
-                    logout("Profil pengguna Anda tidak ditemukan di basis data.");
-                }
+                    setLoading(false);
+                }, (error) => {
+                    console.error("Error listening to user role:", error);
+                    logout("Gagal memuat peran pengguna.");
+                    setLoading(false);
+                });
 
             } else {
                 setUser(null);
                 setUserProfile(null);
+                setLoading(false);
             }
-            setLoading(false);
         });
 
         return () => {
             authStateUnsubscribe();
+            if (profileUnsubscribe) {
+                profileUnsubscribe();
+            }
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -141,5 +163,3 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         </AuthContext.Provider>
     );
 };
-
-    

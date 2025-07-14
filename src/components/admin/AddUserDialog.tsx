@@ -55,9 +55,9 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
     startTransition(async () => {
       // 1. Temporarily create a new auth instance for user creation
       // This is a common pattern to create users without signing out the admin.
-      const { app } = await import('firebase/app');
+      const { initializeApp } = await import('firebase/app');
       const { getAuth: getAuthInstance } = await import('firebase/auth');
-      const tempApp = app("temp-user-creation-app", auth.app.options);
+      const tempApp = initializeApp(auth.app.options, "temp-user-creation-app");
       const tempAuth = getAuthInstance(tempApp);
       
       try {
@@ -131,7 +131,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
         <DialogHeader>
           <DialogTitle>Tambah Pengguna Baru</DialogTitle>
           <DialogDescription>
-             Buat akun baru untuk admin atau guru. Tindakan ini memerlukan aturan keamanan Firestore yang sesuai untuk mengizinkan admin membuat pengguna.
+             Buat akun baru untuk admin atau guru. Tindakan ini akan secara otomatis membuat data pengguna di Firestore.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
@@ -206,5 +206,3 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
     </Dialog>
   );
 }
-
-    
