@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Capacitor } from '@capacitor/core';
 import { getStorage, ref as storageRef, uploadString, getDownloadURL } from "firebase/storage";
-import { doc, updateDoc, writeBatch } from "firebase/firestore";
+import { doc, updateDoc, writeBatch, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 interface ProfileProps {
@@ -71,7 +71,7 @@ export function Profile({ setActiveView }: ProfileProps) {
         reader.readAsDataURL(file);
         reader.onload = () => {
             const dataUri = reader.result as string;
-            setPreviewAvatar(dataUri); // Set preview immediately
+            setPreviewAvatar(dataUri);
             
             startTransition(async () => {
                 try {
@@ -83,13 +83,17 @@ export function Profile({ setActiveView }: ProfileProps) {
                     const downloadURL = await getDownloadURL(snapshot.ref);
                     
                     const batch = writeBatch(db);
-
+                    
                     const collectionName = userProfile.role === 'admin' ? 'admin' : 'teachers';
                     const mainDocRef = doc(db, collectionName, userProfile.uid);
                     batch.update(mainDocRef, { avatar: downloadURL });
                     
+                    // Conditionally update the central 'users' document only if it exists
                     const centralUserDocRef = doc(db, 'users', userProfile.uid);
-                    batch.update(centralUserDocRef, { avatar: downloadURL });
+                    const centralUserDocSnap = await getDoc(centralUserDocRef);
+                    if (centralUserDocSnap.exists()) {
+                        batch.update(centralUserDocRef, { avatar: downloadURL });
+                    }
 
                     await batch.commit();
 
@@ -100,7 +104,7 @@ export function Profile({ setActiveView }: ProfileProps) {
                     console.error("Error updating avatar:", error);
                     toast({ variant: 'destructive', title: 'Gagal', description: "Gagal mengunggah avatar." });
                 } finally {
-                    setPreviewAvatar(null); // Clear preview after operation
+                    setPreviewAvatar(null);
                 }
             });
         };
