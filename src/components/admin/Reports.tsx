@@ -31,20 +31,6 @@ interface AttendanceReportRecord {
     fraudReason: string;
 }
 
-const isCheckinTimeOver = (settings: any): boolean => {
-    if (!settings || !settings.checkInEnd) return false;
-
-    const now = new Date();
-    const [endHours, endMinutes] = settings.checkInEnd.split(':').map(Number);
-    const gracePeriodMinutes = Number(settings.gracePeriod) || 0;
-
-    const deadline = new Date();
-    deadline.setHours(endHours, endMinutes, 0, 0);
-    deadline.setMinutes(deadline.getMinutes() + gracePeriodMinutes);
-
-    return now > deadline;
-};
-
 const StatCard = ({ title, value, icon: Icon, color }: { title: string, value: string | number, icon: React.ElementType, color: string }) => (
     <Card className={`border-l-4 ${color}`}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
@@ -389,5 +375,3 @@ export default function Reports() {
         </div>
     );
 }
-
-    

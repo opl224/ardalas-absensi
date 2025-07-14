@@ -46,20 +46,6 @@ interface Stats {
     rate: number;
 }
 
-const isCheckinTimeOver = (settings: any): boolean => {
-    if (!settings || !settings.checkInEnd) return false;
-
-    const now = new Date();
-    const [endHours, endMinutes] = settings.checkInEnd.split(':').map(Number);
-    const gracePeriodMinutes = Number(settings.gracePeriod) || 0;
-
-    const deadline = new Date();
-    deadline.setHours(endHours, endMinutes, 0, 0);
-    deadline.setMinutes(deadline.getMinutes() + gracePeriodMinutes);
-
-    return now > deadline;
-};
-
 export function DashboardHome() {
     const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
     const [stats, setStats] = useState<Stats>({ present: 0, absent: 0, late: 0, offDay: 0, total: 0, rate: 0 });
@@ -97,7 +83,16 @@ export function DashboardHome() {
 
     // Effect to fetch data and listen for attendance, re-runs when settings or totalGurus change
     useEffect(() => {
-        if (!settings) return;
+        if (!settings || totalGurus === 0) {
+            // If totalGurus hasn't been fetched yet, don't proceed to avoid race conditions.
+            // We can show loading state until it's available.
+             if (totalGurus === 0 && !loading) {
+                 // handle the case where there are genuinely no teachers
+             } else {
+                setLoading(true);
+                return;
+             }
+        }
 
         setLoading(true);
 
@@ -153,7 +148,7 @@ export function DashboardHome() {
         });
 
         return () => unsubscribe();
-    }, [settings, totalGurus]);
+    }, [settings, totalGurus, loading]);
 
     const handleMarkAbsentees = () => {
         startTransition(async () => {
@@ -268,5 +263,3 @@ export function DashboardHome() {
         </main>
     );
 }
-
-    

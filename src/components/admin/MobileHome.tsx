@@ -37,20 +37,6 @@ interface MobileHomeProps {
     setShowSettingsDialog: (isOpen: boolean) => void;
 }
 
-const isCheckinTimeOver = (settings: any): boolean => {
-    if (!settings || !settings.checkInEnd) return false;
-
-    const now = new Date();
-    const [endHours, endMinutes] = settings.checkInEnd.split(':').map(Number);
-    const gracePeriodMinutes = Number(settings.gracePeriod) || 0;
-
-    const deadline = new Date();
-    deadline.setHours(endHours, endMinutes, 0, 0);
-    deadline.setMinutes(deadline.getMinutes() + gracePeriodMinutes);
-
-    return now > deadline;
-};
-
 const splitTextFrom = { opacity: 0, y: 20 };
 const splitTextTo = { opacity: 1, y: 0 };
 
@@ -110,7 +96,10 @@ export function MobileHome({ setActiveView, setShowSettingsDialog }: MobileHomeP
 
     // Main logic effect, re-runs when settings or totalGurus change
     useEffect(() => {
-        if (!settings) return;
+        if (!settings) {
+            setLoading(true);
+            return;
+        };
 
         setLoading(true);
 
@@ -284,5 +273,3 @@ export function MobileHome({ setActiveView, setShowSettingsDialog }: MobileHomeP
         </div>
     );
 }
-
-    
