@@ -19,13 +19,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { collection, query, orderBy, Timestamp, where, doc, onSnapshot, getCountFromServer } from "firebase/firestore";
+import { collection, query, orderBy, Timestamp, where, doc, onSnapshot, getDocs, setDoc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Loader } from "@/components/ui/loader";
 import { Separator } from "../ui/separator";
 import { Button } from "../ui/button";
 import { AttendanceSettingsDialog } from "./AttendanceSettingsDialog";
-import { markAbsentees, type MarkAbsenteesState } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 
 interface AttendanceRecord {
@@ -84,8 +83,6 @@ export function DashboardHome() {
     // Effect to fetch data and listen for attendance, re-runs when settings or totalGurus change
     useEffect(() => {
         if (!settings || totalGurus === 0) {
-            // If totalGurus hasn't been fetched yet, don't proceed to avoid race conditions.
-            // We can show loading state until it's available.
              if (totalGurus === 0 && !loading) {
                  // handle the case where there are genuinely no teachers
              } else {
@@ -118,7 +115,6 @@ export function DashboardHome() {
         );
 
         const unsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
-            // Get all records for today, including "Tidak Hadir"
             const allTodaysRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             
             const presentAndLateRecords = allTodaysRecords.filter(
@@ -152,18 +148,63 @@ export function DashboardHome() {
 
     const handleMarkAbsentees = () => {
         startTransition(async () => {
-            const result: MarkAbsenteesState = await markAbsentees();
-            if (result.success) {
-                toast({
-                    title: "Proses Selesai",
-                    description: result.message,
-                });
-            } else {
-                toast({
-                    variant: "destructive",
-                    title: "Proses Gagal",
-                    description: result.error,
-                });
+            try {
+                const today = new Date();
+                const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+                const teachersQuery = query(collection(db, "teachers"));
+                const teachersSnapshot = await getDocs(teachersQuery);
+                const allTeachers = new Map(teachersSnapshot.docs.map(doc => [doc.id, doc.data()]));
+
+                if (allTeachers.size === 0) {
+                    toast({ title: "Info", description: "Tidak ada data guru untuk diproses." });
+                    return;
+                }
+
+                const attendanceQuery = query(
+                    collection(db, "photo_attendances"),
+                    where("checkInTime", ">=", startOfToday),
+                    where("checkInTime", "<", endOfToday)
+                );
+                const attendanceSnapshot = await getDocs(attendanceQuery);
+                const presentUserIds = new Set(attendanceSnapshot.docs.map(doc => doc.data().userId));
+
+                let absentTeachersMarked = 0;
+                for (const [teacherId, teacherData] of allTeachers.entries()) {
+                    if (!presentUserIds.has(teacherId)) {
+                        const absentRecord = {
+                            userId: teacherId,
+                            name: (teacherData as any).name,
+                            role: (teacherData as any).role || 'guru',
+                            checkInTime: new Date(), 
+                            checkInLocation: null,
+                            checkInPhotoUrl: null,
+                            isFraudulent: false,
+                            fraudReason: '',
+                            status: "Tidak Hadir",
+                        };
+
+                        const absentDocId = `absent-${today.toISOString().slice(0, 10)}-${teacherId}`;
+                        const attendanceRef = doc(db, "photo_attendances", absentDocId);
+                        
+                        const docSnap = await getDoc(attendanceRef);
+                        if (!docSnap.exists()) {
+                            await setDoc(attendanceRef, absentRecord);
+                            absentTeachersMarked++;
+                        }
+                    }
+                }
+
+                if (absentTeachersMarked === 0) {
+                    toast({ title: "Info", description: "Semua guru telah melakukan absensi atau sudah ditandai tidak hadir." });
+                } else {
+                    toast({ title: "Proses Selesai", description: `${absentTeachersMarked} guru telah ditandai sebagai Tidak Hadir.` });
+                }
+
+            } catch (e: any) {
+                console.error("Error marking absentees: ", e);
+                toast({ variant: "destructive", title: "Proses Gagal", description: `Kesalahan: ${e.message}.` });
             }
         });
     }

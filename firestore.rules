@@ -1,64 +1,69 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+  
+    function isUserAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isRole(role) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
     
-    // Check if a user is an admin
-    function isAdmin(userId) {
-      return exists(/databases/$(database)/documents/users/$(userId)) &&
-             get(/databases/$(database)/documents/users/$(userId)).data.role == 'admin';
+    function isAdmin() {
+      return isRole('admin');
     }
 
-    // Default deny all
-    match /{document=**} {
-      allow read, write: if false;
+    function isOwner(userId) {
+      return request.auth.uid == userId;
     }
 
-    // --- Users Collection Rules ---
+    // Settings can only be read by any authenticated user, but only written by an admin
+    match /settings/{docId} {
+      allow read: if isUserAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // User profile data
     match /users/{userId} {
-      // Anyone can read a user's profile (e.g., to get name/avatar)
-      allow read: if request.auth != null;
-      // Users can only create their own document
-      allow create: if request.auth.uid == userId;
-      // Users can update their own document, but CANNOT change their role.
-      // Admins can update any user document.
-      allow update: if (request.auth.uid == userId && !('role' in request.resource.data.diff(resource.data).affectedKeys())) || isAdmin(request.auth.uid);
-      // Only Admins can delete users
-      allow delete: if isAdmin(request.auth.uid);
+      // Admins can read any user profile. Users can read their own profile.
+      allow get: if isUserAuthenticated() && (isAdmin() || isOwner(userId));
+      // Users can be created by admins. Users can update their own data. Admins can update any user.
+      allow write: if isUserAuthenticated() && (isAdmin() || isOwner(userId));
     }
     
-    // --- Teachers Collection Rules ---
     match /teachers/{teacherId} {
-      // Any authenticated user can read a teacher's profile
-      allow read: if request.auth != null;
-      // A teacher can update their own profile. Admins can update any teacher.
-      allow update: if request.auth.uid == teacherId || isAdmin(request.auth.uid);
-      // Only Admins can create or delete teacher profiles
-      allow create, delete: if isAdmin(request.auth.uid);
+      allow get: if isUserAuthenticated();
+      allow write: if isAdmin() || isOwner(teacherId);
+    }
+    
+    match /admin/{adminId} {
+       allow get: if isUserAuthenticated();
+       allow write: if isAdmin();
     }
 
-    // --- Attendance Records Rules ---
+    // Attendance records
     match /photo_attendances/{attendanceId} {
-      // Users can only create their own attendance records.
-      allow create: if request.auth.uid == request.resource.data.userId;
-      // Users can read their own records.
-      // Teachers and Admins can read all records.
-      allow read: if request.auth.uid == resource.data.userId 
-                  || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'guru'
-                  || isAdmin(request.auth.uid);
-      // Users can update their own records (e.g., checkout). Admins can update any.
-      allow update: if request.auth.uid == resource.data.userId || isAdmin(request.auth.uid);
-      // Only Admins can delete attendance records
-      allow delete: if isAdmin(request.auth.uid);
+      // Allow create if user is authenticated (they are creating their own record)
+      allow create: if isUserAuthenticated();
+      
+      // Allow read if user is admin or they are the owner of the record
+      allow get: if isUserAuthenticated() && (isAdmin() || isOwner(resource.data.userId));
+      
+      // Allow update/delete only if user is an admin
+      allow update, delete: if isAdmin();
     }
     
-    // --- Settings Rules ---
-    match /settings/attendance {
-      // All authenticated users can read settings
-      allow read: if request.auth.uid != null;
-      // Only admins can update settings
-      allow write: if isAdmin(request.auth.uid);
+    match /{path=**}/photo_attendances/{attendanceId} {
+       // Allow create if user is authenticated (they are creating their own record)
+      allow create: if isUserAuthenticated();
+      
+      // Allow read if user is admin or they are the owner of the record
+      allow get: if isUserAuthenticated() && (isAdmin() || isOwner(resource.data.userId));
+      
+      // Allow update/delete only if user is an admin
+      allow update, delete: if isAdmin();
     }
   }
 }

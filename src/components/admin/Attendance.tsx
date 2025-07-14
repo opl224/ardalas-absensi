@@ -8,7 +8,7 @@ import { id as localeId } from 'date-fns/locale';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { collection, query, orderBy, Timestamp, doc, where, onSnapshot, getDocs, limit, startAfter, QueryDocumentSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, Timestamp, doc, where, onSnapshot, getDocs, limit, startAfter, QueryDocumentSnapshot, updateDoc, deleteField, deleteDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader } from '../ui/loader';
 import { Button, buttonVariants } from '../ui/button';
@@ -26,7 +26,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Calendar } from "@/components/ui/calendar";
-import { updateAttendanceRecord, deleteAttendanceRecord, type AttendanceUpdateState, type DeleteState } from '@/app/actions';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -56,8 +55,8 @@ const filterOptions = ['Semua Kehadiran', 'Hadir', 'Terlambat', 'Tidak Hadir', '
 function EditAttendanceDialog({ record, open, onOpenChange, onSuccess }: { record: AttendanceRecord | null, open: boolean, onOpenChange: (open: boolean) => void, onSuccess: () => void }) {
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
-    const formRef = useRef<HTMLFormElement>(null);
     const [removeFraud, setRemoveFraud] = useState(false);
+    const formRef = useRef<HTMLFormElement>(null);
 
     if (!record) return null;
 
@@ -71,19 +70,54 @@ function EditAttendanceDialog({ record, open, onOpenChange, onSuccess }: { recor
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!formRef.current) return;
-        const formData = new FormData(formRef.current);
-        if (removeFraud) {
-            formData.append('removeFraudWarning', 'on');
-        }
         startTransition(async () => {
-            const result: AttendanceUpdateState = await updateAttendanceRecord(formData);
-            if (result.success) {
+            if (!formRef.current) return;
+            const formData = new FormData(formRef.current);
+            
+            const attendanceId = formData.get("attendanceId") as string;
+            const checkInTime = formData.get("checkInTime") as string;
+            const checkOutTime = formData.get("checkOutTime") as string;
+            const status = formData.get("status") as 'Hadir' | 'Terlambat' | 'Tidak Hadir';
+            const removeFraudWarning = removeFraud;
+
+            try {
+                const recordRef = doc(db, "photo_attendances", attendanceId);
+                const recordSnap = await getDoc(recordRef);
+
+                if (!recordSnap.exists()) {
+                    throw new Error("Catatan kehadiran tidak ditemukan.");
+                }
+                const originalData = recordSnap.data();
+                const originalCheckInTime = originalData.checkInTime as Timestamp;
+
+                const newCheckInDate = new Date(checkInTime);
+                
+                const updateData: any = { status };
+
+                if (originalCheckInTime.toMillis() !== newCheckInDate.getTime()) {
+                    updateData.checkInTime = Timestamp.fromDate(newCheckInDate);
+                }
+
+                if (checkOutTime && checkOutTime.length > 0) {
+                    updateData.checkOutTime = Timestamp.fromDate(new Date(checkOutTime));
+                } else {
+                    updateData.checkOutTime = deleteField();
+                }
+
+                if (removeFraudWarning) {
+                    updateData.isFraudulent = false;
+                    updateData.fraudReason = '';
+                }
+
+                await updateDoc(recordRef, updateData);
                 toast({ title: 'Berhasil', description: 'Catatan kehadiran telah diperbarui.' });
                 onSuccess();
                 onOpenChange(false);
-            } else {
-                toast({ variant: 'destructive', title: 'Gagal', description: result.error });
+
+            } catch (e: any) {
+                console.error('Error updating attendance record:', e);
+                const errorMessage = e instanceof Error ? e.message : "Terjadi kesalahan yang tidak terduga.";
+                toast({ variant: 'destructive', title: 'Gagal', description: `Kesalahan: ${errorMessage}.` });
             }
         });
     }
@@ -255,6 +289,11 @@ export default function Attendance() {
         fetchAttendanceData('first');
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [date, statusFilter]);
+    
+    const handleEditSuccess = useCallback(() => {
+        fetchAttendanceData('first');
+    }, [fetchAttendanceData]);
+
 
     const removeListener = useCallback(() => {
         if (backButtonListener) {
@@ -398,23 +437,24 @@ export default function Attendance() {
 
     const handleDelete = async (id: string) => {
         startDeleteTransition(async () => {
-            const result: DeleteState = await deleteAttendanceRecord(id);
-            if (result.success) {
+            try {
+                const recordRef = doc(db, "photo_attendances", id);
+                await deleteDoc(recordRef);
                 toast({
                     title: "Berhasil",
                     description: "Catatan kehadiran telah dihapus.",
                 });
-                // Remove the item from state to update UI immediately
                 setAttendanceData(prevData => prevData.filter(record => record.id !== id));
-            } else {
+            } catch (e: any) {
                  toast({
                     title: "Gagal",
-                    description: result.error || "Gagal menghapus catatan kehadiran.",
+                    description: e.message || "Gagal menghapus catatan kehadiran.",
                     variant: "destructive",
                 });
+            } finally {
+                setIsDeleteOpen(false);
+                setSelectedRecordId(null);
             }
-            setIsDeleteOpen(false);
-            setSelectedRecordId(null); // Clear selected ID after operation
         });
     };
     
@@ -719,8 +759,7 @@ export default function Attendance() {
                     )}
                 </DialogContent>
             </Dialog>
-            <EditAttendanceDialog record={editingRecord} open={isEditOpen} onOpenChange={setIsEditOpen} onSuccess={() => fetchAttendanceData('first')} />
+            <EditAttendanceDialog record={editingRecord} open={isEditOpen} onOpenChange={setIsEditOpen} onSuccess={handleEditSuccess} />
         </div>
     )
 }
-

@@ -1,5 +1,4 @@
 
-
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useTransition } from 'react';
@@ -14,7 +13,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -23,7 +21,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { collection, query, where, onSnapshot, DocumentData, getDocs, doc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, DocumentData, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader } from '../ui/loader';
 import { Separator } from '../ui/separator';
@@ -38,7 +36,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { updateUser, type UpdateUserState } from '@/app/actions';
 import { useAuth } from '@/hooks/useAuth';
 
 
@@ -71,7 +68,6 @@ interface UserManagementProps {
   setIsEditingUser: (isEditing: boolean) => void;
 }
 
-
 const USERS_PER_PAGE = 10;
 
 const DetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value?: string }) => {
@@ -88,16 +84,12 @@ const DetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, lab
 
 const updateUserFormSchema = z.object({
   name: z.string().min(3, "Nama harus memiliki setidaknya 3 karakter."),
-  password: z.string().optional(),
   nip: z.string().optional(),
   gender: z.enum(['Laki-laki', 'Perempuan', '']).optional(),
   phone: z.string().optional(),
   address: z.string().optional(),
   subject: z.string().optional(),
   class: z.string().optional(),
-}).refine(data => !data.password || data.password.length >= 6, {
-  message: "Kata sandi baru harus memiliki setidaknya 6 karakter.",
-  path: ["password"],
 });
 
 type UpdateUserFormValues = z.infer<typeof updateUserFormSchema>;
@@ -106,8 +98,6 @@ type UpdateUserFormValues = z.infer<typeof updateUserFormSchema>;
 function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => void, onSuccess: () => void }) {
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
-    const [showPassword, setShowPassword] = useState(false);
-    const { userProfile: currentUser } = useAuth();
 
     const {
         register,
@@ -118,7 +108,6 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
         resolver: zodResolver(updateUserFormSchema),
         defaultValues: {
             name: user.name || '',
-            password: '',
             nip: user.nip || '',
             gender: user.gender,
             phone: user.phone || '',
@@ -131,39 +120,28 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
     const onSubmit = (data: UpdateUserFormValues) => {
         startTransition(async () => {
             try {
-                const formData = new FormData();
-                formData.append('userId', user.id);
-                formData.append('role', user.role);
-
-                Object.entries(data).forEach(([key, value]) => {
-                  if (value !== undefined && value !== null) {
-                    formData.append(key, String(value));
+                const collectionName = user.role === 'Guru' ? 'teachers' : 'admin';
+                const userDocRef = doc(db, collectionName, user.id);
+                
+                const firestoreData: { [key: string]: any } = { name: data.name };
+                for (const [key, value] of Object.entries(data)) {
+                  if (key !== 'name' && value !== '' && value !== undefined) {
+                    firestoreData[key] = value;
                   }
-                });
-
-                const result = await updateUser(formData);
-
-                if (result.success) {
-                    toast({ title: 'Berhasil', description: `Data pengguna '${user.name}' berhasil diperbarui.` });
-                    onSuccess();
-                    onBack();
-                } else {
-                    toast({ variant: 'destructive', title: 'Gagal', description: result.error });
                 }
+                
+                await updateDoc(userDocRef, firestoreData);
+                
+                toast({ title: 'Berhasil', description: `Data pengguna '${user.name}' berhasil diperbarui.` });
+                onSuccess();
+                onBack();
 
             } catch (error: any) {
                 console.error("Error updating user:", error);
-                let description = 'Terjadi kesalahan saat memperbarui pengguna.';
-                toast({ variant: 'destructive', title: 'Gagal', description });
+                toast({ variant: 'destructive', title: 'Gagal', description: 'Terjadi kesalahan saat memperbarui pengguna.' });
             }
         });
     };
-
-    const isEditingSelf = currentUser?.uid === user.id;
-    const canEditGuruPassword = currentUser?.role === 'admin' && user.role === 'Guru';
-    const canEditPassword = isEditingSelf || canEditGuruPassword;
-    const cannotEditOtherAdminPassword = currentUser?.role === 'admin' && user.role === 'Admin' && !isEditingSelf;
-
 
     return (
         <div className="flex flex-col h-full bg-background">
@@ -245,25 +223,6 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                             <Label htmlFor="name">Nama Lengkap</Label>
                             <Input id="name" {...register('name')} placeholder="Nama lengkap pengguna" disabled={isPending} />
                             {errors.name && <p className="text-destructive text-xs">{errors.name.message}</p>}
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="password">Kata Sandi Baru</Label>
-                            <div className="relative">
-                                <Input 
-                                    id="password" 
-                                    type={showPassword ? 'text' : 'password'} 
-                                    {...register('password')} 
-                                    placeholder={canEditPassword ? "Biarkan kosong jika tidak ingin mengubah" : "Tidak dapat mengubah kata sandi"}
-                                    disabled={isPending || !canEditPassword} 
-                                    className="pr-10"
-                                />
-                                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground" onClick={() => setShowPassword(!showPassword)} disabled={isPending || !canEditPassword}>
-                                    <span className="sr-only">Toggle password visibility</span>
-                                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                                </Button>
-                            </div>
-                            {errors.password && <p className="text-destructive text-xs">{errors.password.message}</p>}
-                            {cannotEditOtherAdminPassword && <p className="text-muted-foreground text-xs mt-1">Admin tidak dapat mengubah kata sandi admin lain.</p>}
                         </div>
                     </div>
                 </form>

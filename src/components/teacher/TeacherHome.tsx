@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useEffect, useTransition, useMemo } from 'react';
-import { handleCheckout, type CheckoutState } from '@/app/actions';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +10,7 @@ import { BarChart2, CalendarDays, Clock, MapPin, CheckCircle, LogOut } from 'luc
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { CenteredLoader } from '../ui/loader';
-import { collection, query, where, onSnapshot, Timestamp, orderBy, limit, doc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, Timestamp, orderBy, limit, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import SplitText from '../ui/SplitText';
 import {
@@ -31,10 +30,15 @@ interface TeacherHomeProps {
 
 type CheckinStatus = 'not_checked_in' | 'checked_in' | 'checked_out' | 'tidak_hadir' | 'loading' | 'off_day';
 
+type CheckoutState = {
+    success?: boolean;
+    error?: string;
+};
+
 function CheckoutButton({ disabled, pending }: { disabled: boolean, pending: boolean }) {
     return (
       <Button type="submit" className="w-full" disabled={pending || disabled}>
-        Absen Keluar
+        {pending ? 'Memproses...' : 'Absen Keluar'}
       </Button>
     );
 }
@@ -234,10 +238,19 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
 
     const handleCheckoutSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        const formData = new FormData(event.currentTarget);
         startTransition(async () => {
-            const result = await handleCheckout(formData);
-            setCheckoutState(result);
+            if (!userProfile?.uid || !checkinData?.attendanceId) {
+                setCheckoutState({ error: "Informasi pengguna atau absensi tidak ditemukan." });
+                return;
+            }
+            try {
+                const attendanceRef = doc(db, "photo_attendances", checkinData.attendanceId);
+                await updateDoc(attendanceRef, { checkOutTime: new Date() });
+                setCheckoutState({ success: true });
+            } catch (e: any) {
+                console.error(e);
+                setCheckoutState({ error: `Kesalahan server: ${e.message}.` });
+            }
         });
     }
 
@@ -358,8 +371,6 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                                 </div>
                                 {status === 'checked_in' && (
                                     <form onSubmit={handleCheckoutSubmit}>
-                                        <input type="hidden" name="userId" value={userProfile.uid} />
-                                        <input type="hidden" name="attendanceId" value={checkinData.attendanceId} />
                                         <CheckoutButton disabled={!isCheckoutAllowed} pending={isPending} />
                                     </form>
                                 )}
@@ -388,8 +399,6 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                         </button>
                         {status === 'checked_in' && checkinData ? (
                             <form onSubmit={handleCheckoutSubmit}>
-                                <input type="hidden" name="userId" value={userProfile.uid} />
-                                <input type="hidden" name="attendanceId" value={checkinData.attendanceId} />
                                 <QuickCheckoutButton disabled={!isCheckoutAllowed || isOffDay} pending={isPending} />
                             </form>
                         ) : (

@@ -8,26 +8,49 @@ import SplitText from "@/components/ui/SplitText";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card";
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { handleCheckin, type CheckinState } from "@/app/actions";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { doc, setDoc, collection, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 interface CheckinCardProps {
   onSuccess?: () => void;
 }
 
+type CheckinState = {
+  isFraudulent?: boolean;
+  reason?: string;
+  error?: string;
+  success?: boolean;
+}
+
 function SubmitButton({ disabled, pending }: { disabled: boolean; pending: boolean; }) {
   return (
     <Button type="submit" className="w-full" disabled={disabled || pending}>
-      Kirim Absensi
+      {pending ? 'Mengirim...' : 'Kirim Absensi'}
     </Button>
   );
 }
 
 const splitTextFrom = { opacity: 0, y: 20 };
 const splitTextTo = { opacity: 1, y: 0 };
+
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371e3; 
+    const phi1 = lat1 * Math.PI / 180;
+    const phi2 = lat2 * Math.PI / 180;
+    const deltaPhi = (lat2 - lat1) * Math.PI / 180;
+    const deltaLambda = (lon2 - lon1) * Math.PI / 180;
+
+    const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+              Math.cos(phi1) * Math.cos(phi2) *
+              Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
+}
 
 export function CheckinCard({ onSuccess }: CheckinCardProps) {
   const { userProfile } = useAuth();
@@ -48,9 +71,7 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const formRef = useRef<HTMLFormElement>(null);
-
-
+  
   useEffect(() => {
     if (state.error || state.success || state.isFraudulent) {
       setResultDialogOpen(true);
@@ -176,22 +197,107 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
   
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!formRef.current) return;
+    if (!userProfile || !location || !photoDataUri) {
+        toast({ variant: "destructive", title: "Data tidak lengkap", description: "Pastikan lokasi dan foto sudah terisi."});
+        return;
+    }
     
     setIsSubmitting(true);
-    const formData = new FormData(formRef.current);
-    const result = await handleCheckin(formData);
     
-    setIsSubmitting(false);
+    try {
+        const { latitude, longitude } = location;
+        const now = new Date(); 
+        const clientTime = now.toTimeString().substring(0, 5);
 
-    if (result.success) {
-      setShowSuccessAnimation(true);
-      setTimeout(() => {
-        setShowSuccessAnimation(false);
-        setState(result);
-      }, 1500);
-    } else {
-      setState(result);
+        const settingsRef = doc(db, "settings", "attendance");
+        const settingsDoc = await getDoc(settingsRef);
+        if (!settingsDoc.exists()) {
+            throw new Error("Pengaturan absensi belum dikonfigurasi.");
+        }
+        
+        const settings = settingsDoc.data();
+        const schoolLatitude = settings.schoolLatitude ?? -6.241169;
+        const schoolLongitude = settings.schoolLongitude ?? 107.037800;
+        const schoolRadius = settings.schoolRadius ?? 100;
+        const gracePeriod = settings.gracePeriod ?? 60;
+        const checkInEndValue = settings.checkInEnd;
+        const checkInEndStr = (typeof checkInEndValue === 'string' && checkInEndValue.includes(':'))
+          ? checkInEndValue
+          : '09:00';
+    
+        let gracePeriodMinutes = Number(gracePeriod);
+        if (isNaN(gracePeriodMinutes)) {
+            gracePeriodMinutes = 60; 
+        }
+        
+        const [endHours, endMinutes] = checkInEndStr.split(':').map(Number);
+        const checkInEndTotalMinutes = endHours * 60 + endMinutes;
+        const absentDeadlineMinutes = checkInEndTotalMinutes + gracePeriodMinutes;
+
+        const [clientHours, clientMinutes] = clientTime.split(':').map(Number);
+        const clientTotalMinutes = clientHours * 60 + clientMinutes;
+
+        if (clientTotalMinutes > absentDeadlineMinutes) {
+            const absentRecord = {
+                userId: userProfile.uid,
+                name: userProfile.name,
+                role: userProfile.role,
+                checkInTime: now,
+                checkInLocation: { latitude, longitude },
+                checkInPhotoUrl: null,
+                isFraudulent: false,
+                fraudReason: '',
+                status: "Tidak Hadir",
+            };
+            const attendanceRef = doc(collection(db, "photo_attendances"));
+            await setDoc(attendanceRef, absentRecord);
+            setState({ success: true, reason: "Waktu absen masuk telah berakhir. Anda telah ditandai sebagai Tidak Hadir." });
+            return;
+        }
+
+        const distance = calculateDistance(latitude, longitude, schoolLatitude, schoolLongitude);
+        
+        let isFraudulent = false;
+        let fraudReason = '';
+
+        if (distance > schoolRadius) {
+            isFraudulent = true;
+            fraudReason = `Anda berada ${Math.round(distance)} meter dari lokasi sekolah, yang berada di luar radius ${schoolRadius} meter yang diizinkan.`;
+        }
+        
+        const finalStatus = clientTotalMinutes > checkInEndTotalMinutes ? "Terlambat" : "Hadir";
+
+        const attendanceRecord = {
+          userId: userProfile.uid,
+          name: userProfile.name,
+          role: userProfile.role,
+          checkInTime: now,
+          checkInLocation: { latitude, longitude },
+          checkInPhotoUrl: photoDataUri,
+          isFraudulent,
+          fraudReason,
+          status: finalStatus,
+        };
+
+        const attendanceRef = doc(collection(db, "photo_attendances"));
+        await setDoc(attendanceRef, attendanceRecord);
+
+        if (isFraudulent) {
+          setState({ isFraudulent: true, reason: fraudReason, success: true });
+        } else {
+            setShowSuccessAnimation(true);
+            setTimeout(() => {
+                setShowSuccessAnimation(false);
+                setState({ success: true, reason: `Absensi berhasil ditandai sebagai ${finalStatus}!` });
+            }, 1500);
+        }
+
+    } catch (e: any) {
+        console.error('An error occurred during check-in:', e);
+        const errorMessage = e instanceof Error ? e.message : "Terjadi kesalahan yang tidak terduga.";
+        setState({ error: `Kesalahan: ${errorMessage}. Silakan coba lagi.` });
+    } finally {
+        setIsSubmitting(false);
     }
   };
 
@@ -230,15 +336,7 @@ export function CheckinCard({ onSuccess }: CheckinCardProps) {
               <p className="text-lg font-medium text-success mt-4">Absensi Berhasil!</p>
             </div>
           ) : (
-            <form ref={formRef} onSubmit={handleSubmit}>
-              <input type="hidden" name="photoDataUri" value={photoDataUri || ""} />
-              <input type="hidden" name="latitude" value={location?.latitude || ""} />
-              <input type="hidden" name="longitude" value={location?.longitude || ""} />
-              <input type="hidden" name="userId" value={userProfile.uid || ""} />
-              <input type="hidden" name="userName" value={userProfile.name || ""} />
-              <input type="hidden" name="userRole" value={userProfile.role || ""} />
-              <input type="hidden" name="clientTime" value={new Date().toTimeString().substring(0, 5)} />
-              
+            <form onSubmit={handleSubmit}>
               <div className="space-y-4">
                 <div className="flex items-start gap-4">
                   <div className={`flex h-10 w-10 items-center justify-center rounded-full shrink-0 ${location ? 'bg-primary/10 text-primary' : 'bg-muted'}`}>

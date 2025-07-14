@@ -10,11 +10,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { saveUserToFirestore, type CreateUserState } from '@/app/actions';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Eye, EyeOff } from 'lucide-react';
 import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
-import { app } from '@/lib/firebase';
+import { app, db } from '@/lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 const createUserSchema = z.object({
   name: z.string().min(3, "Nama harus memiliki setidaknya 3 karakter."),
@@ -56,20 +56,21 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
             const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
             const user = userCredential.user;
 
-            const result: CreateUserState = await saveUserToFirestore({
-                uid: user.uid,
+            const collectionName = data.role === 'admin' ? 'admin' : 'teachers';
+            const userDocRef = doc(db, collectionName, user.uid);
+            
+            const userData = {
                 name: data.name,
                 email: data.email,
                 role: data.role,
-            });
+                uid: user.uid,
+            };
 
-            if (result.success && result.userData) {
-                toast({ title: 'Berhasil', description: `Pengguna '${result.userData.name}' berhasil dibuat.` });
-                onSuccess();
-                handleClose();
-            } else {
-                toast({ variant: 'destructive', title: 'Gagal Menyimpan Data', description: result.error });
-            }
+            await setDoc(userDocRef, userData, { merge: true });
+
+            toast({ title: 'Berhasil', description: `Pengguna '${data.name}' berhasil dibuat.` });
+            onSuccess();
+            handleClose();
 
         } catch (error: any) {
             console.error("Error creating user:", error);

@@ -57,30 +57,19 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      // Handle "Remember Me" logic
+      await signInWithEmailAndPassword(auth, email, password);
+      
       if (rememberMe) {
         localStorage.setItem('rememberedEmail', email);
       } else {
         localStorage.removeItem('rememberedEmail');
       }
 
-      // Set session cookie
-      const idToken = await user.getIdToken();
-      await fetch('/api/auth/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
-      });
-      
-      // AuthContext will handle redirection. Show a temporary success toast.
-       toast({
+      toast({
         title: 'Login Berhasil',
         description: 'Mengarahkan ke dasbor Anda...',
       });
-      // No need to router.push here, the useEffect will handle it.
+      // AuthContext will handle redirection.
 
     } catch (error: any) {
       console.error("Login Error: ", error);
