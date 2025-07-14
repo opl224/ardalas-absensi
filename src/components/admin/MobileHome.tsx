@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Settings, UserPlus, LineChart, CheckSquare } from "lucide-react";
+import { Settings, UserPlus, LineChart, CheckSquare, CalendarDays, Clock } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -66,6 +66,20 @@ export function MobileHome({ setActiveView }: MobileHomeProps) {
     const [loading, setLoading] = useState(true);
     const [settings, setSettings] = useState<any | null>(null);
     const [totalGurus, setTotalGurus] = useState(0);
+    const [dateTime, setDateTime] = useState({ date: '', time: '' });
+
+    useEffect(() => {
+        const updateDateTime = () => {
+            const now = new Date();
+            setDateTime({
+                date: now.toLocaleDateString('id-ID', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }),
+                time: now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+            });
+        };
+        updateDateTime();
+        const interval = setInterval(updateDateTime, 60000);
+        return () => clearInterval(interval);
+    }, []);
 
     // Effect to get total gurus count
     useEffect(() => {
@@ -188,6 +202,19 @@ export function MobileHome({ setActiveView }: MobileHomeProps) {
                         <AvatarFallback>{userProfile.name.slice(0,2).toUpperCase()}</AvatarFallback>
                     </Avatar>
                 </div>
+
+                <Card className="p-4">
+                    <CardContent className="p-0 space-y-3">
+                        <div className="flex items-center gap-4">
+                            <CalendarDays className="h-5 w-5 text-muted-foreground" />
+                            <span className="font-medium text-sm text-foreground">{dateTime.date || 'Memuat tanggal...'}</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <Clock className="h-5 w-5 text-muted-foreground" />
+                            <span className="font-medium text-sm text-foreground">{dateTime.time || 'Memuat waktu...'}</span>
+                        </div>
+                    </CardContent>
+                </Card>
                 
                  <Card>
                     <CardHeader className="flex flex-row items-start justify-between p-4">
