@@ -448,7 +448,7 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
     startDeleteTransition(async () => {
       const adminUser = auth.currentUser;
       if (!adminUser) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Admin tidak terautentikasi. Silakan login kembali.' });
+        toast({ variant: 'destructive', title: 'Error', description: 'Admin tidak terautentikasi.' });
         return;
       }
       if (adminUser.uid === userToDelete.id) {
@@ -457,26 +457,17 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
       }
 
       try {
-        const idToken = await adminUser.getIdToken();
-        const response = await fetch('/api/delete-user', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`,
-            },
-            body: JSON.stringify({ uid: userToDelete.id, role: userToDelete.role }),
-        });
-
-        const result = await response.json();
-        if (!response.ok) {
-          throw new Error(result.error || 'Terjadi kesalahan pada server.');
-        }
-
-        toast({ title: 'Berhasil', description: `Pengguna '${userToDelete.name}' berhasil dihapus.` });
+        const collectionName = userToDelete.role.toLowerCase() === 'admin' ? 'admin' : 'teachers';
+        const userDocRef = doc(db, collectionName, userToDelete.id);
+        
+        await deleteDoc(userDocRef);
+        
+        toast({ title: 'Berhasil', description: `Pengguna '${userToDelete.name}' berhasil dihapus dari daftar.` });
         handleUserActionSuccess();
+
       } catch (error: any) {
-        console.error("Error deleting user:", error);
-        toast({ variant: 'destructive', title: 'Gagal Menghapus', description: error.message || 'Terjadi kesalahan saat menghubungi server.' });
+        console.error("Error deleting user document:", error);
+        toast({ variant: 'destructive', title: 'Gagal Menghapus', description: error.message || 'Terjadi kesalahan saat menghapus data pengguna.' });
       } finally {
         setIsDeleteOpen(false);
         setSelectedUser(null);
@@ -767,7 +758,7 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
           <AlertDialogHeader>
             <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tindakan ini tidak dapat dibatalkan. Ini akan menghapus pengguna secara permanen dari autentikasi dan basis data.
+              Tindakan ini hanya akan menghapus data pengguna dari daftar. Akun autentikasi pengguna tidak akan dihapus.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -787,3 +778,4 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
     </div>
   );
 }
+
