@@ -2,7 +2,7 @@
 
 'use client'
 
-import { useState, useEffect, useMemo, useRef, useTransition, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useTransition, useCallback } from 'react';
 import { format } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -193,6 +193,64 @@ function EditAttendanceDialog({ record, open, onOpenChange, onSuccess }: { recor
     );
 }
 
+const AttendanceCard = React.memo(({ item, openViewDialog, openEditDialog, openDeleteDialog, getBadgeVariant }: { item: AttendanceRecord, openViewDialog: (item: AttendanceRecord) => void, openEditDialog: (item: AttendanceRecord) => void, openDeleteDialog: (id: string) => void, getBadgeVariant: (item: AttendanceRecord) => any }) => {
+    return (
+        <Card className="p-3 flex items-center gap-4">
+            <div className="flex-grow min-w-0 flex items-center gap-4 cursor-pointer" onClick={() => openViewDialog(item)}>
+                <Avatar className="h-12 w-12">
+                    <AvatarImage src={item.checkInPhotoUrl} alt={item.name} data-ai-hint="person portrait" />
+                    <AvatarFallback>{item.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="flex-grow min-w-0">
+                    <p className="font-semibold text-foreground truncate">{item.name}</p>
+                    <p className="text-sm text-muted-foreground capitalize">{item.role}</p>
+                    <p className="text-xs text-muted-foreground">
+                        {item.status === 'Tidak Hadir'
+                            ? 'Belum absen masuk'
+                            : `Absen Masuk: ${item.checkInTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
+                        }
+                    </p>
+                </div>
+            </div>
+            <div className="flex items-center gap-2">
+                <div className="flex flex-col items-center justify-center gap-1">
+                    {item.isFraudulent && (
+                        <AlertTriangle className="h-4 w-4 text-destructive" />
+                    )}
+                    <Badge variant={getBadgeVariant(item)} className="w-24 justify-center shrink-0">
+                        {item.status}
+                    </Badge>
+                </div>
+                <div className="flex flex-col gap-1.5 self-center">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => openEditDialog(item)}
+                        disabled={item.id.startsWith('absent-')}
+                    >
+                        <Edit className="h-4 w-4" />
+                        <span className="sr-only">Edit Catatan</span>
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive/70 hover:text-destructive hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => openDeleteDialog(item.id)}
+                        disabled={item.id.startsWith('absent-')}
+                    >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Hapus Catatan</span>
+                    </Button>
+                </div>
+            </div>
+        </Card>
+    );
+});
+
+AttendanceCard.displayName = 'AttendanceCard';
+
+
 export default function Attendance() {
     const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
     const [loading, setLoading] = useState(true);
@@ -203,13 +261,10 @@ export default function Attendance() {
     
     const [date, setDate] = useState<Date | undefined>(new Date());
     const [statusFilter, setStatusFilter] = useState('Semua Kehadiran');
-    const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
-    const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null);
     const { toast } = useToast();
 
-    const [isViewOpen, setIsViewOpen] = useState(false);
-    const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-    const [isEditOpen, setIsEditOpen] = useState(false);
+    const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null);
+    const [recordToDelete, setRecordToDelete] = useState<string | null>(null);
     const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
     
     const [backButtonListener, setBackButtonListener] = useState<PluginListenerHandle | null>(null);
@@ -304,10 +359,10 @@ export default function Attendance() {
 
     const handleBackButton = useCallback((e: any) => {
         e.canGoBack = false;
-        if (isViewOpen) setIsViewOpen(false);
-        else if (isDeleteOpen) setIsDeleteOpen(false);
-        else if (isEditOpen) setIsEditOpen(false);
-    }, [isViewOpen, isDeleteOpen, isEditOpen]);
+        if (selectedRecord) setSelectedRecord(null);
+        else if (recordToDelete) setRecordToDelete(null);
+        else if (editingRecord) setEditingRecord(null);
+    }, [selectedRecord, recordToDelete, editingRecord]);
     
     useEffect(() => {
         const setupListener = async () => {
@@ -435,16 +490,17 @@ export default function Attendance() {
         }
     };
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = () => {
+        if (!recordToDelete) return;
         startDeleteTransition(async () => {
             try {
-                const recordRef = doc(db, "photo_attendances", id);
+                const recordRef = doc(db, "photo_attendances", recordToDelete);
                 await deleteDoc(recordRef);
                 toast({
                     title: "Berhasil",
                     description: "Catatan kehadiran telah dihapus.",
                 });
-                setAttendanceData(prevData => prevData.filter(record => record.id !== id));
+                setAttendanceData(prevData => prevData.filter(record => record.id !== recordToDelete));
             } catch (e: any) {
                  toast({
                     title: "Gagal",
@@ -452,33 +508,9 @@ export default function Attendance() {
                     variant: "destructive",
                 });
             } finally {
-                setIsDeleteOpen(false);
-                setSelectedRecordId(null);
+                setRecordToDelete(null);
             }
         });
-    };
-    
-    const openViewDialog = (record: AttendanceRecord) => {
-        setSelectedRecord(record);
-        setIsViewOpen(true);
-    };
-
-    const openDeleteDialog = (id: string) => {
-        setSelectedRecordId(id);
-        setIsDeleteOpen(true);
-    }
-
-    const openEditDialog = (record: AttendanceRecord) => {
-        if (record.id.startsWith('absent-')) {
-            toast({
-                variant: 'destructive',
-                title: 'Tidak Dapat Mengedit',
-                description: 'Catatan "Tidak Hadir" yang dibuat otomatis tidak dapat diedit.',
-            });
-            return;
-        }
-        setEditingRecord(record);
-        setIsEditOpen(true);
     };
     
     const getBadgeVariant = (record: AttendanceRecord) => {
@@ -573,56 +605,14 @@ export default function Attendance() {
                     <div className="space-y-3">
                         {attendanceData.length > 0 ? (
                             attendanceData.map((item) => (
-                                <Card key={item.id} className="p-3 flex items-center gap-4">
-                                    <div className="flex-grow min-w-0 flex items-center gap-4 cursor-pointer" onClick={() => openViewDialog(item)}>
-                                        <Avatar className="h-12 w-12">
-                                            <AvatarImage src={item.checkInPhotoUrl} alt={item.name} data-ai-hint="person portrait" />
-                                            <AvatarFallback>{item.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                                        </Avatar>
-                                        <div className="flex-grow min-w-0">
-                                            <p className="font-semibold text-foreground truncate">{item.name}</p>
-                                            <p className="text-sm text-muted-foreground capitalize">{item.role}</p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {item.status === 'Tidak Hadir'
-                                                    ? 'Belum absen masuk'
-                                                    : `Absen Masuk: ${item.checkInTime.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
-                                                }
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex flex-col items-center justify-center gap-1">
-                                            {item.isFraudulent && (
-                                                <AlertTriangle className="h-4 w-4 text-destructive" />
-                                            )}
-                                            <Badge variant={getBadgeVariant(item)} className="w-24 justify-center shrink-0">
-                                                {item.status}
-                                            </Badge>
-                                        </div>
-                                        <div className="flex flex-col gap-1.5 self-center">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-7 w-7"
-                                                onClick={() => openEditDialog(item)}
-                                                disabled={item.id.startsWith('absent-')}
-                                            >
-                                                <Edit className="h-4 w-4" />
-                                                <span className="sr-only">Edit Catatan</span>
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-7 w-7 text-destructive/70 hover:text-destructive hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                onClick={() => openDeleteDialog(item.id)}
-                                                disabled={item.id.startsWith('absent-')}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                                <span className="sr-only">Hapus Catatan</span>
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </Card>
+                                <AttendanceCard 
+                                    key={item.id} 
+                                    item={item} 
+                                    openViewDialog={setSelectedRecord}
+                                    openEditDialog={setEditingRecord}
+                                    openDeleteDialog={setRecordToDelete}
+                                    getBadgeVariant={getBadgeVariant}
+                                />
                             ))
                         ) : (
                             <p className="text-center text-muted-foreground py-8">Tidak ada catatan kehadiran untuk filter yang dipilih.</p>
@@ -651,35 +641,37 @@ export default function Attendance() {
                     </>
                 )}
             </div>
-            <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Apakah Anda yakin ingin menghapus?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Tindakan ini tidak dapat dibatalkan. Catatan kehadiran akan dihapus secara permanen dari basis data.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setSelectedRecordId(null)}>Batal</AlertDialogCancel>
-                        <AlertDialogAction
-                            className={cn(buttonVariants({ variant: "destructive" }))}
-                            disabled={isDeleting}
-                            onClick={() => {
-                                if (selectedRecordId) handleDelete(selectedRecordId);
-                            }}
-                        >
-                            {isDeleting ? "Menghapus..." : "Hapus"}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-            <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>{selectedRecord?.name}</DialogTitle>
-                        <DialogDescription>Detail catatan kehadiran.</DialogDescription>
-                    </DialogHeader>
-                    {selectedRecord && (
+
+            {recordToDelete && (
+                <AlertDialog open={!!recordToDelete} onOpenChange={() => setRecordToDelete(null)}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Apakah Anda yakin ingin menghapus?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Tindakan ini tidak dapat dibatalkan. Catatan kehadiran akan dihapus secara permanen dari basis data.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Batal</AlertDialogCancel>
+                            <AlertDialogAction
+                                className={cn(buttonVariants({ variant: "destructive" }))}
+                                disabled={isDeleting}
+                                onClick={handleDelete}
+                            >
+                                {isDeleting ? "Menghapus..." : "Hapus"}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            )}
+
+            {selectedRecord && (
+                <Dialog open={!!selectedRecord} onOpenChange={() => setSelectedRecord(null)}>
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>{selectedRecord?.name}</DialogTitle>
+                            <DialogDescription>Detail catatan kehadiran.</DialogDescription>
+                        </DialogHeader>
                         <div className="space-y-4 pt-2">
                              {selectedRecord.status !== 'Tidak Hadir' && (
                                 <div className="flex justify-center">
@@ -756,10 +748,13 @@ export default function Attendance() {
                                 </Alert>
                             )}
                         </div>
-                    )}
-                </DialogContent>
-            </Dialog>
-            <EditAttendanceDialog record={editingRecord} open={isEditOpen} onOpenChange={setIsEditOpen} onSuccess={handleEditSuccess} />
+                    </DialogContent>
+                </Dialog>
+            )}
+
+            {editingRecord && (
+                <EditAttendanceDialog record={editingRecord} open={!!editingRecord} onOpenChange={() => setEditingRecord(null)} onSuccess={handleEditSuccess} />
+            )}
         </div>
     )
 }

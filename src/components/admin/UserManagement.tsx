@@ -7,13 +7,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, Download, Eye, ChevronLeft, ChevronRight, Briefcase, BookCopy, Phone, Home as HomeIcon, VenetianMask, BookMarked, Fingerprint, AlertTriangle, UserX, UserPlus, MoreVertical, Trash2, Edit as EditIcon, ArrowLeft, EyeOff, UserCircle, Shield } from 'lucide-react';
+import { Search, Download, Eye, ChevronLeft, ChevronRight, Briefcase, BookCopy, Phone, Home as HomeIcon, VenetianMask, BookMarked, Fingerprint, AlertTriangle, UserX, UserPlus, MoreVertical, Trash2, Edit as EditIcon, ArrowLeft, UserCircle, Shield } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -47,7 +46,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '../ui/button';
 
@@ -267,10 +265,10 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
 
   const [selectedUser, setSelectedUser] = useState<ProcessedUser | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [userToDelete, setUserToDelete] = useState<ProcessedUser | null>(null);
 
   const { toast } = useToast();
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [backButtonListener, setBackButtonListener] = useState<PluginListenerHandle | null>(null);
 
@@ -310,8 +308,8 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
     }
     else if (isAddUserOpen) setIsAddUserOpen(false);
     else if (isDetailOpen) setIsDetailOpen(false);
-    else if (isDeleteOpen) setIsDeleteOpen(false);
-  }, [editingUser, isAddUserOpen, isDetailOpen, isDeleteOpen]);
+    else if (userToDelete) setUserToDelete(null);
+  }, [editingUser, isAddUserOpen, isDetailOpen, userToDelete]);
   
   useEffect(() => {
     const setupListener = async () => {
@@ -356,7 +354,7 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
   
   useEffect(() => {
     if (!settings || allUsers.length === 0) {
-        setLoading(allUsers.length === 0);
+        setLoading(allUsers.length === 0 && allUsers.length > 0);
         return;
     }
     
@@ -444,7 +442,8 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
     }
   }
 
-  const handleDeleteUser = async (userToDelete: ProcessedUser) => {
+  const handleDeleteUser = () => {
+    if (!userToDelete) return;
     startDeleteTransition(async () => {
       const adminUser = auth.currentUser;
       if (!adminUser) {
@@ -469,8 +468,7 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
         console.error("Error deleting user document:", error);
         toast({ variant: 'destructive', title: 'Gagal Menghapus', description: error.message || 'Terjadi kesalahan saat menghapus data pengguna.' });
       } finally {
-        setIsDeleteOpen(false);
-        setSelectedUser(null);
+        setUserToDelete(null);
       }
     });
   };
@@ -567,20 +565,6 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
     }
   };
 
-  const openDetailDialog = (user: ProcessedUser) => {
-    setSelectedUser(user);
-    setIsDetailOpen(true);
-  };
-  
-  const openEditDialog = (user: ProcessedUser) => {
-    setEditingUser(user);
-  };
-  
-  const openDeleteDialog = (user: ProcessedUser) => {
-    setSelectedUser(user);
-    setIsDeleteOpen(true);
-  }
-
   const handleUserActionSuccess = () => {
     setRefreshKey(oldKey => oldKey + 1);
   };
@@ -670,16 +654,16 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
                                       </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
-                                      <DropdownMenuItem onSelect={() => openDetailDialog(user)}>
+                                      <DropdownMenuItem onSelect={() => {setSelectedUser(user); setIsDetailOpen(true);}}>
                                           <Eye className="mr-2 h-4 w-4" />
                                           <span>Lihat Detail</span>
                                       </DropdownMenuItem>
-                                      <DropdownMenuItem onSelect={() => openEditDialog(user)}>
+                                      <DropdownMenuItem onSelect={() => setEditingUser(user)}>
                                           <EditIcon className="mr-2 h-4 w-4" />
                                           <span>Edit</span>
                                       </DropdownMenuItem>
                                       <DropdownMenuSeparator />
-                                      <DropdownMenuItem onSelect={() => openDeleteDialog(user)} className="text-destructive">
+                                      <DropdownMenuItem onSelect={() => setUserToDelete(user)} className="text-destructive">
                                           <Trash2 className="mr-2 h-4 w-4" />
                                           <span>Hapus</span>
                                       </DropdownMenuItem>
@@ -708,13 +692,13 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
           </div>
       )}
 
-      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-            <DialogTitle>Detail Pengguna</DialogTitle>
-            </DialogHeader>
-            <ScrollArea className="max-h-[70vh] -mx-6 px-6">
-              {selectedUser && (
+      {selectedUser && (
+        <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+          <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Detail Pengguna</DialogTitle>
+              </DialogHeader>
+              <ScrollArea className="max-h-[70vh] -mx-6 px-6">
                 <div className="flex flex-col gap-4 py-4">
                     <div className="flex items-center gap-4">
                         <Avatar className="h-16 w-16">
@@ -747,33 +731,35 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
                         </>
                     )}
                 </div>
-              )}
-            </ScrollArea>
-        </DialogContent>
-      </Dialog>
+              </ScrollArea>
+          </DialogContent>
+        </Dialog>
+      )}
+
       <AddUserDialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen} onSuccess={handleUserActionSuccess} />
-      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tindakan ini hanya akan menghapus data pengguna dari daftar. Akun autentikasi pengguna tidak akan dihapus.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setSelectedUser(null)}>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              className={cn(buttonVariants({ variant: "destructive" }))}
-              disabled={isDeleting}
-              onClick={() => {
-                if (selectedUser) handleDeleteUser(selectedUser);
-              }}
-            >
-              {isDeleting ? "Menghapus..." : "Hapus"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+
+      {userToDelete && (
+        <AlertDialog open={!!userToDelete} onOpenChange={() => setUserToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tindakan ini hanya akan menghapus data pengguna dari daftar. Akun autentikasi pengguna tidak akan dihapus.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Batal</AlertDialogCancel>
+              <AlertDialogAction
+                className={cn(buttonVariants({ variant: "destructive" }))}
+                disabled={isDeleting}
+                onClick={handleDeleteUser}
+              >
+                {isDeleting ? "Menghapus..." : "Hapus"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }
