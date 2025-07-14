@@ -106,7 +106,7 @@ export function MobileAdminDashboard() {
       );
   };
   
-  const changeView = (newView: ViewID, newIndex?: number) => {
+  const changeView = useCallback((newView: ViewID, newIndex?: number) => {
     setPage(prevPage => {
       if (prevPage.view === newView) return prevPage;
   
@@ -123,15 +123,15 @@ export function MobileAdminDashboard() {
       
       return { view: newView, direction, index: finalIndex };
     });
-  };
+  }, []);
   
   const handleDragEnd = (e: any, { offset }: { offset: { x: number } }) => {
     const swipeThreshold = 50;
     
     setPage(currentPage => {
-        const currentIndex = currentPage.index;
         if (isEditingUser || !mainViews.includes(currentPage.view as MainViewID)) return currentPage;
 
+        const currentIndex = currentPage.index;
         let newIndex = currentIndex;
 
         if (offset.x < -swipeThreshold) {
@@ -154,11 +154,11 @@ export function MobileAdminDashboard() {
   const isSubView = !mainViews.includes(page.view);
   const ComponentToRender = viewComponents[page.view];
 
-  const onBack = () => {
+  const onBack = useCallback(() => {
     if (page.view === 'privacy') {
         changeView('profile', mainViews.indexOf('profile'));
     }
-  };
+  }, [page.view, changeView]);
 
   const onDialogClose = useCallback(() => {
     if (showSettingsDialog) {
@@ -174,7 +174,7 @@ export function MobileAdminDashboard() {
     onBack: onBack,
     onDialogClose,
     homeViewId: 'home',
-    changeView,
+    changeView: (viewId: ViewID) => changeView(viewId, mainViews.indexOf(viewId as MainViewID)),
   });
 
   const props: any = {

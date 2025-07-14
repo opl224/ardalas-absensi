@@ -3,13 +3,14 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { App, BackButtonListenerEvent } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 
 interface UseAndroidBackHandlerProps {
   currentView: string;
   isSubView: boolean;
   onBack: () => void;
   homeViewId: string;
-  changeView: (view: any) => void;
+  changeView: (view: any, index: number) => void;
   onDialogClose?: () => boolean; // Return true if a dialog was closed, false otherwise
 }
 
@@ -41,7 +42,7 @@ export const useAndroidBackHandler = ({
       if (isSubView) {
         onBack();
       } else if (currentView !== homeViewId) {
-        changeView(homeViewId);
+        changeView(homeViewId, 0); // Always go to the first tab
       } else {
         setShowExitDialog(true);
       }
@@ -51,8 +52,7 @@ export const useAndroidBackHandler = ({
 
   useEffect(() => {
     let listener: any;
-    // Only run on capacitor platform
-    if (typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform()) {
+    if (Capacitor.isNativePlatform()) {
         const addListener = async () => {
            listener = await App.addListener('backButton', handleBackButton);
         }

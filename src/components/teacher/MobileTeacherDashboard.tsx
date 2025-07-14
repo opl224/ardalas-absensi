@@ -126,7 +126,7 @@ export function MobileTeacherDashboard() {
       return <div>Data pengguna tidak ditemukan.</div>
   }
   
-  const changeView = (newView: ViewID, newIndex?: number) => {
+  const changeView = useCallback((newView: ViewID, newIndex?: number) => {
     setPage(prevPage => {
       if (prevPage.view === newView) return prevPage;
   
@@ -143,7 +143,7 @@ export function MobileTeacherDashboard() {
       
       return { view: newView, direction, index: finalIndex };
     });
-  };
+  }, []);
   
   const handleDragEnd = (e: any, { offset }: { offset: { x: number } }) => {
     const swipeThreshold = 50;
@@ -176,31 +176,31 @@ export function MobileTeacherDashboard() {
   const isSubView = !mainViews.includes(page.view);
   let ComponentToRender: React.FC<any>;
   let props: any;
-  let onBack = () => {};
+  
+  const onBack = useCallback(() => {
+    if (page.view === 'checkin') {
+      changeView('home', 0);
+    } else if (page.view === 'privacy') {
+      changeView('profile', mainViews.indexOf('profile'));
+    }
+  }, [page.view, changeView]);
 
 
   if (page.view === 'checkin') {
       ComponentToRender = CheckinWrapper;
-      onBack = () => changeView('home', 0);
       props = { onBack, onSuccess: () => changeView('history', mainViews.indexOf('history')) };
-  } else if (page.view === 'privacy') {
-      ComponentToRender = viewComponents[page.view];
-      onBack = () => changeView('profile', mainViews.indexOf('profile'));
-      props = { onBack };
-  }
-  else {
+  } else {
       ComponentToRender = viewComponents[page.view];
       props = { setActiveView: changeView };
   }
   
-  // onDialogClose is no longer needed as dialog state is localized
   const { showExitDialog, setShowExitDialog, handleConfirmExit } = useAndroidBackHandler({
     currentView: page.view,
     isSubView,
     onBack,
     onDialogClose: () => false, // No global dialogs to close
     homeViewId: 'home',
-    changeView,
+    changeView: (viewId: ViewID) => changeView(viewId, mainViews.indexOf(viewId as MainViewID)),
   });
 
 
