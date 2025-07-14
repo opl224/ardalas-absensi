@@ -5,12 +5,13 @@ import { useEffect, useState } from "react";
 import { CenteredLoader } from "@/components/ui/loader";
 import { MobileTeacherDashboard } from "@/components/teacher/MobileTeacherDashboard";
 import { useAuth } from "@/hooks/useAuth";
-import { MonitorOff } from "lucide-react";
+import { LogOut, MonitorOff } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const DESKTOP_BREAKPOINT = 768; // Standard tablet portrait width
 
 export default function TeacherDashboard() {
-  const { userProfile, loading } = useAuth();
+  const { userProfile, loading, logout } = useAuth();
   const [isDesktop, setIsDesktop] = useState(false);
   const [isCheckingDevice, setIsCheckingDevice] = useState(true);
 
@@ -42,6 +43,10 @@ export default function TeacherDashboard() {
         <p className="max-w-md text-muted-foreground">
           Untuk alasan keamanan dan fungsionalitas, aplikasi ini hanya dapat diakses melalui perangkat seluler untuk peran guru.
         </p>
+        <Button onClick={() => logout()} variant="outline" className="mt-6">
+            <LogOut className="mr-2 h-4 w-4" />
+            Kembali ke Halaman Login
+        </Button>
       </div>
     );
   }

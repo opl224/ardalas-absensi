@@ -159,9 +159,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (!user && !isPublic) {
             // If not logged in and trying to access a protected route, redirect to login
             logout(); // Use logout to ensure clean state and proper redirection
-        } else if (user && isPublic) {
+        } else if (user && userProfile && isPublic) {
             // If logged in and on a public route (like login page), redirect to their dashboard
-            const targetPath = userProfile?.role === 'admin' ? '/admin/dashboard' : '/teacher/dashboard';
+            const targetPath = userProfile.role === 'admin' ? '/admin/dashboard' : '/teacher/dashboard';
             router.replace(targetPath);
         }
     }, [user, userProfile, loading, pathname, router, logout]);
