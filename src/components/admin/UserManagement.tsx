@@ -609,7 +609,7 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
                 {/* <Button className="w-1/2 sm:w-auto" onClick={() => setIsAddUserOpen(true)}> */}
                 <Button className="flex-grow sm:w-auto" onClick={() => setIsAddUserOpen(true)}>
                   <UserPlus className="mr-2 h-4 w-4" />
-                  Tambah
+                  Tambah Pengguna
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

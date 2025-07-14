@@ -14,6 +14,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useAuth } from '@/hooks/useAuth';
 import { Checkbox } from '@/components/ui/checkbox';
+import { CenteredLoader } from '@/components/ui/loader';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -25,14 +26,11 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   
-  // Redirect if user is already logged in and has a profile
+  // Aggressively redirect if user is already logged in
   useEffect(() => {
     if (!authLoading && userProfile) {
-        if (userProfile.role === 'admin') {
-            router.push('/admin/dashboard');
-        } else if (userProfile.role === 'guru') {
-            router.push('/teacher/dashboard');
-        }
+      const targetPath = userProfile.role === 'admin' ? '/admin/dashboard' : '/teacher/dashboard';
+      router.replace(targetPath); // Use replace to prevent going back
     }
   }, [userProfile, authLoading, router]);
 
@@ -77,13 +75,12 @@ export default function LoginPage() {
         body: JSON.stringify({ idToken }),
       });
       
-      // AuthContext will handle redirection based on the new auth state
-      // We show a temporary success toast.
+      // AuthContext will handle redirection. Show a temporary success toast.
        toast({
         title: 'Login Berhasil',
         description: 'Mengarahkan ke dasbor Anda...',
       });
-
+      // No need to router.push here, the useEffect will handle it.
 
     } catch (error: any) {
       console.error("Login Error: ", error);
@@ -102,6 +99,11 @@ export default function LoginPage() {
         setLoading(false);
     }
   };
+
+  // If auth is loading or user is logged in, show a loader to prevent flicker
+  if (authLoading || userProfile) {
+    return <CenteredLoader />;
+  }
 
   return (
     <>

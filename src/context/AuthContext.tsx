@@ -6,7 +6,7 @@ import type { User as FirebaseUser } from 'firebase/auth';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { CenteredLoader } from '@/components/ui/loader';
 import useIdleTimer from '@/hooks/useIdleTimer';
 
@@ -34,11 +34,14 @@ export interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const publicRoutes = ['/']; // The login page is the only public route
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<FirebaseUser | null>(null);
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
+    const pathname = usePathname();
 
     const logout = useCallback(async (message?: string) => {
         if (message) {
@@ -49,8 +52,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         await signOut(auth);
         setUser(null);
         setUserProfile(null);
-        setLoading(false); // Set loading to false on logout to prevent splash screen
-        router.push('/');
+        setLoading(false);
+        router.replace('/'); // Use replace to prevent back navigation
     }, [router]);
 
     const handleIdle = useCallback(() => {
@@ -77,7 +80,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 let userRole: 'admin' | 'guru' | null = null;
                 let profileUid: string | null = null;
                 
-                // 1. Check for teacher in 'teachers' collection by UID (most common case for existing users)
                 const teacherDocRef = doc(db, 'teachers', firebaseUser.uid);
                 const teacherSnap = await getDoc(teacherDocRef);
 
@@ -86,7 +88,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     profileDocRef = teacherDocRef;
                     profileUid = firebaseUser.uid;
                 } else {
-                    // 2. If not a teacher, check for admin in 'admin' collection by UID
                     const adminDocRefByUid = doc(db, 'admin', firebaseUser.uid);
                     const adminSnapByUid = await getDoc(adminDocRefByUid);
 
@@ -95,7 +96,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                         profileDocRef = adminDocRefByUid;
                         profileUid = firebaseUser.uid;
                     } else {
-                         // 3. Fallback for admin: check by email (handles initial admin case)
                         const adminQuery = query(collection(db, 'admin'), where('email', '==', firebaseUser.email), limit(1));
                         const adminSnapshot = await getDocs(adminQuery);
                         if (!adminSnapshot.empty) {
@@ -107,13 +107,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     }
                 }
                 
-                // 4. If user exists in a collection, set up listener. Otherwise, log out.
                 if (userRole && profileDocRef && profileUid) {
                     profileListenerUnsubscribe = onSnapshot(profileDocRef, (profileSnap) => {
                         if (profileSnap.exists()) {
                             const profileData = profileSnap.data();
                             const finalProfileData: UserProfile = {
-                                uid: profileUid!, // Use the correct UID for the profile
+                                uid: profileUid!,
                                 email: firebaseUser.email || profileData.email,
                                 name: profileData.name || firebaseUser.displayName || 'Pengguna',
                                 role: userRole!,
@@ -149,7 +148,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         };
     }, [logout]);
 
-    if (loading) {
+
+    // This effect handles route protection
+    useEffect(() => {
+        if (loading) return; // Don't do anything while loading
+
+        const isPublic = publicRoutes.includes(pathname);
+
+        if (!user && !isPublic) {
+            // If not logged in and trying to access a protected route, redirect to login
+            logout(); // Use logout to ensure clean state and proper redirection
+        } else if (user && isPublic) {
+            // If logged in and on a public route (like login page), redirect to their dashboard
+            const targetPath = userProfile?.role === 'admin' ? '/admin/dashboard' : '/teacher/dashboard';
+            router.replace(targetPath);
+        }
+    }, [user, userProfile, loading, pathname, router, logout]);
+
+    // Show a loader while authentication is in progress or a redirect is imminent
+    const shouldShowLoader = loading || (!publicRoutes.includes(pathname) && !userProfile);
+    if (shouldShowLoader) {
         return <CenteredLoader />;
     }
 
