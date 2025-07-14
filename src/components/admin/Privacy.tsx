@@ -1,8 +1,10 @@
+
 'use client'
 
 import { ArrowLeft, Shield, Eye, Database, Lock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "../ui/button";
 
 const PrivacyRow = ({ icon: Icon, title, description }: { icon: React.ElementType, title: string, description: string }) => (
     <div className="flex items-start gap-4 py-4">
@@ -18,9 +20,10 @@ export function Privacy({ onBack }: { onBack: () => void }) {
     return (
         <div className="bg-gray-50 dark:bg-zinc-900">
             <header className="sticky top-0 z-10 flex items-center gap-4 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                <button onClick={onBack} className="p-1">
-                    <ArrowLeft className="h-6 w-6" />
-                </button>
+                <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8">
+                    <ArrowLeft className="h-5 w-5" />
+                    <span className="sr-only">Kembali</span>
+                </Button>
                 <h1 className="text-xl font-bold text-foreground">Privasi</h1>
             </header>
 

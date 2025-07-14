@@ -18,7 +18,7 @@ import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 interface ProfileProps {
-    setActiveView: (view: 'privacy') => void;
+    setActiveView: (view: 'privacy', index: number) => void;
 }
 
 const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
@@ -159,7 +159,7 @@ export function Profile({ setActiveView }: ProfileProps) {
                             <CardTitle className="text-lg">Pengaturan</CardTitle>
                         </CardHeader>
                         <CardContent className="divide-y divide-border pt-0">
-                            <ClickableRow icon={Shield} label="Privasi" onClick={() => setActiveView('privacy')} showChevron={false} />
+                            <ClickableRow icon={Shield} label="Privasi" onClick={() => setActiveView('privacy', 4)} showChevron={true} />
                         </CardContent>
                     </Card>
                     

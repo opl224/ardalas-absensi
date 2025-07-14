@@ -8,6 +8,7 @@ import { ExitAppDialog } from "../ExitAppDialog";
 import { AttendanceSettingsDialog } from "./AttendanceSettingsDialog";
 import dynamic from 'next/dynamic';
 import { CenteredLoader } from "../ui/loader";
+import { motion, AnimatePresence } from 'framer-motion';
 
 const DashboardHome = dynamic(() => import('./DashboardHome').then(mod => mod.DashboardHome), {
   loading: () => <CenteredLoader />,
@@ -34,6 +35,37 @@ type ViewID = MainViewID | SubViewID;
 
 const mainViews: MainViewID[] = ['home', 'users', 'reports', 'attendance', 'profile'];
 
+const viewComponents: { [key in ViewID]: React.FC<any> } = {
+  home: DashboardHome,
+  users: UserManagement,
+  reports: Reports,
+  attendance: Attendance,
+  profile: Profile,
+  privacy: Privacy,
+};
+
+const variants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? '100%' : '-100%',
+    opacity: 0
+  }),
+  center: {
+    zIndex: 1,
+    x: 0,
+    opacity: 1
+  },
+  exit: (direction: number) => ({
+    zIndex: 0,
+    x: direction < 0 ? '100%' : '-100%',
+    opacity: 0
+  })
+};
+
+const transition = {
+  x: { type: "tween", ease: "easeInOut", duration: 0.3 },
+  opacity: { duration: 0.2 }
+};
+
 const NavLink = ({
   icon: Icon,
   label,
@@ -57,17 +89,42 @@ const NavLink = ({
 );
 
 export function MobileAdminDashboard() {
-  const [activeView, setActiveView] = useState<ViewID>('home');
+  const [page, setPage] = useState<{ view: ViewID; direction: number; index: number }>({
+    view: 'home',
+    direction: 0,
+    index: 0,
+  });
   const [isEditingUser, setIsEditingUser] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
 
-  const isSubView = !mainViews.includes(activeView as MainViewID) || isEditingUser;
+  const isSubView = !mainViews.includes(page.view as MainViewID) || isEditingUser;
+  
+  const changeView = useCallback((newView: ViewID, newIndex?: number) => {
+    setPage(prevPage => {
+      if (prevPage.view === newView) return prevPage;
+
+      const isSub = !mainViews.includes(newView as MainViewID);
+      const currentIndex = prevPage.index;
+      const finalIndex = isSub ? currentIndex : (newIndex !== undefined ? newIndex : mainViews.indexOf(newView as MainViewID));
+      
+      let direction = 0;
+      if (newView === 'privacy') {
+        direction = 1;
+      } else if (isSub) {
+        direction = 1; 
+      } else {
+        direction = finalIndex > currentIndex ? 1 : -1;
+      }
+      
+      return { view: newView, direction, index: finalIndex };
+    });
+  }, []);
 
   const onBack = useCallback(() => {
-    if (activeView === 'privacy') {
-      setActiveView('profile');
+    if (page.view === 'privacy') {
+      changeView('profile', mainViews.indexOf('profile'));
     }
-  }, [activeView]);
+  }, [page.view, changeView]);
 
   const onDialogClose = useCallback(() => {
     const openDialogs = document.querySelectorAll('[data-state="open"]');
@@ -86,51 +143,85 @@ export function MobileAdminDashboard() {
   }, [showSettingsDialog]);
 
   const { showExitDialog, setShowExitDialog, handleConfirmExit } = useAndroidBackHandler({
-    currentView: activeView,
+    currentView: page.view,
     isSubView,
     onBack,
     onDialogClose,
     homeViewId: 'home',
-    changeView: (viewId: ViewID) => setActiveView(viewId),
+    changeView: (viewId: ViewID) => changeView(viewId, mainViews.indexOf(viewId as MainViewID)),
   });
 
-  const renderContent = () => {
-    const props = {
-      setActiveView,
-      onBack,
-      setShowSettingsDialog,
-      setIsEditingUser,
-    };
+  const handleDragEnd = (e: any, { offset }: { offset: { x: number } }) => {
+    const swipeThreshold = 50;
+    
+    setPage(currentPage => {
+        if (isSubView) return currentPage;
 
-    switch (activeView) {
-      case 'home':
-        return <DashboardHome />;
-      case 'users':
-        return <UserManagement {...props} />;
-      case 'reports':
-        return <Reports />;
-      case 'attendance':
-        return <Attendance />;
-      case 'profile':
-        return <Profile {...props} />;
-      case 'privacy':
-        return <Privacy onBack={() => setActiveView('profile')} />;
-      default:
-        return <DashboardHome />;
-    }
+        const currentIndex = currentPage.index;
+        let newIndex = currentIndex;
+
+        if (offset.x < -swipeThreshold) {
+            newIndex = Math.min(currentIndex + 1, mainViews.length - 1);
+        } else if (offset.x > swipeThreshold) {
+            newIndex = Math.max(currentIndex - 1, 0);
+        }
+
+        if (newIndex !== currentIndex) {
+            const newView = mainViews[newIndex];
+            const direction = newIndex > currentIndex ? 1 : -1;
+            return { view: newView, index: newIndex, direction };
+        }
+        
+        return currentPage;
+    });
   };
+
+  let ComponentToRender: React.FC<any>;
+  let props: any;
+
+  if (page.view === 'privacy') {
+    ComponentToRender = Privacy;
+    props = { onBack };
+  } else {
+    ComponentToRender = viewComponents[page.view];
+    props = { 
+      setActiveView: changeView,
+      onBack, 
+      setShowSettingsDialog,
+      setIsEditingUser 
+    };
+  }
 
   return (
     <div className="bg-gray-50 dark:bg-zinc-900 min-h-screen flex flex-col">
-      <main className="flex-grow overflow-y-auto pb-20">{renderContent()}</main>
+       <main className="flex-grow relative overflow-hidden">
+        <AnimatePresence initial={false} custom={page.direction}>
+            <motion.div
+              key={page.view}
+              className="absolute w-full h-full overflow-y-auto pb-24"
+              custom={page.direction}
+              variants={variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={transition}
+              drag={!isSubView ? "x" : false}
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.1}
+              onDragEnd={handleDragEnd}
+            >
+              <ComponentToRender {...props} />
+            </motion.div>
+        </AnimatePresence>
+      </main>
 
       {!isSubView && (
         <nav className="fixed bottom-0 left-0 right-0 bg-card border-t p-1 flex justify-around z-10">
-          <NavLink icon={Home} label="Beranda" isActive={activeView === 'home'} onClick={() => setActiveView('home')} />
-          <NavLink icon={Users2} label="Pengguna" isActive={activeView === 'users'} onClick={() => setActiveView('users')} />
-          <NavLink icon={LineChart} label="Laporan" isActive={activeView === 'reports'} onClick={() => setActiveView('reports')} />
-          <NavLink icon={CheckSquare} label="Kehadiran" isActive={activeView === 'attendance'} onClick={() => setActiveView('attendance')} />
-          <NavLink icon={UserIcon} label="Profil" isActive={activeView === 'profile'} onClick={() => setActiveView('profile')} />
+          <NavLink icon={Home} label="Beranda" isActive={page.view === 'home'} onClick={() => changeView('home', 0)} />
+          <NavLink icon={Users2} label="Pengguna" isActive={page.view === 'users'} onClick={() => changeView('users', 1)} />
+          <NavLink icon={LineChart} label="Laporan" isActive={page.view === 'reports'} onClick={() => changeView('reports', 2)} />
+          <NavLink icon={CheckSquare} label="Kehadiran" isActive={page.view === 'attendance'} onClick={() => changeView('attendance', 3)} />
+          <NavLink icon={UserIcon} label="Profil" isActive={page.view === 'profile'} onClick={() => changeView('profile', 4)} />
         </nav>
       )}
 
