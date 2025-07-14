@@ -10,7 +10,7 @@ interface UseAndroidBackHandlerProps {
   isSubView: boolean;
   onBack: () => void;
   homeViewId: string;
-  changeView: (view: any, index: number) => void;
+  changeView: (view: any, index?: number) => void;
   onDialogClose?: () => boolean; // Return true if a dialog was closed, false otherwise
 }
 
