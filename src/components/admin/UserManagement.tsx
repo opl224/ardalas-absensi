@@ -33,8 +33,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { collection, query, where, onSnapshot, DocumentData, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { db, auth, functions } from '@/lib/firebase';
-import { httpsCallable } from 'firebase/functions';
+import { db, auth } from '@/lib/firebase';
 import { Loader } from '../ui/loader';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
@@ -458,8 +457,20 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
       }
 
       try {
-        const deleteUserFunction = httpsCallable(functions, 'deleteUser');
-        await deleteUserFunction({ uid: userToDelete.id, role: userToDelete.role });
+        const idToken = await adminUser.getIdToken();
+        const response = await fetch('/api/delete-user', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({ uid: userToDelete.id, role: userToDelete.role }),
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || 'Terjadi kesalahan pada server.');
+        }
 
         toast({ title: 'Berhasil', description: `Pengguna '${userToDelete.name}' berhasil dihapus.` });
         handleUserActionSuccess();
@@ -776,4 +787,3 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
     </div>
   );
 }
-
