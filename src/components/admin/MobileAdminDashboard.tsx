@@ -169,8 +169,9 @@ export function MobileAdminDashboard() {
       }
   
       if (newIndex !== currentIndex) {
-        changeView(mainViews[newIndex], newIndex);
-        return { view: mainViews[newIndex], direction: newIndex > currentIndex ? 1 : -1, index: newIndex };
+        const newView = mainViews[newIndex];
+        const direction = newIndex > currentIndex ? 1 : -1;
+        return { view: newView, direction, index: newIndex };
       }
   
       return currentPage;
