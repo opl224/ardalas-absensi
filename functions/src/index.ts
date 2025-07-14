@@ -45,7 +45,7 @@ export const deleteUser = onCall(async (request) => {
     );
   }
 
-  // 2. Deletion Logic with Error Handling
+  // 2. Deletion Logic with Enhanced Error Handling
   try {
     // Delete from Firestore first. It's safer.
     const collectionName =
@@ -56,10 +56,12 @@ export const deleteUser = onCall(async (request) => {
     const docSnap = await userDocRef.get();
     if (docSnap.exists()) {
         await userDocRef.delete();
+    } else {
+        console.log(`Document for user ${userToDeleteUid} not found in collection ${collectionName}, skipping Firestore deletion.`);
     }
     
     // Now, delete from Firebase Authentication.
-    // Check if user exists in Auth before trying to delete.
+    // This block will not fail the function if the user is already deleted.
     try {
         await auth.getUser(userToDeleteUid); // This will throw an error if the user doesn't exist
         await auth.deleteUser(userToDeleteUid);
@@ -69,19 +71,22 @@ export const deleteUser = onCall(async (request) => {
         if (error.code === 'auth/user-not-found') {
             console.log(`User ${userToDeleteUid} not found in Firebase Auth, probably already deleted.`);
         } else {
-            // Re-throw other auth errors
-            throw error;
+            // For other auth errors, we should still throw to know about them.
+            console.error("Error deleting user from Auth:", error);
+            throw new HttpsError("internal", "An error occurred during Auth deletion.");
         }
     }
 
     return {success: true, message: "User deleted successfully."};
   } catch (error: any) {
-    console.error("Error deleting user:", error);
-    // Provide a more specific error message if available
+    console.error("Overall error in deleteUser function:", error);
+    // Provide a more specific error message if available, otherwise a generic one.
+    if (error instanceof HttpsError) {
+        throw error; // Re-throw HttpsError instances directly
+    }
     throw new HttpsError(
         "internal",
         error.message || "An unexpected error occurred while deleting the user.",
     );
   }
 });
-
