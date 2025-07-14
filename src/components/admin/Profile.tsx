@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Capacitor } from '@capacitor/core';
 import { getStorage, ref as storageRef, uploadString, getDownloadURL } from "firebase/storage";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 interface ProfileProps {
@@ -81,10 +81,17 @@ export function Profile({ setActiveView }: ProfileProps) {
 
                     const snapshot = await uploadString(fileRef, dataUri, 'data_url');
                     const downloadURL = await getDownloadURL(snapshot.ref);
+                    
+                    const batch = writeBatch(db);
 
                     const collectionName = userProfile.role === 'admin' ? 'admin' : 'teachers';
-                    const userDocRef = doc(db, collectionName, userProfile.uid);
-                    await updateDoc(userDocRef, { avatar: downloadURL });
+                    const mainDocRef = doc(db, collectionName, userProfile.uid);
+                    batch.update(mainDocRef, { avatar: downloadURL });
+                    
+                    const centralUserDocRef = doc(db, 'users', userProfile.uid);
+                    batch.update(centralUserDocRef, { avatar: downloadURL });
+
+                    await batch.commit();
 
                     setUserProfile(prev => prev ? { ...prev, avatar: downloadURL } : null);
 
