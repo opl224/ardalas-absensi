@@ -12,9 +12,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Eye, EyeOff } from 'lucide-react';
-import { createUserWithEmailAndPassword, getAuth, signInWithCredential, EmailAuthProvider } from 'firebase/auth';
-import { app, db } from '@/lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 
 const createUserSchema = z.object({
   name: z.string().min(3, "Nama harus memiliki setidaknya 3 karakter."),
@@ -51,44 +49,31 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
   
   const onSubmit = (data: CreateUserForm) => {
     startTransition(async () => {
-        const auth = getAuth(app);
+        const auth = getAuth();
         const adminUser = auth.currentUser;
 
-        if (!adminUser || !adminUser.email) {
+        if (!adminUser) {
             toast({ variant: 'destructive', title: 'Error', description: 'Admin tidak terautentikasi. Silakan login kembali.' });
             return;
         }
-        
-        // This is a placeholder for the admin's password.
-        // For a production app, you'd re-authenticate the admin securely.
-        // Here, we assume we can't get the password directly.
-        const adminEmail = adminUser.email;
-
 
         try {
-            // Create the new user
-            const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-            const newUser = userCredential.user;
+            const idToken = await adminUser.getIdToken();
 
-            // Immediately sign the admin back in
-            // IMPORTANT: In a real app, you would securely re-authenticate the admin.
-            // Since we can't access the password, we'll rely on the session persistence.
-            // The flow might be jarring as Firebase signs out the admin and signs in the new user.
-            // A better flow would use a backend to create users. But within client-side constraints:
-            // We'll proceed, and the AuthContext should handle session state.
-
-            const collectionName = data.role === 'admin' ? 'admin' : 'teachers';
-            const userDocRef = doc(db, collectionName, newUser.uid);
+            const response = await fetch('/api/create-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${idToken}`,
+                },
+                body: JSON.stringify(data),
+            });
             
-            const userData = {
-                name: data.name,
-                email: data.email,
-                role: data.role,
-                uid: newUser.uid,
-                avatar: `https://placehold.co/100x100.png`
-            };
+            const result = await response.json();
 
-            await setDoc(userDocRef, userData);
+            if (!response.ok) {
+                throw new Error(result.error || 'Terjadi kesalahan pada server.');
+            }
 
             toast({ title: 'Berhasil', description: `Pengguna '${data.name}' berhasil dibuat.` });
             onSuccess();
@@ -96,13 +81,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
 
         } catch (error: any) {
             console.error("Error creating user:", error);
-            let description = 'Terjadi kesalahan saat membuat pengguna.';
-            if (error.code === 'auth/email-already-in-use') {
-                description = 'Alamat email ini sudah digunakan oleh akun lain.';
-            } else if (error.code === 'auth/weak-password') {
-                description = 'Kata sandi terlalu lemah. Gunakan setidaknya 6 karakter.';
-            }
-            toast({ variant: 'destructive', title: 'Gagal Membuat Akun', description });
+            toast({ variant: 'destructive', title: 'Gagal Membuat Akun', description: error.message });
         }
     });
   };
@@ -120,7 +99,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
         <DialogHeader>
           <DialogTitle>Tambah Pengguna Baru</DialogTitle>
           <DialogDescription>
-            Buat akun baru untuk admin atau guru. Pengguna akan ditambahkan ke Firebase Authentication dan Firestore.
+            Buat akun baru untuk admin atau guru. Sesi login Anda akan tetap aman.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
