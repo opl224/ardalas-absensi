@@ -16,16 +16,14 @@ export default function TeacherDashboard() {
   const [isCheckingDevice, setIsCheckingDevice] = useState(true);
 
   useEffect(() => {
-    // This check runs only on the client side
+    // This check runs only on the client side after hydration
     const checkDeviceType = () => {
       setIsDesktop(window.innerWidth >= DESKTOP_BREAKPOINT);
       setIsCheckingDevice(false);
     };
 
-    // Run once on mount
-    checkDeviceType();
+    checkDeviceType(); // Run once on mount
 
-    // Optional: Add resize listener if you want it to be dynamic
     window.addEventListener('resize', checkDeviceType);
     return () => window.removeEventListener('resize', checkDeviceType);
   }, []);

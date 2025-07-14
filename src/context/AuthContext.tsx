@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(null);
         setUserProfile(null);
         setLoading(false);
-        router.replace('/'); // Use replace to prevent back navigation
+        router.replace('/');
     }, [router]);
 
     const handleIdle = useCallback(() => {
@@ -167,8 +167,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, [user, userProfile, loading, pathname, router, logout]);
 
     // Show a loader while authentication is in progress or a redirect is imminent
-    const shouldShowLoader = loading || (!publicRoutes.includes(pathname) && !userProfile);
-    if (shouldShowLoader) {
+    if (loading) {
         return <CenteredLoader />;
     }
 
