@@ -97,10 +97,9 @@ export function MobileAdminDashboard() {
   }, []);
   
   const handleDragEnd = (e: any, { offset }: { offset: { x: number } }) => {
-    const swipeThreshold = 50;
-    
     if (isSubView) return;
 
+    const swipeThreshold = 50;
     const currentIndex = page.index;
     let newIndex = currentIndex;
 
