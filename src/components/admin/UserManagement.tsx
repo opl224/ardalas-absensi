@@ -298,7 +298,6 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
   const { toast } = useToast();
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [isAbsentListOpen, setIsAbsentListOpen] = useState(false);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [backButtonListener, setBackButtonListener] = useState<PluginListenerHandle | null>(null);
 
@@ -339,8 +338,7 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
     else if (isAddUserOpen) setIsAddUserOpen(false);
     else if (isDetailOpen) setIsDetailOpen(false);
     else if (isDeleteOpen) setIsDeleteOpen(false);
-    else if (isAbsentListOpen) setIsAbsentListOpen(false);
-  }, [editingUser, isAddUserOpen, isDetailOpen, isDeleteOpen, isAbsentListOpen]);
+  }, [editingUser, isAddUserOpen, isDetailOpen, isDeleteOpen]);
   
   useEffect(() => {
     const setupListener = async () => {
@@ -608,10 +606,6 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
                 />
             </div>
             <div className='flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0'>
-                <Button variant="outline" className="w-1/2 sm:w-auto" onClick={() => setIsAbsentListOpen(true)}>
-                    <UserX className="mr-2 h-4 w-4" />
-                    Belum Absen
-                </Button>
                 <Button className="w-1/2 sm:w-auto" onClick={() => setIsAddUserOpen(true)}>
                   <UserPlus className="mr-2 h-4 w-4" />
                   Tambah
@@ -750,21 +744,6 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
                     )}
                 </div>
               )}
-            </ScrollArea>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={isAbsentListOpen} onOpenChange={setIsAbsentListOpen}>
-        <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-                <DialogTitle>Guru yang Belum Absen</DialogTitle>
-                <DialogDescription>
-                    Berikut adalah daftar guru yang belum melakukan absensi hari ini.
-                </DialogDescription>
-            </DialogHeader>
-            <ScrollArea className="max-h-[60vh] -mx-6">
-                <div className="px-6 py-4 space-y-3">
-                    {/* Placeholder for absent users list */}
-                </div>
             </ScrollArea>
         </DialogContent>
       </Dialog>
