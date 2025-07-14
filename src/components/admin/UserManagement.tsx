@@ -426,7 +426,7 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
   };
   const handlePrevPage = () => {
     if (currentPage > 1) {
-        setCurrentPage(prev => prev + 1);
+        setCurrentPage(prev => prev - 1);
     }
   };
 
@@ -610,8 +610,7 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
                 />
             </div>
             <div className='flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0'>
-                {/* <Button className="w-1/2 sm:w-auto" onClick={() => setIsAddUserOpen(true)}> */}
-                <Button className="flex-grow sm:w-auto" onClick={() => setIsAddUserOpen(true)}>
+                <Button variant="outline" className="flex-grow sm:w-auto" onClick={() => setIsAddUserOpen(true)}>
                   <UserPlus className="mr-2 h-4 w-4" />
                   Tambah Pengguna
                 </Button>
@@ -778,4 +777,3 @@ export default function UserManagement({ setIsEditingUser }: UserManagementProps
     </div>
   );
 }
-
