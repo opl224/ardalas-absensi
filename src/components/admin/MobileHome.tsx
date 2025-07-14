@@ -137,26 +137,16 @@ export function MobileHome({ setActiveView, setShowSettingsDialog }: MobileHomeP
         const unsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
             const allTodaysRecords = snapshot.docs.map(doc => doc.data());
             
-            // Filter only for active attendances for the table and counts
-            const activeAttendances = allTodaysRecords.filter(
-                a => a.status === 'Hadir' || a.status === 'Terlambat'
-            );
-            
-            const presentCount = activeAttendances.filter(a => a.status === 'Hadir').length;
-            const lateCount = activeAttendances.filter(a => a.status === 'Terlambat').length;
+            const presentCount = allTodaysRecords.filter(a => a.status === 'Hadir').length;
+            const lateCount = allTodaysRecords.filter(a => a.status === 'Terlambat').length;
+            const absentCount = allTodaysRecords.filter(a => a.status === 'Tidak Hadir').length;
             const totalWithRecords = presentCount + lateCount;
-
-            let absentCount = 0;
-            // Only mark as absent if the check-in time is over
-            if (isCheckinTimeOver(settings)) {
-                absentCount = totalGurus - totalWithRecords;
-            }
-
+            
             const attendanceRate = totalGurus > 0 ? Math.round((totalWithRecords / totalGurus) * 100) : 0;
             
             setStats({
                 present: presentCount,
-                absent: absentCount >= 0 ? absentCount : 0,
+                absent: absentCount,
                 late: lateCount,
                 offDay: 0,
                 total: totalGurus,

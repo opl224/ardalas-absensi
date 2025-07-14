@@ -178,22 +178,11 @@ export default function Reports() {
                     const settingsDoc = await getDoc(doc(db, "settings", "attendance"));
                     const settings = settingsDoc.exists() ? settingsDoc.data() : { checkInEnd: '09:00', gracePeriod: 60 };
 
-                    const activeAttendances = allTodaysRecords.filter(
-                        a => a.status === 'Hadir' || a.status === 'Terlambat'
-                    );
-
-                    const presentCount = activeAttendances.filter(d => d.status === 'Hadir').length;
-                    const lateCount = activeAttendances.filter(d => d.status === 'Terlambat').length;
+                    const presentCount = allTodaysRecords.filter(d => d.status === 'Hadir').length;
+                    const lateCount = allTodaysRecords.filter(d => d.status === 'Terlambat').length;
+                    const absentCount = allTodaysRecords.filter(d => d.status === 'Tidak Hadir').length;
                     
                     const totalActiveAttendance = presentCount + lateCount;
-                    
-                    let absentCount = 0;
-                    if (activeTab === 'today' && isCheckinTimeOver(settings)) {
-                        absentCount = totalGurus - totalActiveAttendance;
-                    } else if (activeTab !== 'today') {
-                        // This part is complex for historical data, needs more logic
-                        // For now, let's assume it's based on daily check-ins
-                    }
                     
                     const attendanceRate = totalGurus > 0 ? (totalActiveAttendance / totalGurus) * 100 : 0;
                     
