@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Home, LineChart, Search, Users2, CheckSquare } from "lucide-react"
 import Link from "next/link"
 import {
@@ -59,14 +59,14 @@ function AdminDashboardContent() {
   const renderView = () => {
     switch (activeView) {
       case 'users':
-        return <UserManagement setIsEditingUser={() => {}} />;
+        return <UserManagement />;
       case 'reports':
         return <Reports />;
       case 'attendance':
         return <Attendance />;
       case 'home':
       default:
-        return <DashboardHome />;
+        return <DashboardHome setActiveView={setActiveView} />;
     }
   }
 

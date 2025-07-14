@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAndroidBackHandler } from '@/hooks/useAndroidBackHandler';
 import { ExitAppDialog } from '../ExitAppDialog';
 import dynamic from 'next/dynamic';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const MobileHome = dynamic(() => import('./MobileHome').then(mod => mod.MobileHome), {
   loading: () => <CenteredLoader />,

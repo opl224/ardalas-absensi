@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useTransition } from "react";
-import { Settings, UserX, Users, LineChart, CheckSquare } from "lucide-react";
+import { Settings, UserPlus, Users, LineChart, CheckSquare } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -16,7 +16,6 @@ import { Loader } from "@/components/ui/loader";
 import { Separator } from "../ui/separator";
 import { Button } from "../ui/button";
 import { AttendanceSettingsDialog } from "./AttendanceSettingsDialog";
-import { useToast } from "@/hooks/use-toast";
 
 interface Stats {
     present: number;
@@ -28,7 +27,7 @@ interface Stats {
 }
 
 interface DashboardHomeProps {
-  setActiveView?: (view: 'users' | 'reports' | 'attendance', index: number) => void;
+  setActiveView?: (view: 'users' | 'reports' | 'attendance') => void;
 }
 
 
@@ -192,20 +191,20 @@ export function DashboardHome({ setActiveView }: DashboardHomeProps) {
                     icon={Users}
                     title="Manajemen Pengguna"
                     description="Kelola data admin dan guru"
-                    onClick={() => setActiveView?.('users', 1)}
+                    onClick={() => setActiveView?.('users')}
                  />
                  <div className="grid grid-cols-2 gap-4">
                      <QuickActionButton 
                         icon={LineChart}
                         title="Laporan"
                         description="Lihat laporan"
-                        onClick={() => setActiveView?.('reports', 2)}
+                        onClick={() => setActiveView?.('reports')}
                      />
                      <QuickActionButton 
                         icon={CheckSquare}
                         title="Kehadiran"
                         description="Pantau kehadiran"
-                        onClick={() => setActiveView?.('attendance', 3)}
+                        onClick={() => setActiveView?.('attendance')}
                      />
                  </div>
             </div>
