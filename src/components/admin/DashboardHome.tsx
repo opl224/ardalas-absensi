@@ -82,13 +82,9 @@ export function DashboardHome() {
 
     // Effect to fetch data and listen for attendance, re-runs when settings or totalGurus change
     useEffect(() => {
-        if (!settings || totalGurus === 0) {
-             if (totalGurus === 0 && !loading) {
-                 // handle the case where there are genuinely no teachers
-             } else {
-                setLoading(true);
-                return;
-             }
+        if (!settings) {
+            setLoading(true);
+            return;
         }
 
         setLoading(true);
@@ -144,7 +140,7 @@ export function DashboardHome() {
         });
 
         return () => unsubscribe();
-    }, [settings, totalGurus, loading]);
+    }, [settings, totalGurus]);
 
     const handleMarkAbsentees = () => {
         startTransition(async () => {
