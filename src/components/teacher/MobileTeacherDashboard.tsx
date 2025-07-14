@@ -85,7 +85,7 @@ export function MobileTeacherDashboard() {
     direction: 0,
     index: 0,
   });
-  const { userProfile } = useAuth();
+  const { userProfile, logout } = useAuth();
   
   const NavLink = ({
     index,
@@ -169,6 +169,7 @@ export function MobileTeacherDashboard() {
     onDialogClose,
     homeViewId: 'home',
     changeView: (viewId: ViewID) => changeView(viewId, mainViews.indexOf(viewId as MainViewID)),
+    logout
   });
 
   const handleDragEnd = (e: any, { offset }: { offset: { x: number } }) => {

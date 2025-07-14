@@ -12,6 +12,7 @@ interface UseAndroidBackHandlerProps {
   homeViewId: string;
   changeView: (view: any, index?: number) => void;
   onDialogClose?: () => boolean; // Return true if a dialog was closed, false otherwise
+  logout?: (message?: string) => void;
 }
 
 export const useAndroidBackHandler = ({
@@ -20,7 +21,8 @@ export const useAndroidBackHandler = ({
   onBack,
   homeViewId,
   changeView,
-  onDialogClose
+  onDialogClose,
+  logout
 }: UseAndroidBackHandlerProps) => {
   const [showExitDialog, setShowExitDialog] = useState(false);
 
@@ -67,6 +69,12 @@ export const useAndroidBackHandler = ({
   }, [handleBackButton]);
 
   const handleConfirmExit = () => {
+    // If a logout function is provided, call it.
+    // Otherwise, just exit.
+    if (logout) {
+      logout(); // This will clear the session
+    }
+    // After logging out (or if no logout function is available), exit the app.
     App.exitApp();
   };
 

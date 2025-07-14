@@ -80,7 +80,7 @@ export function MobileStudentDashboard() {
     direction: 0,
     index: 0,
   });
-  const { userProfile, loading } = useAuth();
+  const { userProfile, loading, logout } = useAuth();
   
   const NavLink = ({
     index,
@@ -188,6 +188,7 @@ export function MobileStudentDashboard() {
     onDialogClose: () => false, // No global dialogs to close
     homeViewId: 'home',
     changeView,
+    logout
   });
 
 

@@ -8,6 +8,7 @@ import { ExitAppDialog } from "../ExitAppDialog";
 import { AttendanceSettingsDialog } from "./AttendanceSettingsDialog";
 import dynamic from 'next/dynamic';
 import { CenteredLoader } from "../ui/loader";
+import { useAuth } from "@/hooks/useAuth";
 
 const DashboardHome = dynamic(() => import('./DashboardHome').then(mod => mod.DashboardHome), {
   loading: () => <CenteredLoader />,
@@ -47,6 +48,7 @@ export function MobileAdminDashboard() {
   const [activeView, setActiveView] = useState<ViewID>('home');
   const [isEditingUser, setIsEditingUser] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const { logout } = useAuth();
 
   const isSubView = !mainViews.includes(activeView as MainViewID) || isEditingUser;
 
@@ -83,6 +85,7 @@ export function MobileAdminDashboard() {
     onDialogClose,
     homeViewId: 'home',
     changeView: (viewId: ViewID) => changeView(viewId),
+    logout
   });
 
   const NavLink = ({
