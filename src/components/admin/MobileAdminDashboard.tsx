@@ -66,28 +66,6 @@ const transition = {
   opacity: { duration: 0.2 }
 };
 
-const NavLink = ({
-  icon: Icon,
-  label,
-  isActive,
-  onClick,
-}: {
-  icon: React.ElementType;
-  label: string;
-  isActive: boolean;
-  onClick: () => void;
-}) => (
-  <button
-    onClick={onClick}
-    className={`flex flex-col items-center justify-center w-1/5 pt-2 pb-1 transition-colors duration-200 ${
-      isActive ? 'text-primary' : 'text-muted-foreground hover:text-primary'
-    }`}
-  >
-    <Icon className="h-6 w-6" />
-    <span className="text-xs mt-1 font-medium">{label}</span>
-  </button>
-);
-
 export function MobileAdminDashboard() {
   const [page, setPage] = useState<{ view: ViewID; direction: number; index: number }>({
     view: 'home',
@@ -148,7 +126,7 @@ export function MobileAdminDashboard() {
     homeViewId: 'home',
     changeView: (viewId: ViewID) => changeView(viewId, mainViews.indexOf(viewId as MainViewID)),
   });
-
+  
   const handleDragEnd = (e: any, { offset }: { offset: { x: number } }) => {
     const swipeThreshold = 50;
     
@@ -167,6 +145,28 @@ export function MobileAdminDashboard() {
         changeView(mainViews[newIndex], newIndex);
     }
   };
+
+  const NavLink = ({
+    icon: Icon,
+    label,
+    isActive,
+    onClick,
+  }: {
+    icon: React.ElementType;
+    label: string;
+    isActive: boolean;
+    onClick: () => void;
+  }) => (
+    <button
+      onClick={onClick}
+      className={`flex flex-col items-center justify-center w-1/5 pt-2 pb-1 transition-colors duration-200 ${
+        isActive ? 'text-primary' : 'text-muted-foreground hover:text-primary'
+      }`}
+    >
+      <Icon className="h-6 w-6" />
+      <span className="text-xs mt-1 font-medium">{label}</span>
+    </button>
+  );
 
   let ComponentToRender: React.FC<any>;
   let props: any;
