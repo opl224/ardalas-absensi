@@ -184,6 +184,22 @@ export function MobileTeacherDashboard() {
       changeView('profile', mainViews.indexOf('profile'));
     }
   }, [page.view, changeView]);
+  
+  const onDialogClose = useCallback(() => {
+    // This function will be called by the back button handler.
+    // If we find an open dialog, we close it and return true.
+    // This stops the back button handler from doing anything else.
+    const openDialogs = document.querySelectorAll('[data-state="open"]');
+    if (openDialogs.length > 0) {
+      // Radix dialogs/popovers often have a close button. We can "click" it.
+      const closeButton = document.querySelector('[data-state="open"] [aria-label="Close"], [data-state="open"] [type="button"][aria-label="Close"], [data-state="open"] [data-radix-collection-item] > [role="menuitem"]') as HTMLElement | null;
+      if (closeButton) {
+        closeButton.click();
+        return true;
+      }
+    }
+    return false;
+  }, []);
 
 
   if (page.view === 'checkin') {
@@ -198,7 +214,7 @@ export function MobileTeacherDashboard() {
     currentView: page.view,
     isSubView,
     onBack,
-    onDialogClose: () => false, // No global dialogs to close
+    onDialogClose,
     homeViewId: 'home',
     changeView: (viewId: ViewID) => changeView(viewId, mainViews.indexOf(viewId as MainViewID)),
   });
