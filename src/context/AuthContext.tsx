@@ -4,7 +4,7 @@
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc, onSnapshot, collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { usePathname, useRouter } from 'next/navigation';
 import { CenteredLoader } from '@/components/ui/loader';
@@ -54,8 +54,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(null);
         setUserProfile(null);
         setLoading(false);
-        router.replace('/');
-    }, [router]);
+        if (pathname !== '/') {
+          router.replace('/');
+        }
+    }, [router, pathname]);
 
     const handleIdle = useCallback(() => {
         if (auth.currentUser) {
@@ -66,88 +68,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     useIdleTimer(handleIdle, 1000 * 60 * 60); // 1 hour
 
     useEffect(() => {
-        let profileListenerUnsubscribe: (() => void) | undefined;
-
         const authStateUnsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-            if (profileListenerUnsubscribe) {
-                profileListenerUnsubscribe();
-            }
-
             if (firebaseUser) {
+                if (userProfile && userProfile.uid === firebaseUser.uid) {
+                    setLoading(false);
+                    return;
+                }
+
                 setLoading(true);
                 setUser(firebaseUser);
+
+                let profile: UserProfile | null = null;
                 
-                let profileDocRef;
-                let userRole: 'admin' | 'guru' | null = null;
-                let profileUid: string | null = null;
-                
+                // Check teacher collection first
                 const teacherDocRef = doc(db, 'teachers', firebaseUser.uid);
                 const teacherSnap = await getDoc(teacherDocRef);
-
                 if (teacherSnap.exists()) {
-                    userRole = 'guru';
-                    profileDocRef = teacherDocRef;
-                    profileUid = firebaseUser.uid;
+                    profile = { uid: firebaseUser.uid, role: 'guru', ...teacherSnap.data() } as UserProfile;
                 } else {
-                    const adminDocRefByUid = doc(db, 'admin', firebaseUser.uid);
-                    const adminSnapByUid = await getDoc(adminDocRefByUid);
-
-                    if (adminSnapByUid.exists()) {
-                        userRole = 'admin';
-                        profileDocRef = adminDocRefByUid;
-                        profileUid = firebaseUser.uid;
-                    } else {
-                        const adminQuery = query(collection(db, 'admin'), where('email', '==', firebaseUser.email), limit(1));
-                        const adminSnapshot = await getDocs(adminQuery);
-                        if (!adminSnapshot.empty) {
-                            const adminDoc = adminSnapshot.docs[0];
-                            userRole = 'admin';
-                            profileDocRef = doc(db, 'admin', adminDoc.id);
-                            profileUid = adminDoc.id;
-                        }
+                    // If not a teacher, check admin collection
+                    const adminDocRef = doc(db, 'admin', firebaseUser.uid);
+                    const adminSnap = await getDoc(adminDocRef);
+                    if (adminSnap.exists()) {
+                        profile = { uid: firebaseUser.uid, role: 'admin', ...adminSnap.data() } as UserProfile;
                     }
                 }
-                
-                if (userRole && profileDocRef && profileUid) {
-                    profileListenerUnsubscribe = onSnapshot(profileDocRef, (profileSnap) => {
-                        if (profileSnap.exists()) {
-                            const profileData = profileSnap.data();
-                            const finalProfileData: UserProfile = {
-                                uid: profileUid!,
-                                email: firebaseUser.email || profileData.email,
-                                name: profileData.name || firebaseUser.displayName || 'Pengguna',
-                                role: userRole!,
-                                ...profileData,
-                            };
-                            setUserProfile(finalProfileData);
-                        } else {
-                             logout("Sesi Anda tidak valid. Profil tidak ditemukan.");
-                        }
-                        setLoading(false);
-                    }, (error) => {
-                        console.error("Error listening to user profile:", error);
-                        logout("Gagal memuat profil pengguna.");
-                        setLoading(false);
-                    });
-                } else {
-                    console.error(`User document for user ${firebaseUser.uid} not found in 'admin' or 'teachers'.`);
-                    logout("Profil pengguna tidak ditemukan di basis data.");
-                }
 
+                if (profile) {
+                    setUserProfile(profile);
+                } else {
+                    console.error(`User document for ${firebaseUser.uid} not found in any collection.`);
+                    logout("Profil pengguna Anda tidak ditemukan di basis data.");
+                }
             } else {
                 setUser(null);
                 setUserProfile(null);
-                setLoading(false);
             }
+            setLoading(false);
         });
 
         return () => {
             authStateUnsubscribe();
-            if (profileListenerUnsubscribe) {
-                profileListenerUnsubscribe();
-            }
         };
-    }, [logout]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
 
     // This effect handles route protection
@@ -156,15 +120,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         const isPublic = publicRoutes.includes(pathname);
 
-        if (!user && !isPublic) {
+        if (!userProfile && !isPublic) {
             // If not logged in and trying to access a protected route, redirect to login
-            logout(); // Use logout to ensure clean state and proper redirection
-        } else if (user && userProfile && isPublic) {
+            logout();
+        } else if (userProfile && isPublic) {
             // If logged in and on a public route (like login page), redirect to their dashboard
             const targetPath = userProfile.role === 'admin' ? '/admin/dashboard' : '/teacher/dashboard';
             router.replace(targetPath);
+        } else if (userProfile && userProfile.role === 'guru' && pathname.startsWith('/admin')) {
+            // If a teacher tries to access an admin route, redirect them
+            router.replace('/teacher/dashboard');
+        } else if (userProfile && userProfile.role === 'admin' && pathname.startsWith('/teacher')) {
+            // If an admin tries to access a teacher route, redirect them
+            router.replace('/admin/dashboard');
         }
-    }, [user, userProfile, loading, pathname, router, logout]);
+
+    }, [userProfile, loading, pathname, router, logout]);
 
     // Show a loader while authentication is in progress or a redirect is imminent
     if (loading) {
