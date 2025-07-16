@@ -7,8 +7,9 @@ import dynamic from 'next/dynamic'
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { Capacitor } from "@capacitor/core";
-import { Smartphone } from "lucide-react";
+import { Download, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DownloadButton } from "@/components/ui/download-button";
 
 function TeacherDashboardContent() {
   const { userProfile, loading, logout } = useAuth();
@@ -35,9 +36,18 @@ function TeacherDashboardContent() {
             <p className="text-muted-foreground mt-2 max-w-sm">
                 Untuk pengalaman terbaik dan melakukan absensi, silakan gunakan aplikasi Android yang telah disediakan.
             </p>
-            <Button onClick={() => logout()} className="mt-6">
-                Kembali ke Halaman Login
-            </Button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
+                <div className="flex flex-col items-center gap-2">
+                    <Button onClick={() => logout()} className="w-40">
+                        Kembali ke Login
+                    </Button>
+                    <p className="text-xs text-muted-foreground">Keluar & kembali</p>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                    <DownloadButton />
+                    <p className="text-xs text-muted-foreground">Unduh APK</p>
+                </div>
+            </div>
         </div>
     );
   }
