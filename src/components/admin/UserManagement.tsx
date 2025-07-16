@@ -71,6 +71,11 @@ interface ProcessedUser extends User {
   isFraudulent?: boolean;
 }
 
+interface UserManagementProps {
+    setActiveView: (view: 'users' | 'reports' | 'attendance' | 'editUser', index?: number) => void;
+    isEditing: boolean;
+}
+
 interface AttendanceStatus {
     status: ProcessedUser['status'];
     isFraudulent: boolean;
@@ -164,8 +169,8 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                 </div>
             </header>
             
-            <div className="flex-1 overflow-y-auto">
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 p-4 pb-24">
+            <form onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto">
+                <div className="space-y-6 p-4 pb-24">
                     <div className="space-y-4">
                         <h3 className="flex items-center gap-2 font-semibold text-foreground border-b pb-2">
                           <UserCircle className="h-5 w-5" />
@@ -233,19 +238,22 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                             {errors.name && <p className="text-destructive text-xs">{errors.name.message}</p>}
                         </div>
                     </div>
-                    <div className="flex gap-2 pt-4">
+                </div>
+
+                 <div className="fixed bottom-0 left-0 right-0 z-20 bg-background border-t p-4">
+                    <div className="flex gap-2">
                         <Button type="button" variant="outline" onClick={onBack} disabled={isPending} className="flex-1">Batal</Button>
                         <Button type="submit" disabled={isPending || !isDirty} className="flex-1">
                             {isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
                         </Button>
                     </div>
-                </form>
-            </div>
+                </div>
+            </form>
         </div>
     );
 }
 
-export default function UserManagement() {
+export default function UserManagement({ setActiveView, isEditing }: UserManagementProps) {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [processedUsers, setProcessedUsers] = useState<ProcessedUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -299,11 +307,12 @@ export default function UserManagement() {
     e.canGoBack = false;
     if (editingUser) {
         setEditingUser(null);
+        setActiveView('users', 1);
     }
     else if (isAddUserOpen) setIsAddUserOpen(false);
     else if (isDetailOpen) setIsDetailOpen(false);
     else if (userToDelete) setUserToDelete(null);
-  }, [editingUser, isAddUserOpen, isDetailOpen, userToDelete]);
+  }, [editingUser, isAddUserOpen, isDetailOpen, userToDelete, setActiveView]);
   
   useEffect(() => {
     const setupListener = async () => {
@@ -384,6 +393,14 @@ export default function UserManagement() {
     setProcessedUsers(usersWithStatus);
     setLoading(false);
   }, [allUsers, attendanceStatusMap, settings]);
+  
+  useEffect(() => {
+    if (isEditing && editingUser) {
+        // Already in edit mode, do nothing
+    } else {
+        setEditingUser(null);
+    }
+  }, [isEditing, editingUser]);
 
   const displayedUsers = useMemo(() => {
     const filtered = searchTerm
@@ -558,16 +575,21 @@ export default function UserManagement() {
   const handleUserActionSuccess = () => {
     setRefreshKey(oldKey => oldKey + 1);
   };
+  
+  const handleEditClick = (user: User) => {
+    setEditingUser(user);
+    setActiveView('editUser', 1);
+  };
 
   const hasPrevPage = currentPage > 1;
   const hasNextPage = currentPage * USERS_PER_PAGE < totalFilteredCount;
 
   if (editingUser) {
-      return <EditUserForm user={editingUser} onBack={() => setEditingUser(null)} onSuccess={handleUserActionSuccess} />;
+      return <EditUserForm user={editingUser} onBack={() => { setEditingUser(null); setActiveView('users', 1); }} onSuccess={handleUserActionSuccess} />;
   }
 
   return (
-    <div>
+    <div className="pb-16">
       <header className="sticky top-0 z-10 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <h1 className="text-xl font-bold text-foreground">Manajemen Pengguna</h1>
       </header>
@@ -648,7 +670,7 @@ export default function UserManagement() {
                                           <Eye className="mr-2 h-4 w-4" />
                                           <span>Lihat Detail</span>
                                       </DropdownMenuItem>
-                                      <DropdownMenuItem onSelect={() => setEditingUser(user)}>
+                                      <DropdownMenuItem onSelect={() => handleEditClick(user)}>
                                           <EditIcon className="mr-2 h-4 w-4" />
                                           <span>Edit</span>
                                       </DropdownMenuItem>

@@ -31,7 +31,7 @@ const Privacy = dynamic(() => import('./Privacy').then(mod => mod.Privacy), {
 });
 
 type MainViewID = 'home' | 'users' | 'attendance' | 'reports' | 'profile';
-type SubViewID = 'privacy';
+type SubViewID = 'privacy' | 'editUser';
 type ViewID = MainViewID | SubViewID;
 
 const mainViews: MainViewID[] = ['home', 'users', 'attendance', 'reports', 'profile'];
@@ -43,6 +43,7 @@ const viewComponents: { [key in ViewID]: React.FC<any> } = {
   reports: Reports,
   profile: Profile,
   privacy: Privacy,
+  editUser: () => null, // Placeholder, rendering is handled inside UserManagement
 };
 
 const variants = {
@@ -129,6 +130,8 @@ export function MobileAdminDashboard() {
   const onBack = useCallback(() => {
     if (page.view === 'privacy') {
       changeView('profile', mainViews.indexOf('profile'));
+    } else if (page.view === 'editUser') {
+      changeView('users', mainViews.indexOf('users'));
     }
   }, [page.view, changeView]);
 
@@ -180,11 +183,19 @@ export function MobileAdminDashboard() {
   };
 
   const isSubView = !mainViews.includes(page.view as MainViewID);
-  let ComponentToRender = viewComponents[page.view];
-  let props: any = { setActiveView: changeView };
   
-  if (page.view === 'privacy') {
-    props.onBack = onBack;
+  const renderView = () => {
+    const viewToRender = isSubView ? mainViews[page.index] : page.view;
+    const ComponentToRender = viewComponents[viewToRender];
+    let props: any = { setActiveView: changeView };
+
+    if (viewToRender === 'users') {
+      props.isEditing = page.view === 'editUser';
+    } else if (viewToRender === 'profile' && page.view === 'privacy') {
+        return <Privacy onBack={onBack} />;
+    }
+
+    return <ComponentToRender {...props} />;
   }
   
   if (!userProfile) {
@@ -197,7 +208,7 @@ export function MobileAdminDashboard() {
         <AnimatePresence initial={false} custom={page.direction}>
             <motion.div
               key={page.view}
-              className="absolute w-full h-full overflow-y-auto pb-24"
+              className="absolute w-full h-full overflow-y-auto"
               custom={page.direction}
               variants={variants}
               initial="enter"
@@ -209,7 +220,7 @@ export function MobileAdminDashboard() {
               dragElastic={0.1}
               onDragEnd={handleDragEnd}
             >
-              <ComponentToRender {...props} />
+              {renderView()}
             </motion.div>
         </AnimatePresence>
       </main>
