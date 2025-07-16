@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Button } from "../ui/button";
+import { Button, buttonVariants } from "../ui/button";
 import { AttendanceSettingsDialog } from "./AttendanceSettingsDialog";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -28,6 +28,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 interface MobileHomeProps {
   setActiveView?: (view: 'users' | 'reports' | 'attendance' | 'privacy', index: number) => void;
@@ -207,10 +208,12 @@ export function MobileHome({ setActiveView }: MobileHomeProps) {
                     {isCustomAvatar ? (
                         <Dialog>
                             <DialogTrigger asChild>
-                                <Avatar className="h-14 w-14 cursor-pointer">
-                                    <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait"/>
-                                    <AvatarFallback>{userProfile.name.slice(0,2).toUpperCase()}</AvatarFallback>
-                                </Avatar>
+                                <div className="relative cursor-pointer">
+                                  <Avatar className="h-14 w-14">
+                                      <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait"/>
+                                      <AvatarFallback>{userProfile.name.slice(0,2).toUpperCase()}</AvatarFallback>
+                                  </Avatar>
+                                </div>
                             </DialogTrigger>
                             <DialogContent className="p-0 border-0 bg-transparent shadow-none w-auto max-w-lg">
                                 <DialogHeader className="sr-only">
@@ -241,9 +244,13 @@ export function MobileHome({ setActiveView }: MobileHomeProps) {
                     </CardContent>
                 </Card>
                 
-                <button className="button-schedule-settings w-full" onClick={() => setShowSettingsDialog(true)}>
-                    Atur Jadwal
-                </button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setShowSettingsDialog(true)}
+                >
+                  Atur Jadwal
+                </Button>
                  
                  <Card>
                     <CardHeader className="flex flex-row items-start justify-between p-4">
@@ -293,6 +300,7 @@ export function MobileHome({ setActiveView }: MobileHomeProps) {
                     <QuickActionButton 
                         icon={UserPlus}
                         title="Manajemen Pengguna"
+                        description="Kelola pengguna admin dan guru"
                         onClick={() => setActiveView?.('users', 1)}
                     />
                 </div>

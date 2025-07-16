@@ -16,6 +16,7 @@ import { db } from "@/lib/firebase";
 import { Loader } from "@/components/ui/loader";
 import { Separator } from "../ui/separator";
 import { AttendanceSettingsDialog } from "./AttendanceSettingsDialog";
+import { Button, buttonVariants } from "../ui/button";
 
 interface Stats {
     present: number;
@@ -175,9 +176,13 @@ export function DashboardHome({ setActiveView }: DashboardHomeProps) {
                     </div>
                 </CardContent>
             </Card>
-            <button className="button-schedule-settings w-full" onClick={() => setShowSettingsDialog(true)}>
-                Atur Jadwal
-            </button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setShowSettingsDialog(true)}
+            >
+              Atur Jadwal
+            </Button>
             <Card>
                 <CardHeader className="p-4">
                     <CardTitle className="text-lg">Kehadiran Guru Hari Ini</CardTitle>
