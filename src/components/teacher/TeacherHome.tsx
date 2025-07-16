@@ -345,11 +345,6 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                                         <span className='font-medium text-foreground'>{status === 'checked_out' && checkoutTime ? checkoutTime : ' - '}</span>
                                     </div>
                                 </div>
-                                {status === 'checked_in' && (
-                                    <form onSubmit={handleCheckoutSubmit}>
-                                        <CheckoutButton disabled={!isCheckoutAllowed} pending={isPending} />
-                                    </form>
-                                )}
                             </>
                         )}
                     </CardContent>
