@@ -36,7 +36,7 @@ function TeacherDashboardContent() {
             <p className="text-muted-foreground mt-2 max-w-sm">
                 Untuk pengalaman terbaik dan melakukan absensi, silakan gunakan aplikasi Android yang telah disediakan.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
+            <div className="flex flex-row items-center justify-center gap-8 mt-8">
                 <div className="flex flex-col items-center gap-2">
                     <Button onClick={() => logout()} className="w-40">
                         Kembali ke Login
