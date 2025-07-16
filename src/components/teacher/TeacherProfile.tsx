@@ -84,11 +84,9 @@ export function TeacherProfile({ setActiveView }: TeacherProfileProps) {
 
                     const batch = writeBatch(db);
 
-                    // Update teacher document
                     const teacherDocRef = doc(db, 'teachers', userProfile.uid);
                     batch.update(teacherDocRef, { avatar: downloadURL });
 
-                    // Update central user document
                     const centralUserDocRef = doc(db, 'users', userProfile.uid);
                     batch.update(centralUserDocRef, { avatar: downloadURL });
 
