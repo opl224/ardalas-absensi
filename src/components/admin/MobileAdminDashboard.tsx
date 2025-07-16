@@ -216,18 +216,16 @@ export function MobileAdminDashboard() {
       case 'reports':
         return <Reports />;
       case 'profile':
-        return <Profile setActiveView={(view, index) => changeView(view, index)} />;
+        return <Profile setActiveView={(view, index) => changeView(view as SubViewID, index)} />;
       case 'editUser':
         if (!editingUser) return <UserManagement onEditUser={setEditingUser} />;
         return (
-          <div className="p-4 md:p-8 max-w-4xl mx-auto">
-            <EditUserForm 
-              user={editingUser} 
-              onBack={handleBackFromEdit}
-              onSuccess={handleSuccessEdit}
-              isMobile={true} 
-            />
-          </div>
+          <EditUserForm 
+            user={editingUser} 
+            onBack={handleBackFromEdit}
+            onSuccess={handleSuccessEdit}
+            isMobile={true} 
+          />
         );
       case 'privacy':
         return <Privacy onBack={onBack} />;
