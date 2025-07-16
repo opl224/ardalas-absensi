@@ -226,7 +226,7 @@ export function MobileAdminDashboard() {
         <AnimatePresence initial={false} custom={page.direction}>
             <motion.div
               key={page.view}
-              className="absolute w-full h-full overflow-y-auto"
+              className="absolute w-full h-full overflow-y-auto pb-24"
               custom={page.direction}
               variants={variants}
               initial="enter"
