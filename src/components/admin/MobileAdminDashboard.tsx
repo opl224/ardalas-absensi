@@ -11,6 +11,8 @@ import { ExitAppDialog } from '../ExitAppDialog';
 import dynamic from 'next/dynamic';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { User } from './UserManagement';
+import { EditUserForm } from './UserManagement';
+
 
 const MobileHome = dynamic(() => import('./MobileHome').then(mod => mod.MobileHome), {
   loading: () => <CenteredLoader />,
@@ -37,14 +39,12 @@ type ViewID = MainViewID | SubViewID;
 
 const mainViews: MainViewID[] = ['home', 'users', 'attendance', 'reports', 'profile'];
 
-const viewComponents: { [key in ViewID]: React.FC<any> } = {
+const viewComponents: { [key in MainViewID]: React.FC<any> } = {
   home: MobileHome,
   users: UserManagement,
   attendance: Attendance,
   reports: Reports,
   profile: Profile,
-  privacy: Privacy,
-  editUser: () => null, // Placeholder, rendering is handled inside UserManagement
 };
 
 const variants = {
@@ -140,11 +140,19 @@ export function MobileAdminDashboard() {
     });
   }, []);
 
+  const handleBackFromEdit = () => {
+    setEditingUser(null);
+  };
+
+  const handleSuccessEdit = () => {
+    setEditingUser(null);
+  };
+
   const onBack = useCallback(() => {
     if (page.view === 'privacy') {
       changeView('profile', mainViews.indexOf('profile'));
     } else if (page.view === 'editUser') {
-      setEditingUser(null); // This will trigger the useEffect to change view
+      setEditingUser(null);
     }
   }, [page.view, changeView]);
 
@@ -198,22 +206,34 @@ export function MobileAdminDashboard() {
   const isSubView = !mainViews.includes(page.view as MainViewID);
   
   const renderView = () => {
-    const viewToRender = isSubView ? mainViews[page.index] : page.view;
-    const ComponentToRender = viewComponents[viewToRender];
-    let props: any = { setActiveView: changeView };
-
-    if (viewToRender === 'users') {
-      props.isMobile = true;
-      props.isEditing = page.view === 'editUser';
-      props.editingUser = editingUser;
-      props.setEditingUser = setEditingUser;
-    } else if (viewToRender === 'profile' && page.view === 'privacy') {
+    switch (page.view) {
+      case 'home':
+        return <MobileHome setActiveView={(view, index) => changeView(view, index)} />;
+      case 'users':
+        return <UserManagement onEditUser={setEditingUser} />;
+      case 'attendance':
+        return <Attendance />;
+      case 'reports':
+        return <Reports />;
+      case 'profile':
+        return <Profile setActiveView={(view, index) => changeView(view, index)} />;
+      case 'editUser':
+        if (!editingUser) return <UserManagement onEditUser={setEditingUser} />;
+        return (
+          <div className="p-4 md:p-8 max-w-4xl mx-auto">
+            <EditUserForm 
+              user={editingUser} 
+              onBack={handleBackFromEdit}
+              onSuccess={handleSuccessEdit}
+              isMobile={true} 
+            />
+          </div>
+        );
+      case 'privacy':
         return <Privacy onBack={onBack} />;
-    } else if (page.view === 'privacy') {
-        return <Privacy onBack={onBack} />;
+      default:
+        return <MobileHome setActiveView={(view, index) => changeView(view, index)} />;
     }
-
-    return <ComponentToRender {...props} />;
   }
   
   if (!userProfile) {
@@ -226,7 +246,7 @@ export function MobileAdminDashboard() {
         <AnimatePresence initial={false} custom={page.direction}>
             <motion.div
               key={page.view}
-              className="absolute w-full h-full overflow-y-auto pb-20"
+              className="absolute w-full h-full overflow-y-auto pb-24"
               custom={page.direction}
               variants={variants}
               initial="enter"
@@ -243,7 +263,7 @@ export function MobileAdminDashboard() {
         </AnimatePresence>
       </main>
 
-      {page.view !== 'editUser' && (
+      {!isSubView && (
         <nav className="fixed bottom-0 left-0 right-0 bg-card border-t p-1 flex justify-around z-10">
           <NavLink index={0} setView={changeView} label="Beranda">
             <Home className="h-6 w-6" />
