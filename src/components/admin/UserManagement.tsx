@@ -110,7 +110,7 @@ const updateUserFormSchema = z.object({
 type UpdateUserFormValues = z.infer<typeof updateUserFormSchema>;
 
 
-function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => void, onSuccess: () => void }) {
+function EditUserForm({ user, onBack, onSuccess, isMobile }: { user: User, onBack: () => void, onSuccess: () => void, isMobile?: boolean }) {
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
 
@@ -158,101 +158,123 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
         });
     };
 
-    return (
-        <div className="flex flex-col h-full bg-background">
-            <header className="sticky top-0 z-10 flex items-center gap-4 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8">
-                    <ArrowLeft className="h-5 w-5" />
-                    <span className="sr-only">Kembali</span>
-                </Button>
-                <div className="flex-grow">
-                    <h1 className="text-xl font-bold text-foreground truncate">Edit Pengguna</h1>
-                    <p className="text-sm text-muted-foreground truncate">{user.name}</p>
-                </div>
-            </header>
-            
-            <form onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto">
-                <div className="space-y-6 p-4 pb-24">
-                    <div className="space-y-4">
-                        <h3 className="flex items-center gap-2 font-semibold text-foreground border-b pb-2">
-                          <UserCircle className="h-5 w-5" />
-                          Informasi Pribadi
-                        </h3>
-                        {user.role === 'Guru' && (
-                            <div className="space-y-2">
-                                <Label htmlFor="nip">NIP</Label>
-                                <Input id="nip" {...register('nip')} placeholder="Nomor Induk Pegawai" disabled={isPending} />
-                            </div>
-                        )}
-                        <div className="space-y-2">
-                          <Label htmlFor="gender">Jenis Kelamin</Label>
-                          <Controller
-                              name="gender"
-                              control={control}
-                              render={({ field }) => (
-                                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isPending}>
-                                      <SelectTrigger id="gender">
-                                          <SelectValue placeholder="Pilih jenis kelamin" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                          <SelectItem value="Laki-laki">Laki-laki</SelectItem>
-                                          <SelectItem value="Perempuan">Perempuan</SelectItem>
-                                      </SelectContent>
-                                  </Select>
-                              )}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="phone">No. Telepon</Label>
-                            <Input id="phone" {...register('phone')} placeholder="Nomor telepon aktif" disabled={isPending} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="address">Alamat</Label>
-                            <Input id="address" {...register('address')} placeholder="Alamat lengkap" disabled={isPending} />
-                        </div>
-                    </div>
-
-                    {user.role === 'Guru' && (
-                        <div className="space-y-4">
-                            <h3 className="flex items-center gap-2 font-semibold text-foreground border-b pb-2">
-                              <BookMarked className="h-5 w-5" />
-                              Informasi Akademik
-                            </h3>
-                            <div className="space-y-2">
-                                <Label htmlFor="subject">Mata Pelajaran</Label>
-                                <Input id="subject" {...register('subject')} placeholder="Contoh: Matematika" disabled={isPending} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="class">Mengajar Kelas</Label>
-                                <Input id="class" {...register('class')} placeholder="Contoh: 10A, 11B" disabled={isPending} />
-                            </div>
-                        </div>
+    const formContent = (
+      <div className="space-y-6 p-4 pb-24">
+          <div className="space-y-4">
+              <h3 className="flex items-center gap-2 font-semibold text-foreground border-b pb-2">
+                <UserCircle className="h-5 w-5" />
+                Informasi Pribadi
+              </h3>
+              {user.role === 'Guru' && (
+                  <div className="space-y-2">
+                      <Label htmlFor="nip">NIP</Label>
+                      <Input id="nip" {...register('nip')} placeholder="Nomor Induk Pegawai" disabled={isPending} />
+                  </div>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="gender">Jenis Kelamin</Label>
+                <Controller
+                    name="gender"
+                    control={control}
+                    render={({ field }) => (
+                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isPending}>
+                            <SelectTrigger id="gender">
+                                <SelectValue placeholder="Pilih jenis kelamin" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Laki-laki">Laki-laki</SelectItem>
+                                <SelectItem value="Perempuan">Perempuan</SelectItem>
+                            </SelectContent>
+                        </Select>
                     )}
+                />
+              </div>
+              <div className="space-y-2">
+                  <Label htmlFor="phone">No. Telepon</Label>
+                  <Input id="phone" {...register('phone')} placeholder="Nomor telepon aktif" disabled={isPending} />
+              </div>
+              <div className="space-y-2">
+                  <Label htmlFor="address">Alamat</Label>
+                  <Input id="address" {...register('address')} placeholder="Alamat lengkap" disabled={isPending} />
+              </div>
+          </div>
 
-                    <div className="space-y-4">
-                        <h3 className="flex items-center gap-2 font-semibold text-foreground border-b pb-2">
-                          <Shield className="h-5 w-5" />
-                          Informasi Administrasi
-                        </h3>
-                        <div className="space-y-2">
-                            <Label htmlFor="name">Nama Lengkap</Label>
-                            <Input id="name" {...register('name')} placeholder="Nama lengkap pengguna" disabled={isPending} />
-                            {errors.name && <p className="text-destructive text-xs">{errors.name.message}</p>}
-                        </div>
-                    </div>
-                </div>
+          {user.role === 'Guru' && (
+              <div className="space-y-4">
+                  <h3 className="flex items-center gap-2 font-semibold text-foreground border-b pb-2">
+                    <BookMarked className="h-5 w-5" />
+                    Informasi Akademik
+                  </h3>
+                  <div className="space-y-2">
+                      <Label htmlFor="subject">Mata Pelajaran</Label>
+                      <Input id="subject" {...register('subject')} placeholder="Contoh: Matematika" disabled={isPending} />
+                  </div>
+                  <div className="space-y-2">
+                      <Label htmlFor="class">Mengajar Kelas</Label>
+                      <Input id="class" {...register('class')} placeholder="Contoh: 10A, 11B" disabled={isPending} />
+                  </div>
+              </div>
+          )}
 
-                 <div className="fixed bottom-0 left-0 right-0 z-20 bg-background border-t p-4">
-                    <div className="flex gap-2">
-                        <Button type="button" variant="outline" onClick={onBack} disabled={isPending} className="flex-1">Batal</Button>
-                        <Button type="submit" disabled={isPending || !isDirty} className="flex-1">
-                            {isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
-                        </Button>
-                    </div>
-                </div>
-            </form>
-        </div>
+          <div className="space-y-4">
+              <h3 className="flex items-center gap-2 font-semibold text-foreground border-b pb-2">
+                <Shield className="h-5 w-5" />
+                Informasi Administrasi
+              </h3>
+              <div className="space-y-2">
+                  <Label htmlFor="name">Nama Lengkap</Label>
+                  <Input id="name" {...register('name')} placeholder="Nama lengkap pengguna" disabled={isPending} />
+                  {errors.name && <p className="text-destructive text-xs">{errors.name.message}</p>}
+              </div>
+          </div>
+      </div>
     );
+
+    if (isMobile) {
+      return (
+          <div className="flex flex-col h-full bg-background">
+              <header className="sticky top-0 z-10 flex items-center gap-4 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                  <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8">
+                      <ArrowLeft className="h-5 w-5" />
+                      <span className="sr-only">Kembali</span>
+                  </Button>
+                  <div className="flex-grow">
+                      <h1 className="text-xl font-bold text-foreground truncate">Edit Pengguna</h1>
+                      <p className="text-sm text-muted-foreground truncate">{user.name}</p>
+                  </div>
+              </header>
+              
+              <form onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto">
+                  {formContent}
+
+                  <div className="fixed bottom-0 left-0 right-0 z-20 bg-background border-t p-4">
+                      <div className="flex gap-2">
+                          <Button type="button" variant="outline" onClick={onBack} disabled={isPending} className="flex-1">Batal</Button>
+                          <Button type="submit" disabled={isPending || !isDirty} className="flex-1">
+                              {isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
+                          </Button>
+                      </div>
+                  </div>
+              </form>
+          </div>
+      );
+    }
+
+    return (
+      <form onSubmit={handleSubmit(onSubmit)}>
+          <ScrollArea className="max-h-[calc(80vh-10rem)]">
+              {formContent}
+          </ScrollArea>
+          <div className="bg-background border-t p-4">
+              <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={onBack} disabled={isPending}>Batal</Button>
+                  <Button type="submit" disabled={isPending || !isDirty}>
+                      {isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
+                  </Button>
+              </div>
+          </div>
+      </form>
+    )
 }
 
 export default function UserManagement({ isMobile, isEditing, editingUser, setEditingUser }: UserManagementProps) {
@@ -591,7 +613,7 @@ export default function UserManagement({ isMobile, isEditing, editingUser, setEd
   const hasNextPage = currentPage * USERS_PER_PAGE < totalFilteredCount;
 
   if (isMobile && isEditing && editingUser) {
-      return <EditUserForm user={editingUser} onBack={() => { if(setEditingUser) setEditingUser(null) }} onSuccess={handleUserActionSuccess} />;
+      return <EditUserForm user={editingUser} onBack={() => { if(setEditingUser) setEditingUser(null) }} onSuccess={handleUserActionSuccess} isMobile={isMobile} />;
   }
 
   return (
@@ -759,6 +781,9 @@ export default function UserManagement({ isMobile, isEditing, editingUser, setEd
       {activeEditingUser && !isMobile && (
         <Dialog open={!!activeEditingUser} onOpenChange={(open) => !open && handleCloseEdit()}>
             <DialogContent className="max-w-lg p-0">
+                <DialogHeader className="p-6 pb-0">
+                  <DialogTitle>Edit Pengguna: {activeEditingUser.name}</DialogTitle>
+                </DialogHeader>
                 <EditUserForm user={activeEditingUser} onBack={handleCloseEdit} onSuccess={handleUserActionSuccess} />
             </DialogContent>
         </Dialog>
