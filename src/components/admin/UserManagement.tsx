@@ -40,7 +40,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
-import { App as CapacitorApp } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 import { AddUserDialog } from './AddUserDialog';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -756,7 +756,7 @@ export default function UserManagement({ isMobile, isEditing, editingUser, setEd
 
       <AddUserDialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen} onSuccess={handleUserActionSuccess} />
 
-      {activeEditingUser && (
+      {activeEditingUser && !isMobile && (
         <Dialog open={!!activeEditingUser} onOpenChange={(open) => !open && handleCloseEdit()}>
             <DialogContent className="max-w-lg p-0">
                 <EditUserForm user={activeEditingUser} onBack={handleCloseEdit} onSuccess={handleUserActionSuccess} />
