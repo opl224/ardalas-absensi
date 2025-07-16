@@ -78,7 +78,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
             email: data.email,
             role: data.role,
             uid: newUser.uid,
-            avatar: `https://placehold.co/100x100.png`
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name)}&background=random`
         });
 
         // b. Central 'users' document for simple role lookup
