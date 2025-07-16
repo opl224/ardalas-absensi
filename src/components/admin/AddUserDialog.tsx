@@ -11,9 +11,9 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
-import { Eye, EyeOff, ShieldKeyhole } from 'lucide-react';
+import { Eye, EyeOff, Shield } from 'lucide-react';
 import { createUserWithEmailAndPassword, sendEmailVerification, signOut, updateProfile } from 'firebase/auth';
-import { auth, db }from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { doc, setDoc, writeBatch } from 'firebase/firestore';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -209,7 +209,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
             <div className="space-y-2">
                 <Label htmlFor="adminCode">Kode Admin</Label>
                 <div className="relative">
-                    <ShieldKeyhole className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                     <Input 
                         id="adminCode" 
                         type="password" 
