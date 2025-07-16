@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useTransition } from 'react';
@@ -163,8 +164,8 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                 </div>
             </header>
             
-            <div className="flex-1 overflow-y-auto p-4 mb-20">
-                <form id="edit-user-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <div className="flex-1 overflow-y-auto">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 p-4 pb-24">
                     <div className="space-y-4">
                         <h3 className="flex items-center gap-2 font-semibold text-foreground border-b pb-2">
                           <UserCircle className="h-5 w-5" />
@@ -232,16 +233,13 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
                             {errors.name && <p className="text-destructive text-xs">{errors.name.message}</p>}
                         </div>
                     </div>
+                    <div className="flex gap-2 pt-4">
+                        <Button type="button" variant="outline" onClick={onBack} disabled={isPending} className="flex-1">Batal</Button>
+                        <Button type="submit" disabled={isPending || !isDirty} className="flex-1">
+                            {isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
+                        </Button>
+                    </div>
                 </form>
-            </div>
-            
-            <div className="fixed bottom-0 left-0 right-0 border-t bg-background p-4">
-                <div className="flex gap-2 max-w-lg mx-auto">
-                    <Button type="button" variant="outline" onClick={onBack} disabled={isPending} className="flex-1">Batal</Button>
-                    <Button type="submit" form="edit-user-form" disabled={isPending || !isDirty} className="flex-1">
-                        {isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
-                    </Button>
-                </div>
             </div>
         </div>
     );
