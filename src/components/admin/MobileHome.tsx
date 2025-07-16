@@ -245,8 +245,7 @@ export function MobileHome({ setActiveView }: MobileHomeProps) {
                 </Card>
                 
                 <Button
-                  variant="outline"
-                  className="w-full"
+                  className="w-full bg-[#00ced1] text-white hover:bg-[#d3d3d3] hover:text-black"
                   onClick={() => setShowSettingsDialog(true)}
                 >
                   Atur Jadwal
@@ -289,11 +288,13 @@ export function MobileHome({ setActiveView }: MobileHomeProps) {
                          <QuickActionButton 
                             icon={LineChart}
                             title="Laporan"
+                            description="Lihat statistik"
                             onClick={() => setActiveView?.('reports', 3)}
                          />
                          <QuickActionButton 
                             icon={CheckSquare}
                             title="Kehadiran"
+                            description="Lacak catatan"
                             onClick={() => setActiveView?.('attendance', 2)}
                          />
                     </div>

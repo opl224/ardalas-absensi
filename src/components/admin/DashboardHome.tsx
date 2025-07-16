@@ -177,8 +177,7 @@ export function DashboardHome({ setActiveView }: DashboardHomeProps) {
                 </CardContent>
             </Card>
             <Button
-              variant="outline"
-              className="w-full"
+              className="w-full bg-[#00ced1] text-white hover:bg-[#d3d3d3] hover:text-black"
               onClick={() => setShowSettingsDialog(true)}
             >
               Atur Jadwal
@@ -217,17 +216,20 @@ export function DashboardHome({ setActiveView }: DashboardHomeProps) {
                  <QuickActionButton 
                     icon={Users}
                     title="Manajemen Pengguna"
+                    description="Kelola pengguna admin dan guru"
                     onClick={() => setActiveView?.('users')}
                  />
                  <div className="grid grid-cols-2 gap-4">
                      <QuickActionButton 
                         icon={LineChart}
                         title="Laporan"
+                        description="Lihat ringkasan & statistik"
                         onClick={() => setActiveView?.('reports')}
                      />
                      <QuickActionButton 
                         icon={CheckSquare}
                         title="Kehadiran"
+                        description="Lacak & kelola catatan"
                         onClick={() => setActiveView?.('attendance')}
                      />
                  </div>
