@@ -20,6 +20,14 @@ import { collection, doc, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Separator } from "../ui/separator";
 import SplitText from "../ui/SplitText";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface MobileHomeProps {
   setActiveView?: (view: 'users' | 'reports' | 'attendance' | 'privacy', index: number) => void;
@@ -171,6 +179,8 @@ export function MobileHome({ setActiveView }: MobileHomeProps) {
         return <CenteredLoader />
     }
 
+    const isCustomAvatar = userProfile.avatar && !userProfile.avatar.includes('placehold.co');
+
     return (
         <div className="bg-gray-50 dark:bg-zinc-900">
              <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -194,10 +204,28 @@ export function MobileHome({ setActiveView }: MobileHomeProps) {
                         />
                         <p className="text-sm text-muted-foreground capitalize">{userProfile.role}</p>
                     </div>
-                    <Avatar className="h-14 w-14">
-                        <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait" />
-                        <AvatarFallback>{userProfile.name.slice(0,2).toUpperCase()}</AvatarFallback>
-                    </Avatar>
+                    {isCustomAvatar ? (
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Avatar className="h-14 w-14 cursor-pointer">
+                                    <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait"/>
+                                    <AvatarFallback>{userProfile.name.slice(0,2).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                            </DialogTrigger>
+                            <DialogContent className="p-0 border-0 bg-transparent shadow-none w-auto max-w-lg">
+                                <DialogHeader className="sr-only">
+                                    <DialogTitle>Avatar {userProfile.name}</DialogTitle>
+                                    <DialogDescription>Gambar avatar ukuran penuh.</DialogDescription>
+                                </DialogHeader>
+                                <img src={userProfile.avatar} alt={userProfile.name} className="w-full h-auto rounded-lg" data-ai-hint="person portrait" />
+                            </DialogContent>
+                        </Dialog>
+                    ) : (
+                        <Avatar className="h-14 w-14">
+                            <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait"/>
+                            <AvatarFallback>{userProfile.name.slice(0,2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                    )}
                 </div>
 
                 <Card className="p-4">

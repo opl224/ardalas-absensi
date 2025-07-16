@@ -80,7 +80,6 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
     const [isCheckoutAllowed, setIsCheckoutAllowed] = useState(false);
     const [settings, setSettings] = useState<any | null>(null);
     const [todaysAttendance, setTodaysAttendance] = useState<any | 'empty' | 'loading'>('loading');
-    const [showAvatarDialog, setShowAvatarDialog] = useState(false);
 
     const { userProfile } = useAuth();
     const { toast } = useToast();
@@ -94,29 +93,6 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
         const todayStr = now.toLocaleDateString('en-US', { weekday: 'long' });
         return settings.offDays?.includes(todayStr) ?? false;
     }, [settings]);
-
-    useEffect(() => {
-        const setupBackButtonListener = async () => {
-            if (Capacitor.isNativePlatform() && showAvatarDialog) {
-              const listener = await CapacitorApp.addListener('backButton', (e) => {
-                e.canGoBack = false;
-                setShowAvatarDialog(false);
-              });
-              return listener;
-            }
-            return null;
-        }
-
-        const listenerPromise = setupBackButtonListener();
-    
-        return () => {
-          listenerPromise.then(listener => {
-            if (listener) {
-              listener.remove();
-            }
-          });
-        };
-      }, [showAvatarDialog]);
 
     useEffect(() => {
         const updateDateTime = () => {
@@ -284,7 +260,7 @@ export function TeacherHome({ setActiveView }: TeacherHomeProps) {
                         <p className="text-sm text-muted-foreground capitalize">{userProfile.role} &bull; {userProfile.subject}</p>
                     </div>
                     {isCustomAvatar ? (
-                        <Dialog open={showAvatarDialog} onOpenChange={setShowAvatarDialog}>
+                        <Dialog>
                             <DialogTrigger asChild>
                                 <Avatar className="h-14 w-14 cursor-pointer">
                                     <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait"/>
