@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic'
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { Capacitor } from "@capacitor/core";
-import { Download, Smartphone } from "lucide-react";
+import { Download, Smartphone, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DownloadButton } from "@/components/ui/download-button";
 
@@ -15,19 +15,37 @@ function TeacherDashboardContent() {
   const { userProfile, loading, logout } = useAuth();
   const [isNativePlatform, setIsNativePlatform] = useState(false);
   const [platformCheckCompleted, setPlatformCheckCompleted] = useState(false);
+  const [isAdminOnNative, setIsAdminOnNative] = useState(false);
 
   useEffect(() => {
     const checkPlatform = () => {
-      setIsNativePlatform(Capacitor.isNativePlatform());
+      const isNative = Capacitor.isNativePlatform();
+      setIsNativePlatform(isNative);
+      if (isNative && userProfile?.role === 'admin') {
+        setIsAdminOnNative(true);
+        logout("Admin hanya dapat mengakses aplikasi melalui browser web.");
+      }
       setPlatformCheckCompleted(true);
     };
     checkPlatform();
-  }, []);
+  }, [userProfile, logout]);
 
   if (loading || !platformCheckCompleted) {
     return <CenteredLoader />;
   }
   
+  if (isAdminOnNative) {
+    return (
+        <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-8 text-center">
+            <XCircle className="h-16 w-16 text-destructive mb-4" />
+            <h1 className="text-2xl font-bold">Akses Admin Ditolak</h1>
+            <p className="text-muted-foreground mt-2 max-w-sm">
+                Akun admin hanya dapat digunakan untuk masuk melalui browser web. Anda akan dikeluarkan.
+            </p>
+        </div>
+    );
+  }
+
   if (!isNativePlatform) {
     return (
         <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-8 text-center">
