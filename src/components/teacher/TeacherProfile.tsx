@@ -12,9 +12,8 @@ import { ThemeToggle } from "../ThemeToggle";
 import { Button } from "../ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { doc, writeBatch } from "firebase/firestore";
-import { db, storage } from "@/lib/firebase";
-import { ref, uploadString, getDownloadURL } from "firebase/storage";
+import { doc, writeBatch, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
     <div className="flex items-center gap-4 py-3">
@@ -67,23 +66,20 @@ export function TeacherProfile({ setActiveView }: TeacherProfileProps) {
 
                 startTransition(async () => {
                     try {
-                        const storageRef = ref(storage, `avatars/${userProfile.uid}/${Date.now()}`);
-                        const snapshot = await uploadString(storageRef, dataUri, 'data_url');
-                        const downloadURL = await getDownloadURL(snapshot.ref);
-
                         const batch = writeBatch(db);
+                        
                         const teacherDocRef = doc(db, 'teachers', userProfile.uid);
-                        batch.update(teacherDocRef, { avatar: downloadURL });
+                        batch.update(teacherDocRef, { avatar: dataUri });
 
                         const centralUserDocRef = doc(db, 'users', userProfile.uid);
-                        const userDocSnap = await db.collection('users').doc(userProfile.uid).get();
-                        if (userDocSnap.exists) {
-                            batch.update(centralUserDocRef, { avatar: downloadURL });
+                        const userDocSnap = await getDoc(centralUserDocRef);
+                        if (userDocSnap.exists()) {
+                            batch.update(centralUserDocRef, { avatar: dataUri });
                         }
 
                         await batch.commit();
                         
-                        setUserProfile(prev => prev ? { ...prev, avatar: downloadURL } : null);
+                        setUserProfile(prev => prev ? { ...prev, avatar: dataUri } : null);
                         toast({ title: 'Berhasil', description: 'Avatar berhasil diperbarui.' });
 
                     } catch (error) {
@@ -189,4 +185,3 @@ export function TeacherProfile({ setActiveView }: TeacherProfileProps) {
         </>
     );
 }
-

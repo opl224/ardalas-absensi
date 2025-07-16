@@ -14,8 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Capacitor } from '@capacitor/core';
 import { doc, updateDoc } from "firebase/firestore";
-import { db, storage } from "@/lib/firebase";
-import { ref, uploadString, getDownloadURL } from "firebase/storage";
+import { db } from "@/lib/firebase";
 import { Loader } from "../ui/loader";
 
 interface ProfileProps {
@@ -74,18 +73,14 @@ export function Profile({ setActiveView }: ProfileProps) {
                 
                 startTransition(async () => {
                     try {
-                        const storageRef = ref(storage, `avatars/${userProfile.uid}/${Date.now()}`);
-                        const snapshot = await uploadString(storageRef, dataUri, 'data_url');
-                        const downloadURL = await getDownloadURL(snapshot.ref);
-
                         const adminDocRef = doc(db, 'admin', userProfile.uid);
-                        await updateDoc(adminDocRef, { avatar: downloadURL });
+                        await updateDoc(adminDocRef, { avatar: dataUri });
 
-                        setUserProfile(prev => prev ? { ...prev, avatar: downloadURL } : null);
+                        setUserProfile(prev => prev ? { ...prev, avatar: dataUri } : null);
                         toast({ title: 'Berhasil', description: 'Avatar berhasil diperbarui.' });
                     } catch (error) {
                         console.error("Error updating avatar:", error);
-                        toast({ variant: 'destructive', title: 'Gagal', description: "Gagal mengunggah atau memperbarui avatar." });
+                        toast({ variant: 'destructive', title: 'Gagal', description: "Gagal memperbarui avatar." });
                     } finally {
                         setPreviewAvatar(null);
                         // Reset file input to allow re-uploading the same file
