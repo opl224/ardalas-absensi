@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback, useMemo, useTransition } from 'react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Search, Download, Eye, ChevronLeft, ChevronRight, Briefcase, BookCopy, Phone, Home as HomeIcon, VenetianMask, BookMarked, Fingerprint, AlertTriangle, UserX, UserPlus, MoreVertical, Trash2, Edit as EditIcon, ArrowLeft, UserCircle, Shield } from 'lucide-react';
 import {
@@ -154,7 +154,7 @@ export function EditUserForm({ user, onBack, onSuccess, isMobile }: { user: User
     };
     
     const formContent = (
-      <div className="p-4 space-y-6">
+      <div className="p-4 md:p-6 space-y-6">
         <div className="space-y-4">
             <h3 className="flex items-center gap-2 font-semibold text-foreground border-b pb-2">
               <UserCircle className="h-5 w-5" />
@@ -225,60 +225,30 @@ export function EditUserForm({ user, onBack, onSuccess, isMobile }: { user: User
       </div>
     );
     
-    if (isMobile) {
-        return (
-            <div className="flex flex-col h-full bg-background">
-                 <header className="sticky top-0 z-20 flex items-center gap-4 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                    <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8 shrink-0">
-                        <ArrowLeft className="h-5 w-5" />
-                        <span className="sr-only">Kembali</span>
+    return (
+        <div className="flex flex-col h-full bg-background w-full">
+             <header className="sticky top-0 z-20 flex items-center gap-4 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8 shrink-0">
+                    <ArrowLeft className="h-5 w-5" />
+                    <span className="sr-only">Kembali</span>
+                </Button>
+                <div className="flex-grow">
+                    <h1 className="text-xl font-bold text-foreground truncate">Edit Pengguna</h1>
+                    <p className="text-sm text-muted-foreground truncate">{user.name}</p>
+                </div>
+            </header>
+            <form id="edit-user-form" onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto pb-24">
+                {formContent}
+            </form>
+            <div className="fixed bottom-0 left-0 right-0 z-20 bg-background/80 backdrop-blur-sm border-t p-4 md:relative md:left-auto md:right-auto md:bottom-auto">
+                <div className="flex justify-end gap-2 max-w-7xl mx-auto">
+                    <Button type="button" variant="outline" onClick={onBack} disabled={isPending} className="flex-1 md:flex-initial">Batal</Button>
+                    <Button type="submit" form="edit-user-form" disabled={isPending || !isDirty} className="flex-1 md:flex-initial">
+                        {isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
                     </Button>
-                    <div className="flex-grow">
-                        <h1 className="text-xl font-bold text-foreground truncate">Edit Pengguna</h1>
-                        <p className="text-sm text-muted-foreground truncate">{user.name}</p>
-                    </div>
-                </header>
-                <form id="edit-user-form" onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto pb-24">
-                    {formContent}
-                </form>
-                <div className="fixed bottom-0 left-0 right-0 z-20 bg-background/80 backdrop-blur-sm border-t p-4">
-                    <div className="flex gap-2">
-                        <Button type="button" variant="outline" onClick={onBack} disabled={isPending} className="flex-1">Batal</Button>
-                        <Button type="submit" form="edit-user-form" disabled={isPending || !isDirty} className="flex-1">
-                            {isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
-                        </Button>
-                    </div>
                 </div>
             </div>
-        );
-    }
-    
-    return (
-        <Card className="shadow-lg">
-           <form id="edit-user-form" onSubmit={handleSubmit(onSubmit)}>
-              <header className="flex items-center gap-4 border-b px-6 py-4">
-                  <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8 shrink-0">
-                      <ArrowLeft className="h-5 w-5" />
-                      <span className="sr-only">Kembali</span>
-                  </Button>
-                  <div className="flex-grow">
-                      <h1 className="text-xl font-bold text-foreground truncate">Edit Pengguna</h1>
-                      <p className="text-sm text-muted-foreground truncate">{user.name}</p>
-                  </div>
-              </header>
-              <ScrollArea className="max-h-[65vh] w-full">
-                  <CardContent className="p-0">
-                     {formContent}
-                  </CardContent>
-              </ScrollArea>
-              <div className="flex justify-end gap-2 p-6 border-t">
-                  <Button type="button" variant="outline" onClick={onBack} disabled={isPending}>Batal</Button>
-                  <Button type="submit" disabled={isPending || !isDirty}>
-                      {isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
-                  </Button>
-              </div>
-            </form>
-        </Card>
+        </div>
     );
 }
 

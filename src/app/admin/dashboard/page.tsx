@@ -75,14 +75,12 @@ function AdminDashboardContent() {
   const renderView = () => {
     if (editingUser) {
         return (
-            <div className="p-4 md:p-8 max-w-4xl mx-auto">
-                <EditUserForm 
-                    user={editingUser} 
-                    onBack={handleBackFromEdit}
-                    onSuccess={handleSuccessEdit}
-                    isMobile={false} 
-                />
-            </div>
+            <EditUserForm 
+                user={editingUser} 
+                onBack={handleBackFromEdit}
+                onSuccess={handleSuccessEdit}
+                isMobile={false} 
+            />
         );
     }
     
@@ -138,31 +136,37 @@ function AdminDashboardContent() {
       </Sidebar>
       <SidebarInset>
         <div className="flex h-screen flex-col">
-            <header className="flex h-14 shrink-0 items-center gap-4 border-b bg-card px-4 sm:h-16 lg:px-6">
-                <SidebarTrigger className="sm:hidden" />
-                <Breadcrumb className="hidden md:flex">
-                <BreadcrumbList>
-                    <BreadcrumbItem>
-                    <BreadcrumbLink asChild>
-                        <Link href="#">{currentBreadcrumb}</Link>
-                    </BreadcrumbLink>
-                    </BreadcrumbItem>
-                </BreadcrumbList>
-                </Breadcrumb>
-                <div className="relative ml-auto flex-1 md:grow-0">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                    type="search"
-                    placeholder="Cari..."
-                    className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
-                />
-                </div>
-                <ThemeToggle />
-                <UserNav />
-            </header>
-            <div className="flex-1 overflow-auto">
-                {renderView()}
-            </div>
+          {editingUser ? (
+             renderView()
+          ) : (
+            <>
+              <header className="flex h-14 shrink-0 items-center gap-4 border-b bg-card px-4 sm:h-16 lg:px-6">
+                  <SidebarTrigger className="sm:hidden" />
+                  <Breadcrumb className="hidden md:flex">
+                  <BreadcrumbList>
+                      <BreadcrumbItem>
+                      <BreadcrumbLink asChild>
+                          <Link href="#">{currentBreadcrumb}</Link>
+                      </BreadcrumbLink>
+                      </BreadcrumbItem>
+                  </BreadcrumbList>
+                  </Breadcrumb>
+                  <div className="relative ml-auto flex-1 md:grow-0">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                      type="search"
+                      placeholder="Cari..."
+                      className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
+                  />
+                  </div>
+                  <ThemeToggle />
+                  <UserNav />
+              </header>
+              <div className="flex-1 overflow-auto">
+                  {renderView()}
+              </div>
+            </>
+          )}
         </div>
       </SidebarInset>
     </SidebarProvider>

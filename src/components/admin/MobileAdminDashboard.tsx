@@ -206,6 +206,18 @@ export function MobileAdminDashboard() {
   const isSubView = !mainViews.includes(page.view as MainViewID);
   
   const renderView = () => {
+    if (page.view === 'editUser') {
+      if (!editingUser) return <UserManagement onEditUser={setEditingUser} />;
+        return (
+          <EditUserForm 
+            user={editingUser} 
+            onBack={handleBackFromEdit}
+            onSuccess={handleSuccessEdit}
+            isMobile={true} 
+          />
+        );
+    }
+
     switch (page.view) {
       case 'home':
         return <MobileHome setActiveView={(view, index) => changeView(view, index)} />;
@@ -217,16 +229,6 @@ export function MobileAdminDashboard() {
         return <Reports />;
       case 'profile':
         return <Profile setActiveView={(view, index) => changeView(view as SubViewID, index)} />;
-      case 'editUser':
-        if (!editingUser) return <UserManagement onEditUser={setEditingUser} />;
-        return (
-          <EditUserForm 
-            user={editingUser} 
-            onBack={handleBackFromEdit}
-            onSuccess={handleSuccessEdit}
-            isMobile={true} 
-          />
-        );
       case 'privacy':
         return <Privacy onBack={onBack} />;
       default:
