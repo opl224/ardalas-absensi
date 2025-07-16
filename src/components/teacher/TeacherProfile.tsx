@@ -108,7 +108,7 @@ export function TeacherProfile({ setActiveView }: TeacherProfileProps) {
 
                 <div className="p-4 space-y-6">
                     <div className="flex items-center gap-4">
-                        <div className="relative">
+                        <div className="relative cursor-pointer" onClick={handleAvatarClick}>
                             <input
                                 type="file"
                                 ref={fileInputRef}
@@ -116,11 +116,11 @@ export function TeacherProfile({ setActiveView }: TeacherProfileProps) {
                                 className="hidden"
                                 accept="image/png, image/jpeg"
                             />
-                            <Avatar className="h-16 w-16 cursor-pointer" onClick={handleAvatarClick}>
+                            <Avatar className="h-16 w-16">
                                 <AvatarImage src={previewAvatar || userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait" />
                                 <AvatarFallback>{userProfile.name.slice(0,2).toUpperCase()}</AvatarFallback>
                             </Avatar>
-                            <div className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-background flex items-center justify-center border">
+                            <div className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-background flex items-center justify-center border pointer-events-none">
                                 {isPending ? (
                                     <Loader className="h-4 w-4" />
                                 ) : (
