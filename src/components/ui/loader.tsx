@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 
 export function Loader({ className }: { className?: string }) {
   // Simple div loader instead of CSS grid one
-  return <div className={cn('h-5 w-5 border-4 border-primary border-t-transparent rounded-full animate-spin', className)} />;
+  return <div className={cn('h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin', className)} />;
 }
 
 export function CenteredLoader({ className }: { className?: string }) {

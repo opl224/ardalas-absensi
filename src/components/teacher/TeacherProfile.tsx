@@ -1,22 +1,20 @@
 
 'use client'
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { User, Mail, Shield, ChevronRight, Camera, BookCopy, Briefcase } from "lucide-react";
 import { LogoutDialog } from "../admin/LogoutDialog";
 import { useAuth } from "@/hooks/useAuth";
-import { CenteredLoader } from "../ui/loader";
+import { CenteredLoader, Loader } from "../ui/loader";
 import { ThemeToggle } from "../ThemeToggle";
 import { Button } from "../ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { doc, writeBatch } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../ui/alert-dialog";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
+import { db, storage } from "@/lib/firebase";
+import { ref, uploadString, getDownloadURL } from "firebase/storage";
 
 const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
     <div className="flex items-center gap-4 py-3">
@@ -51,35 +49,55 @@ export function TeacherProfile({ setActiveView }: TeacherProfileProps) {
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
     const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-    const [newAvatarUrl, setNewAvatarUrl] = useState('');
-    const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [previewAvatar, setPreviewAvatar] = useState<string | null>(null);
 
-    const handleAvatarUpdate = () => {
-        if (!newAvatarUrl || !userProfile) return;
-
-        startTransition(async () => {
-            try {
-                const batch = writeBatch(db);
-
-                const teacherDocRef = doc(db, 'teachers', userProfile.uid);
-                batch.update(teacherDocRef, { avatar: newAvatarUrl });
-
-                const centralUserDocRef = doc(db, 'users', userProfile.uid);
-                batch.update(centralUserDocRef, { avatar: newAvatarUrl });
-
-                await batch.commit();
-                
-                setUserProfile(prev => prev ? { ...prev, avatar: newAvatarUrl } : null);
-                toast({ title: 'Berhasil', description: 'Avatar berhasil diperbarui.' });
-                setIsAvatarDialogOpen(false);
-                setNewAvatarUrl('');
-
-            } catch (error) {
-                console.error("Error updating avatar:", error);
-                toast({ variant: 'destructive', title: 'Gagal', description: "Gagal memperbarui avatar." });
-            }
-        });
+    const handleAvatarClick = () => {
+        fileInputRef.current?.click();
     };
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file && userProfile) {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => {
+                const dataUri = reader.result as string;
+                setPreviewAvatar(dataUri);
+
+                startTransition(async () => {
+                    try {
+                        const storageRef = ref(storage, `avatars/${userProfile.uid}/${Date.now()}`);
+                        const snapshot = await uploadString(storageRef, dataUri, 'data_url');
+                        const downloadURL = await getDownloadURL(snapshot.ref);
+
+                        const batch = writeBatch(db);
+                        const teacherDocRef = doc(db, 'teachers', userProfile.uid);
+                        batch.update(teacherDocRef, { avatar: downloadURL });
+
+                        const centralUserDocRef = doc(db, 'users', userProfile.uid);
+                        const userDocSnap = await db.collection('users').doc(userProfile.uid).get();
+                        if (userDocSnap.exists) {
+                            batch.update(centralUserDocRef, { avatar: downloadURL });
+                        }
+
+                        await batch.commit();
+                        
+                        setUserProfile(prev => prev ? { ...prev, avatar: downloadURL } : null);
+                        toast({ title: 'Berhasil', description: 'Avatar berhasil diperbarui.' });
+
+                    } catch (error) {
+                        console.error("Error updating avatar:", error);
+                        toast({ variant: 'destructive', title: 'Gagal', description: "Gagal memperbarui avatar." });
+                    } finally {
+                        setPreviewAvatar(null);
+                        if(fileInputRef.current) fileInputRef.current.value = "";
+                    }
+                });
+            }
+        }
+    };
+
 
     if (!userProfile) {
         return <CenteredLoader />;
@@ -95,39 +113,23 @@ export function TeacherProfile({ setActiveView }: TeacherProfileProps) {
                 <div className="p-4 space-y-6">
                     <div className="flex items-center gap-4">
                         <div className="relative">
-                           <AlertDialog open={isAvatarDialogOpen} onOpenChange={setIsAvatarDialogOpen}>
-                                <AlertDialogTrigger asChild>
-                                     <Avatar className="h-16 w-16 cursor-pointer">
-                                        <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait" />
-                                        <AvatarFallback>{userProfile.name.slice(0,2).toUpperCase()}</AvatarFallback>
-                                    </Avatar>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Ubah URL Avatar</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            Masukkan URL gambar baru untuk avatar profil Anda.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <div className="py-2">
-                                        <Label htmlFor="avatar-url" className="sr-only">URL Avatar</Label>
-                                        <Input 
-                                            id="avatar-url"
-                                            placeholder="https://example.com/image.png"
-                                            value={newAvatarUrl}
-                                            onChange={(e) => setNewAvatarUrl(e.target.value)}
-                                        />
-                                    </div>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>Batal</AlertDialogCancel>
-                                        <AlertDialogAction onClick={handleAvatarUpdate} disabled={isPending || !newAvatarUrl}>
-                                            {isPending ? "Menyimpan..." : "Simpan"}
-                                        </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                             <div className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-background flex items-center justify-center border">
-                                <Camera className="h-4 w-4" />
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileChange}
+                                className="hidden"
+                                accept="image/png, image/jpeg"
+                            />
+                            <Avatar className="h-16 w-16 cursor-pointer" onClick={handleAvatarClick}>
+                                <AvatarImage src={previewAvatar || userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait" />
+                                <AvatarFallback>{userProfile.name.slice(0,2).toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            <div className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-background flex items-center justify-center border">
+                                {isPending ? (
+                                    <Loader className="h-4 w-4" />
+                                ) : (
+                                    <Camera className="h-4 w-4" />
+                                )}
                             </div>
                         </div>
                         <div className="flex-grow min-w-0">
@@ -187,3 +189,4 @@ export function TeacherProfile({ setActiveView }: TeacherProfileProps) {
         </>
     );
 }
+
