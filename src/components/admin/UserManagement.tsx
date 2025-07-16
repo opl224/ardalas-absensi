@@ -72,8 +72,8 @@ interface ProcessedUser extends User {
 }
 
 interface UserManagementProps {
-    setActiveView: (view: 'users' | 'reports' | 'attendance' | 'editUser', index?: number) => void;
-    isEditing: boolean;
+    setActiveView?: (view: 'users' | 'reports' | 'attendance' | 'editUser', index?: number) => void;
+    isEditing?: boolean;
 }
 
 interface AttendanceStatus {
@@ -307,7 +307,7 @@ export default function UserManagement({ setActiveView, isEditing }: UserManagem
     e.canGoBack = false;
     if (editingUser) {
         setEditingUser(null);
-        setActiveView('users', 1);
+        if (setActiveView) setActiveView('users', 1);
     }
     else if (isAddUserOpen) setIsAddUserOpen(false);
     else if (isDetailOpen) setIsDetailOpen(false);
@@ -578,14 +578,16 @@ export default function UserManagement({ setActiveView, isEditing }: UserManagem
   
   const handleEditClick = (user: User) => {
     setEditingUser(user);
-    setActiveView('editUser', 1);
+    if (setActiveView) {
+      setActiveView('editUser', 1);
+    }
   };
 
   const hasPrevPage = currentPage > 1;
   const hasNextPage = currentPage * USERS_PER_PAGE < totalFilteredCount;
 
-  if (editingUser) {
-      return <EditUserForm user={editingUser} onBack={() => { setEditingUser(null); setActiveView('users', 1); }} onSuccess={handleUserActionSuccess} />;
+  if (isEditing && editingUser) {
+      return <EditUserForm user={editingUser} onBack={() => { setEditingUser(null); if(setActiveView) {setActiveView('users', 1)} }} onSuccess={handleUserActionSuccess} />;
   }
 
   return (
@@ -749,6 +751,14 @@ export default function UserManagement({ setActiveView, isEditing }: UserManagem
       )}
 
       <AddUserDialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen} onSuccess={handleUserActionSuccess} />
+
+      {editingUser && !setActiveView && (
+        <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
+            <DialogContent className="max-w-2xl">
+                <EditUserForm user={editingUser} onBack={() => setEditingUser(null)} onSuccess={handleUserActionSuccess} />
+            </DialogContent>
+        </Dialog>
+      )}
 
       {userToDelete && (
         <AlertDialog open={!!userToDelete} onOpenChange={() => setUserToDelete(null)}>
