@@ -202,7 +202,7 @@ export function MobileTeacherDashboard() {
 
   const isSubView = !mainViews.includes(page.view as MainViewID);
   let ComponentToRender: React.FC<any>;
-  let props: any;
+  let props: any = { setActiveView: changeView };
 
   if (page.view === 'checkin') {
       ComponentToRender = CheckinWrapper;
@@ -210,6 +210,10 @@ export function MobileTeacherDashboard() {
   } else {
       ComponentToRender = viewComponents[page.view];
       props = { setActiveView: changeView };
+  }
+  
+  if (page.view === 'privacy') {
+    props.onBack = onBack;
   }
   
   if (!userProfile) {

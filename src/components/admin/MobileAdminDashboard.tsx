@@ -183,6 +183,10 @@ export function MobileAdminDashboard() {
   let ComponentToRender = viewComponents[page.view];
   let props: any = { setActiveView: changeView };
   
+  if (page.view === 'privacy') {
+    props.onBack = onBack;
+  }
+  
   if (!userProfile) {
     return <CenteredLoader />
   }
