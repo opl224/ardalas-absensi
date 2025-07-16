@@ -288,20 +288,17 @@ export function MobileHome({ setActiveView }: MobileHomeProps) {
                          <QuickActionButton 
                             icon={LineChart}
                             title="Laporan"
-                            description="Lihat statistik"
                             onClick={() => setActiveView?.('reports', 3)}
                          />
                          <QuickActionButton 
                             icon={CheckSquare}
                             title="Kehadiran"
-                            description="Lacak catatan"
                             onClick={() => setActiveView?.('attendance', 2)}
                          />
                     </div>
                     <QuickActionButton 
                         icon={UserPlus}
                         title="Manajemen Pengguna"
-                        description="Kelola pengguna admin dan guru"
                         onClick={() => setActiveView?.('users', 1)}
                     />
                 </div>

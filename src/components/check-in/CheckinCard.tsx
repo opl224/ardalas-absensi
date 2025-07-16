@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { doc, setDoc, collection, getDoc } from "firebase/firestore";
+import { doc, setDoc, collection, getDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 interface CheckinCardProps {

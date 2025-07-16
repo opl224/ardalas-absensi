@@ -130,19 +130,16 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Tambah Pengguna Baru</DialogTitle>
-          <DialogDescription>
-             Buat akun baru untuk admin atau guru. Tindakan ini akan secara otomatis membuat data pengguna di Firestore.
-          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
           <div className="space-y-2">
             <Label htmlFor="name">Nama Lengkap</Label>
-            <Input id="name" {...register('name')} placeholder="contoh: John Doe" disabled={isPending} />
+            <Input id="name" {...register('name')} placeholder="contoh: Opal" disabled={isPending} />
             {errors.name && <p className="text-destructive text-xs">{errors.name.message}</p>}
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" {...register('email')} placeholder="contoh: user@example.com" disabled={isPending} />
+            <Input id="email" type="email" {...register('email')} placeholder="contoh: opal@gmail.com" disabled={isPending} />
             {errors.email && <p className="text-destructive text-xs">{errors.email.message}</p>}
           </div>
           <div className="space-y-2">
