@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback, useMemo, useTransition } from 'react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Search, Download, Eye, ChevronLeft, ChevronRight, Briefcase, BookCopy, Phone, Home as HomeIcon, VenetianMask, BookMarked, Fingerprint, AlertTriangle, UserX, UserPlus, MoreVertical, Trash2, Edit as EditIcon, ArrowLeft, UserCircle, Shield } from 'lucide-react';
 import {
@@ -71,11 +71,7 @@ interface ProcessedUser extends User {
 }
 
 interface UserManagementProps {
-    isMobile?: boolean;
-    isEditing?: boolean;
-    editingUser?: User | null;
-    setEditingUser?: (user: User | null) => void;
-    onEditUser?: (user: User) => void;
+    onEditUser: (user: User | null) => void;
 }
 
 interface AttendanceStatus {
@@ -275,7 +271,7 @@ export function EditUserForm({ user, onBack, onSuccess, isMobile }: { user: User
     )
 }
 
-export default function UserManagement({ isMobile, onEditUser }: UserManagementProps) {
+export default function UserManagement({ onEditUser }: UserManagementProps) {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [processedUsers, setProcessedUsers] = useState<ProcessedUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -583,12 +579,11 @@ export default function UserManagement({ isMobile, onEditUser }: UserManagementP
 
   const handleUserActionSuccess = () => {
     setRefreshKey(oldKey => oldKey + 1);
+    onEditUser(null);
   };
   
   const handleEditClick = (user: User) => {
-    if (onEditUser) {
-        onEditUser(user);
-    }
+    onEditUser(user);
   };
 
   const hasPrevPage = currentPage > 1;
