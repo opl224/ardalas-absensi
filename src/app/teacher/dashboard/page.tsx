@@ -8,9 +8,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { Smartphone } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 function TeacherDashboardContent() {
-  const { userProfile, loading } = useAuth();
+  const { userProfile, loading, logout } = useAuth();
   const [isNativePlatform, setIsNativePlatform] = useState(false);
   const [platformCheckCompleted, setPlatformCheckCompleted] = useState(false);
 
@@ -34,6 +35,9 @@ function TeacherDashboardContent() {
             <p className="text-muted-foreground mt-2 max-w-sm">
                 Untuk pengalaman terbaik dan melakukan absensi, silakan gunakan aplikasi Android yang telah disediakan.
             </p>
+            <Button onClick={() => logout()} className="mt-6">
+                Kembali ke Halaman Login
+            </Button>
         </div>
     );
   }
