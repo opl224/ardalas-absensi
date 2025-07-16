@@ -206,7 +206,7 @@ export function EditUserForm({ user, onBack, onSuccess, isMobile }: { user: User
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="class">Mengajar Kelas</Label>
-                    <Input id="class" {...register('class')} placeholder="Contoh: 10A, 11B" disabled={isPending} />
+                    <Input id="class" {...register('class')} placeholder="Contoh: IV Ir Soekarno" disabled={isPending} />
                 </div>
             </div>
         )}
@@ -467,7 +467,7 @@ export default function UserManagement({ onEditUser }: UserManagementProps) {
   };
 
   const handleDownload = async (formatType: 'pdf' | 'csv') => {
-    toast({ title: 'Mempersiapkan Unduhan...', description: 'Ini bisa memakan waktu beberapa saat.' });
+    toast({ title: "Berhasil diunduh", description: 'Unduhan berada di folder download browser.' });
 
     try {
         if (processedUsers.length === 0) {

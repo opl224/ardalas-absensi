@@ -388,7 +388,7 @@ export default function Attendance() {
 
 
     const handleDownload = async (formatType: 'pdf' | 'csv') => {
-        toast({ title: "Mempersiapkan Unduhan...", description: "Ini mungkin memakan waktu beberapa saat." });
+        toast({ title: "Berhasil diunduh", description: "Unduhan berada di folder download browser." });
         
         try {
             const startOfDay = new Date(date!);

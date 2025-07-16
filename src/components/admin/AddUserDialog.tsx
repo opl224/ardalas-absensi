@@ -11,7 +11,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, ShieldKeyhole } from 'lucide-react';
 import { createUserWithEmailAndPassword, sendEmailVerification, signOut, updateProfile } from 'firebase/auth';
 import { auth, db }from '@/lib/firebase';
 import { doc, setDoc, writeBatch } from 'firebase/firestore';
@@ -22,6 +22,15 @@ const createUserSchema = z.object({
   email: z.string().email("Format email tidak valid."),
   password: z.string().min(6, "Kata sandi harus memiliki setidaknya 6 karakter."),
   role: z.enum(['admin', 'guru'], { required_error: "Peran harus dipilih." }),
+  adminCode: z.string().optional(),
+}).refine(data => {
+    if (data.role === 'admin') {
+        return data.adminCode === '1234';
+    }
+    return true;
+}, {
+    message: "Kode admin tidak valid.",
+    path: ['adminCode'],
 });
 
 type CreateUserForm = z.infer<typeof createUserSchema>;
@@ -43,6 +52,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
     handleSubmit,
     reset,
     control,
+    watch,
     formState: { errors },
   } = useForm<CreateUserForm>({
     resolver: zodResolver(createUserSchema),
@@ -50,6 +60,8 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
       role: 'guru',
     }
   });
+
+  const selectedRole = watch('role');
 
   const onSubmit = (data: CreateUserForm) => {
     startTransition(async () => {
@@ -180,18 +192,37 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
                   disabled={isPending}
                 >
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="admin" id="role-admin" />
-                    <Label htmlFor="role-admin">Admin</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
                     <RadioGroupItem value="guru" id="role-guru" />
                     <Label htmlFor="role-guru">Guru</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="admin" id="role-admin" />
+                    <Label htmlFor="role-admin">Admin</Label>
                   </div>
                 </RadioGroup>
               )}
             />
             {errors.role && <p className="text-destructive text-xs">{errors.role.message}</p>}
           </div>
+
+          {selectedRole === 'admin' && (
+            <div className="space-y-2">
+                <Label htmlFor="adminCode">Kode Admin</Label>
+                <div className="relative">
+                    <ShieldKeyhole className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <Input 
+                        id="adminCode" 
+                        type="password" 
+                        {...register('adminCode')} 
+                        placeholder="Masukkan kode rahasia admin" 
+                        className="pl-10" 
+                        disabled={isPending} 
+                    />
+                </div>
+                {errors.adminCode && <p className="text-destructive text-xs">{errors.adminCode.message}</p>}
+            </div>
+          )}
+
           <DialogFooter className="pt-4">
             <Button type="button" variant="outline" onClick={handleClose} disabled={isPending}>Batal</Button>
             <Button type="submit" disabled={isPending}>
