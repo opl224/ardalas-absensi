@@ -245,7 +245,7 @@ export function MobileHome({ setActiveView }: MobileHomeProps) {
                 </Card>
                 
                 <Button
-                  className="w-full bg-[#00ced1] text-white hover:bg-[#d3d3d3] hover:text-black"
+                  className="w-full"
                   onClick={() => setShowSettingsDialog(true)}
                 >
                   Atur Jadwal
