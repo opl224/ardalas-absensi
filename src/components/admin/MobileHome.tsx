@@ -245,7 +245,7 @@ export function MobileHome({ setActiveView }: MobileHomeProps) {
                 </Card>
                 
                 <Button
-                  className="w-full"
+                  className={cn(buttonVariants(), "w-full")}
                   onClick={() => setShowSettingsDialog(true)}
                 >
                   Atur Jadwal

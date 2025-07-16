@@ -17,6 +17,7 @@ import { Loader } from "@/components/ui/loader";
 import { Separator } from "../ui/separator";
 import { AttendanceSettingsDialog } from "./AttendanceSettingsDialog";
 import { Button, buttonVariants } from "../ui/button";
+import { cn } from "@/lib/utils";
 
 interface Stats {
     present: number;
@@ -177,7 +178,7 @@ export function DashboardHome({ setActiveView }: DashboardHomeProps) {
                 </CardContent>
             </Card>
             <Button
-              className="w-full"
+              className={cn(buttonVariants(), "w-full")}
               onClick={() => setShowSettingsDialog(true)}
             >
               Atur Jadwal
