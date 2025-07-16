@@ -1,13 +1,7 @@
 
 [
   {
-    "origin": [
-      "http://localhost:3000",
-      "http://localhost:6000",
-      "https://6000-firebase-studio-1751889612116.cluster-ubrd2huk7jh6otbgyei4h62ope.cloudworkstations.dev",
-      "https://absensi-guru-18.firebaseapp.com",
-      "https://absensi-guru-18.web.app"
-    ],
+    "origin": ["*"],
     "method": [
       "GET",
       "POST",
