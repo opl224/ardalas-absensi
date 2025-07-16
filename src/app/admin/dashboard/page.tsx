@@ -20,6 +20,8 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import dynamic from 'next/dynamic';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileAdminDashboard } from "@/components/admin/MobileAdminDashboard";
+import type { User } from "@/components/admin/UserManagement";
+import { EditUserForm } from "@/components/admin/UserManagement";
 
 const DashboardHome = dynamic(() => import('@/components/admin/DashboardHome').then(mod => mod.DashboardHome), {
   loading: () => <CenteredLoader />,
@@ -36,17 +38,31 @@ const Attendance = dynamic(() => import('@/components/admin/Attendance'), {
 
 type ViewID = 'home' | 'users' | 'reports' | 'attendance';
 
-const breadcrumbTitles: Record<ViewID, string> = {
+const breadcrumbTitles: Record<ViewID | 'editUser', string> = {
   home: 'Beranda',
   users: 'Pengguna',
   reports: 'Laporan',
-  attendance: 'Kehadiran'
+  attendance: 'Kehadiran',
+  editUser: 'Edit Pengguna'
 };
 
 function AdminDashboardContent() {
   const { userProfile, loading } = useAuth();
   const [activeView, setActiveView] = useState<ViewID>('home');
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const isMobile = useIsMobile();
+  
+  const handleEditUser = (user: User | null) => {
+    setEditingUser(user);
+  };
+
+  const handleBackFromEdit = () => {
+    setEditingUser(null);
+  };
+  
+  const handleSuccessEdit = () => {
+    setEditingUser(null); 
+  }
 
   if (loading || !userProfile) {
     return <CenteredLoader />;
@@ -57,9 +73,22 @@ function AdminDashboardContent() {
   }
   
   const renderView = () => {
+    if (editingUser) {
+        return (
+            <div className="p-4 md:p-8 max-w-4xl mx-auto">
+                <EditUserForm 
+                    user={editingUser} 
+                    onBack={handleBackFromEdit}
+                    onSuccess={handleSuccessEdit}
+                    isMobile={false} 
+                />
+            </div>
+        );
+    }
+    
     switch (activeView) {
       case 'users':
-        return <UserManagement />;
+        return <UserManagement onEditUser={handleEditUser} />;
       case 'reports':
         return <Reports />;
       case 'attendance':
@@ -70,6 +99,8 @@ function AdminDashboardContent() {
     }
   }
 
+  const currentBreadcrumb = editingUser ? breadcrumbTitles.editUser : breadcrumbTitles[activeView];
+
   return (
     <SidebarProvider>
       <Sidebar side="left" collapsible="icon">
@@ -79,25 +110,25 @@ function AdminDashboardContent() {
         <SidebarContent>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton isActive={activeView === 'home'} onClick={() => setActiveView('home')} tooltip="Beranda">
+              <SidebarMenuButton isActive={activeView === 'home'} onClick={() => { setActiveView('home'); setEditingUser(null); }} tooltip="Beranda">
                 <Home />
                 <span>Beranda</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton isActive={activeView === 'users'} onClick={() => setActiveView('users')} tooltip="Pengguna">
+              <SidebarMenuButton isActive={activeView === 'users'} onClick={() => { setActiveView('users'); setEditingUser(null); }} tooltip="Pengguna">
                 <Users2 />
                 <span>Pengguna</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton isActive={activeView === 'attendance'} onClick={() => setActiveView('attendance')} tooltip="Kehadiran">
+              <SidebarMenuButton isActive={activeView === 'attendance'} onClick={() => { setActiveView('attendance'); setEditingUser(null); }} tooltip="Kehadiran">
                 <CheckSquare />
                 <span>Kehadiran</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton isActive={activeView === 'reports'} onClick={() => setActiveView('reports')} tooltip="Laporan">
+              <SidebarMenuButton isActive={activeView === 'reports'} onClick={() => { setActiveView('reports'); setEditingUser(null); }} tooltip="Laporan">
                 <LineChart />
                 <span>Laporan</span>
               </SidebarMenuButton>
@@ -113,7 +144,7 @@ function AdminDashboardContent() {
                 <BreadcrumbList>
                     <BreadcrumbItem>
                     <BreadcrumbLink asChild>
-                        <Link href="#">{breadcrumbTitles[activeView]}</Link>
+                        <Link href="#">{currentBreadcrumb}</Link>
                     </BreadcrumbLink>
                     </BreadcrumbItem>
                 </BreadcrumbList>

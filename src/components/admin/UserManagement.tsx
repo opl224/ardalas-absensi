@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback, useMemo, useTransition } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Search, Download, Eye, ChevronLeft, ChevronRight, Briefcase, BookCopy, Phone, Home as HomeIcon, VenetianMask, BookMarked, Fingerprint, AlertTriangle, UserX, UserPlus, MoreVertical, Trash2, Edit as EditIcon, ArrowLeft, UserCircle, Shield } from 'lucide-react';
@@ -48,7 +48,6 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { cn } from '@/lib/utils';
-import { buttonVariants } from '../ui/button';
 
 
 export interface User {
@@ -76,6 +75,7 @@ interface UserManagementProps {
     isEditing?: boolean;
     editingUser?: User | null;
     setEditingUser?: (user: User | null) => void;
+    onEditUser?: (user: User) => void;
 }
 
 interface AttendanceStatus {
@@ -110,7 +110,7 @@ const updateUserFormSchema = z.object({
 type UpdateUserFormValues = z.infer<typeof updateUserFormSchema>;
 
 
-function EditUserForm({ user, onBack, onSuccess, isMobile }: { user: User, onBack: () => void, onSuccess: () => void, isMobile?: boolean }) {
+export function EditUserForm({ user, onBack, onSuccess, isMobile }: { user: User, onBack: () => void, onSuccess: () => void, isMobile?: boolean }) {
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
 
@@ -149,7 +149,6 @@ function EditUserForm({ user, onBack, onSuccess, isMobile }: { user: User, onBac
                 
                 toast({ title: 'Berhasil', description: `Data pengguna '${user.name}' berhasil diperbarui.` });
                 onSuccess();
-                onBack();
 
             } catch (error: any) {
                 console.error("Error updating user:", error);
@@ -159,7 +158,19 @@ function EditUserForm({ user, onBack, onSuccess, isMobile }: { user: User, onBac
     };
 
     const formContent = (
-      <div className="space-y-6 p-4 pb-24">
+      <Card className="shadow-lg">
+        <CardContent className="p-6 space-y-6">
+          <header className="flex items-center gap-4 border-b pb-4">
+              <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8 shrink-0">
+                  <ArrowLeft className="h-5 w-5" />
+                  <span className="sr-only">Kembali</span>
+              </Button>
+              <div className="flex-grow">
+                  <h1 className="text-xl font-bold text-foreground truncate">Edit Pengguna</h1>
+                  <p className="text-sm text-muted-foreground truncate">{user.name}</p>
+              </div>
+          </header>
+
           <div className="space-y-4">
               <h3 className="flex items-center gap-2 font-semibold text-foreground border-b pb-2">
                 <UserCircle className="h-5 w-5" />
@@ -227,46 +238,33 @@ function EditUserForm({ user, onBack, onSuccess, isMobile }: { user: User, onBac
                   {errors.name && <p className="text-destructive text-xs">{errors.name.message}</p>}
               </div>
           </div>
-      </div>
+        </CardContent>
+      </Card>
     );
 
     if (isMobile) {
       return (
           <div className="flex flex-col h-full bg-background">
-              <header className="sticky top-0 z-10 flex items-center gap-4 border-b bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                  <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8">
-                      <ArrowLeft className="h-5 w-5" />
-                      <span className="sr-only">Kembali</span>
-                  </Button>
-                  <div className="flex-grow">
-                      <h1 className="text-xl font-bold text-foreground truncate">Edit Pengguna</h1>
-                      <p className="text-sm text-muted-foreground truncate">{user.name}</p>
-                  </div>
-              </header>
-              
-              <form onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto">
+              <form onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto p-4">
                   {formContent}
-
-                  <div className="fixed bottom-0 left-0 right-0 z-20 bg-background border-t p-4">
-                      <div className="flex gap-2">
-                          <Button type="button" variant="outline" onClick={onBack} disabled={isPending} className="flex-1">Batal</Button>
-                          <Button type="submit" disabled={isPending || !isDirty} className="flex-1">
-                              {isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
-                          </Button>
-                      </div>
-                  </div>
               </form>
+              <div className="sticky bottom-0 left-0 right-0 z-20 bg-background/80 backdrop-blur-sm border-t p-4">
+                  <div className="flex gap-2">
+                      <Button type="button" variant="outline" onClick={onBack} disabled={isPending} className="flex-1">Batal</Button>
+                      <Button type="submit" form="edit-user-form" disabled={isPending || !isDirty} className="flex-1">
+                          {isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
+                      </Button>
+                  </div>
+              </div>
           </div>
       );
     }
 
     return (
-      <form onSubmit={handleSubmit(onSubmit)}>
-          <ScrollArea className="max-h-[calc(80vh-10rem)]">
+      <form id="edit-user-form" onSubmit={handleSubmit(onSubmit)}>
+          <div className="space-y-6">
               {formContent}
-          </ScrollArea>
-          <div className="bg-background border-t p-4">
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-end gap-2 mt-6">
                   <Button type="button" variant="outline" onClick={onBack} disabled={isPending}>Batal</Button>
                   <Button type="submit" disabled={isPending || !isDirty}>
                       {isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
@@ -277,7 +275,7 @@ function EditUserForm({ user, onBack, onSuccess, isMobile }: { user: User, onBac
     )
 }
 
-export default function UserManagement({ isMobile, isEditing, editingUser, setEditingUser }: UserManagementProps) {
+export default function UserManagement({ isMobile, onEditUser }: UserManagementProps) {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [processedUsers, setProcessedUsers] = useState<ProcessedUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -290,7 +288,6 @@ export default function UserManagement({ isMobile, isEditing, editingUser, setEd
   const [settings, setSettings] = useState<any>(null);
 
   const [selectedUser, setSelectedUser] = useState<ProcessedUser | null>(null);
-  const [localEditingUser, setLocalEditingUser] = useState<User | null>(null);
   const [userToDelete, setUserToDelete] = useState<ProcessedUser | null>(null);
 
   const { toast } = useToast();
@@ -329,13 +326,10 @@ export default function UserManagement({ isMobile, isEditing, editingUser, setEd
 
   const handleBackButton = useCallback((e: any) => {
     e.canGoBack = false;
-    if (isEditing) {
-        if(setEditingUser) setEditingUser(null);
-    }
-    else if (isAddUserOpen) setIsAddUserOpen(false);
+    if (isAddUserOpen) setIsAddUserOpen(false);
     else if (isDetailOpen) setIsDetailOpen(false);
     else if (userToDelete) setUserToDelete(null);
-  }, [isEditing, setEditingUser, isAddUserOpen, isDetailOpen, userToDelete]);
+  }, [isAddUserOpen, isDetailOpen, userToDelete]);
   
   useEffect(() => {
     const setupListener = async () => {
@@ -592,29 +586,13 @@ export default function UserManagement({ isMobile, isEditing, editingUser, setEd
   };
   
   const handleEditClick = (user: User) => {
-    if (isMobile && setEditingUser) {
-        setEditingUser(user);
-    } else {
-        setLocalEditingUser(user);
+    if (onEditUser) {
+        onEditUser(user);
     }
   };
 
-  const handleCloseEdit = () => {
-      if (isMobile && setEditingUser) {
-          setEditingUser(null);
-      } else {
-          setLocalEditingUser(null);
-      }
-  }
-  
-  const activeEditingUser = isMobile ? editingUser : localEditingUser;
-
   const hasPrevPage = currentPage > 1;
   const hasNextPage = currentPage * USERS_PER_PAGE < totalFilteredCount;
-
-  if (isMobile && isEditing && editingUser) {
-      return <EditUserForm user={editingUser} onBack={() => { if(setEditingUser) setEditingUser(null) }} onSuccess={handleUserActionSuccess} isMobile={isMobile} />;
-  }
 
   return (
     <div className="pb-16">
@@ -777,17 +755,6 @@ export default function UserManagement({ isMobile, isEditing, editingUser, setEd
       )}
 
       <AddUserDialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen} onSuccess={handleUserActionSuccess} />
-
-      {activeEditingUser && !isMobile && (
-        <Dialog open={!!activeEditingUser} onOpenChange={(open) => !open && handleCloseEdit()}>
-            <DialogContent className="max-w-lg p-0">
-                <DialogHeader className="p-6 pb-0">
-                  <DialogTitle>Edit Pengguna: {activeEditingUser.name}</DialogTitle>
-                </DialogHeader>
-                <EditUserForm user={activeEditingUser} onBack={handleCloseEdit} onSuccess={handleUserActionSuccess} />
-            </DialogContent>
-        </Dialog>
-      )}
 
       {userToDelete && (
         <AlertDialog open={!!userToDelete} onOpenChange={() => setUserToDelete(null)}>
