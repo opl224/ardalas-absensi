@@ -13,9 +13,11 @@ import { Button } from "../ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Capacitor } from '@capacitor/core';
-import { getStorage, ref as storageRef, uploadString, getDownloadURL } from "firebase/storage";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../ui/alert-dialog";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
 
 interface ProfileProps {
     setActiveView: (view: 'privacy', index: number) => void;
@@ -47,63 +49,39 @@ const ClickableRow = ({ icon: Icon, label, onClick, className, showChevron = tru
 
 export function Profile({ setActiveView }: ProfileProps) {
     const { userProfile, logout, setUserProfile } = useAuth();
-    const fileInputRef = useRef<HTMLInputElement>(null);
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
     const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-    const [previewAvatar, setPreviewAvatar] = useState<string | null>(null);
+    const [newAvatarUrl, setNewAvatarUrl] = useState('');
+    const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
     const [isNative, setIsNative] = useState(false);
 
     useEffect(() => {
         setIsNative(Capacitor.isNativePlatform());
     }, []);
 
-    const handleAvatarClick = () => {
-        if (isPending) return;
-        fileInputRef.current?.click();
-    };
+    const handleAvatarUpdate = () => {
+        if (!newAvatarUrl || !userProfile) return;
 
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file || !userProfile) return;
+        startTransition(async () => {
+            try {
+                const adminDocRef = doc(db, 'admin', userProfile.uid);
+                await updateDoc(adminDocRef, { avatar: newAvatarUrl });
 
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => {
-            const dataUri = reader.result as string;
-            setPreviewAvatar(dataUri);
-            
-            startTransition(async () => {
-                try {
-                    const storage = getStorage();
-                    const filePath = `avatars/${userProfile.uid}/${new Date().getTime()}_${file.name}`;
-                    const fileRef = storageRef(storage, filePath);
-
-                    const snapshot = await uploadString(fileRef, dataUri, 'data_url');
-                    const downloadURL = await getDownloadURL(snapshot.ref);
-                    
-                    const adminDocRef = doc(db, 'admin', userProfile.uid);
-                    await updateDoc(adminDocRef, { avatar: downloadURL });
-
-                    setUserProfile(prev => prev ? { ...prev, avatar: downloadURL } : null);
-
-                    toast({ title: 'Berhasil', description: 'Avatar berhasil diperbarui.' });
-                } catch (error) {
-                    console.error("Error updating avatar:", error);
-                    toast({ variant: 'destructive', title: 'Gagal', description: "Gagal mengunggah avatar." });
-                } finally {
-                    setPreviewAvatar(null);
-                }
-            });
-        };
-        event.target.value = '';
+                setUserProfile(prev => prev ? { ...prev, avatar: newAvatarUrl } : null);
+                toast({ title: 'Berhasil', description: 'Avatar berhasil diperbarui.' });
+                setIsAvatarDialogOpen(false);
+                setNewAvatarUrl('');
+            } catch (error) {
+                console.error("Error updating avatar:", error);
+                toast({ variant: 'destructive', title: 'Gagal', description: "Gagal memperbarui avatar." });
+            }
+        });
     };
 
     if (!userProfile) {
         return <CenteredLoader />;
     }
-    
-    const displayAvatar = previewAvatar || userProfile.avatar;
 
     return (
         <>
@@ -115,21 +93,40 @@ export function Profile({ setActiveView }: ProfileProps) {
                 <div className="p-4 space-y-6">
                     <div className="flex items-center gap-4">
                         <div className="relative">
-                            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-                            <Avatar className="h-16 w-16 cursor-pointer" onClick={handleAvatarClick}>
-                                <AvatarImage src={displayAvatar} alt={userProfile.name} data-ai-hint="person portrait" />
-                                <AvatarFallback>{userProfile.name.slice(0,2).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                             <Button
-                                size="icon"
-                                variant="outline"
-                                className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-background"
-                                onClick={handleAvatarClick}
-                                disabled={isPending}
-                            >
-                                {isPending ? <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" /> : <Camera className="h-4 w-4" />}
-                                <span className="sr-only">Ubah Avatar</span>
-                            </Button>
+                            <AlertDialog open={isAvatarDialogOpen} onOpenChange={setIsAvatarDialogOpen}>
+                                <AlertDialogTrigger asChild>
+                                    <Avatar className="h-16 w-16 cursor-pointer">
+                                        <AvatarImage src={userProfile.avatar} alt={userProfile.name} data-ai-hint="person portrait" />
+                                        <AvatarFallback>{userProfile.name.slice(0,2).toUpperCase()}</AvatarFallback>
+                                    </Avatar>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Ubah URL Avatar</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Masukkan URL gambar baru untuk avatar profil Anda.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <div className="py-2">
+                                        <Label htmlFor="avatar-url" className="sr-only">URL Avatar</Label>
+                                        <Input 
+                                            id="avatar-url"
+                                            placeholder="https://example.com/image.png"
+                                            value={newAvatarUrl}
+                                            onChange={(e) => setNewAvatarUrl(e.target.value)}
+                                        />
+                                    </div>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Batal</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleAvatarUpdate} disabled={isPending || !newAvatarUrl}>
+                                            {isPending ? "Menyimpan..." : "Simpan"}
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                             <div className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-background flex items-center justify-center border">
+                                <Camera className="h-4 w-4" />
+                            </div>
                         </div>
                         <div className="flex-grow min-w-0">
                              <div className="flex items-start justify-between gap-2">
