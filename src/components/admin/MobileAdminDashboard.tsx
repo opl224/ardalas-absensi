@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Home, History, User as UserIcon, Users2, LineChart, CheckSquare, Shield, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { CenteredLoader } from '@/components/ui/loader';
@@ -10,6 +10,7 @@ import { useAndroidBackHandler } from '@/hooks/useAndroidBackHandler';
 import { ExitAppDialog } from '../ExitAppDialog';
 import dynamic from 'next/dynamic';
 import { useIsMobile } from '@/hooks/use-mobile';
+import type { User } from './UserManagement';
 
 const MobileHome = dynamic(() => import('./MobileHome').then(mod => mod.MobileHome), {
   loading: () => <CenteredLoader />,
@@ -74,8 +75,20 @@ export function MobileAdminDashboard() {
     direction: 0,
     index: 0,
   });
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const { userProfile, logout } = useAuth();
   
+  useEffect(() => {
+    if (editingUser) {
+      changeView('editUser', mainViews.indexOf('users'));
+    } else {
+      if (page.view === 'editUser') {
+        changeView('users', mainViews.indexOf('users'));
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingUser]);
+
   const NavLink = ({
     index,
     setView,
@@ -131,7 +144,7 @@ export function MobileAdminDashboard() {
     if (page.view === 'privacy') {
       changeView('profile', mainViews.indexOf('profile'));
     } else if (page.view === 'editUser') {
-      changeView('users', mainViews.indexOf('users'));
+      setEditingUser(null); // This will trigger the useEffect to change view
     }
   }, [page.view, changeView]);
 
@@ -190,8 +203,13 @@ export function MobileAdminDashboard() {
     let props: any = { setActiveView: changeView };
 
     if (viewToRender === 'users') {
+      props.isMobile = true;
       props.isEditing = page.view === 'editUser';
+      props.editingUser = editingUser;
+      props.setEditingUser = setEditingUser;
     } else if (viewToRender === 'profile' && page.view === 'privacy') {
+        return <Privacy onBack={onBack} />;
+    } else if (page.view === 'privacy') {
         return <Privacy onBack={onBack} />;
     }
 
@@ -225,7 +243,7 @@ export function MobileAdminDashboard() {
         </AnimatePresence>
       </main>
 
-      {!isSubView && (
+      {page.view !== 'editUser' && (
         <nav className="fixed bottom-0 left-0 right-0 bg-card border-t p-1 flex justify-around z-10">
           <NavLink index={0} setView={changeView} label="Beranda">
             <Home className="h-6 w-6" />

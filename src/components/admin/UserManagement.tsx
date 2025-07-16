@@ -40,7 +40,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
-import { App as CapacitorApp } from '@capacitor/app';
+import { App as CapacitorApp } from '@capacitor/core';
 import { AddUserDialog } from './AddUserDialog';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -51,7 +51,7 @@ import { cn } from '@/lib/utils';
 import { buttonVariants } from '../ui/button';
 
 
-interface User {
+export interface User {
   id: string;
   name: string;
   email: string;
@@ -72,8 +72,10 @@ interface ProcessedUser extends User {
 }
 
 interface UserManagementProps {
-    setActiveView?: (view: 'users' | 'reports' | 'attendance' | 'editUser', index?: number) => void;
+    isMobile?: boolean;
     isEditing?: boolean;
+    editingUser?: User | null;
+    setEditingUser?: (user: User | null) => void;
 }
 
 interface AttendanceStatus {
@@ -253,7 +255,7 @@ function EditUserForm({ user, onBack, onSuccess }: { user: User, onBack: () => v
     );
 }
 
-export default function UserManagement({ setActiveView, isEditing }: UserManagementProps) {
+export default function UserManagement({ isMobile, isEditing, editingUser, setEditingUser }: UserManagementProps) {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [processedUsers, setProcessedUsers] = useState<ProcessedUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -266,7 +268,7 @@ export default function UserManagement({ setActiveView, isEditing }: UserManagem
   const [settings, setSettings] = useState<any>(null);
 
   const [selectedUser, setSelectedUser] = useState<ProcessedUser | null>(null);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [localEditingUser, setLocalEditingUser] = useState<User | null>(null);
   const [userToDelete, setUserToDelete] = useState<ProcessedUser | null>(null);
 
   const { toast } = useToast();
@@ -305,14 +307,13 @@ export default function UserManagement({ setActiveView, isEditing }: UserManagem
 
   const handleBackButton = useCallback((e: any) => {
     e.canGoBack = false;
-    if (editingUser) {
-        setEditingUser(null);
-        if (setActiveView) setActiveView('users', 1);
+    if (isEditing) {
+        if(setEditingUser) setEditingUser(null);
     }
     else if (isAddUserOpen) setIsAddUserOpen(false);
     else if (isDetailOpen) setIsDetailOpen(false);
     else if (userToDelete) setUserToDelete(null);
-  }, [editingUser, isAddUserOpen, isDetailOpen, userToDelete, setActiveView]);
+  }, [isEditing, setEditingUser, isAddUserOpen, isDetailOpen, userToDelete]);
   
   useEffect(() => {
     const setupListener = async () => {
@@ -394,14 +395,6 @@ export default function UserManagement({ setActiveView, isEditing }: UserManagem
     setLoading(false);
   }, [allUsers, attendanceStatusMap, settings]);
   
-  useEffect(() => {
-    if (isEditing && editingUser) {
-        // Already in edit mode, do nothing
-    } else {
-        setEditingUser(null);
-    }
-  }, [isEditing, editingUser]);
-
   const displayedUsers = useMemo(() => {
     const filtered = searchTerm
       ? processedUsers.filter(user => user.name?.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -577,17 +570,28 @@ export default function UserManagement({ setActiveView, isEditing }: UserManagem
   };
   
   const handleEditClick = (user: User) => {
-    setEditingUser(user);
-    if (setActiveView) {
-      setActiveView('editUser', 1);
+    if (isMobile && setEditingUser) {
+        setEditingUser(user);
+    } else {
+        setLocalEditingUser(user);
     }
   };
+
+  const handleCloseEdit = () => {
+      if (isMobile && setEditingUser) {
+          setEditingUser(null);
+      } else {
+          setLocalEditingUser(null);
+      }
+  }
+  
+  const activeEditingUser = isMobile ? editingUser : localEditingUser;
 
   const hasPrevPage = currentPage > 1;
   const hasNextPage = currentPage * USERS_PER_PAGE < totalFilteredCount;
 
-  if (isEditing && editingUser) {
-      return <EditUserForm user={editingUser} onBack={() => { setEditingUser(null); if(setActiveView) {setActiveView('users', 1)} }} onSuccess={handleUserActionSuccess} />;
+  if (isMobile && isEditing && editingUser) {
+      return <EditUserForm user={editingUser} onBack={() => { if(setEditingUser) setEditingUser(null) }} onSuccess={handleUserActionSuccess} />;
   }
 
   return (
@@ -752,10 +756,10 @@ export default function UserManagement({ setActiveView, isEditing }: UserManagem
 
       <AddUserDialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen} onSuccess={handleUserActionSuccess} />
 
-      {editingUser && !setActiveView && (
-        <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
-            <DialogContent className="max-w-2xl">
-                <EditUserForm user={editingUser} onBack={() => setEditingUser(null)} onSuccess={handleUserActionSuccess} />
+      {activeEditingUser && (
+        <Dialog open={!!activeEditingUser} onOpenChange={(open) => !open && handleCloseEdit()}>
+            <DialogContent className="max-w-lg p-0">
+                <EditUserForm user={activeEditingUser} onBack={handleCloseEdit} onSuccess={handleUserActionSuccess} />
             </DialogContent>
         </Dialog>
       )}
